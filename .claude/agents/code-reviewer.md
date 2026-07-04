@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Use proactively after code changes to review for correctness bugs, security issues, and unnecessary complexity. Invoke when the user asks for a code review or before finalizing a non-trivial change.
+description: Use proactively after code changes to review for correctness bugs, security issues, and unnecessary complexity. MUST BE USED before a non-trivial change is considered done, and whenever the user asks for a review. Can run in parallel with test-runner.
 tools: Read, Grep, Glob, Bash
 ---
 

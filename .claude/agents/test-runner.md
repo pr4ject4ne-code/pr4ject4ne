@@ -1,6 +1,6 @@
 ---
 name: test-runner
-description: Use proactively to run the project's test suite, interpret failures, and report which tests broke and why. Invoke after code changes to verify nothing regressed, or when the user asks to run tests.
+description: Use proactively after code changes to run the project's test suite, interpret failures, and report which tests broke and why. MUST BE USED to verify nothing regressed after builder finishes. Can run in parallel with code-reviewer.
 tools: Bash, Read, Grep, Glob
 ---
 

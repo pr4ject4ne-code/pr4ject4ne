@@ -12,5 +12,6 @@ Approach:
 3. Build only what's needed for the task — no speculative abstractions, no unrequested features, no error handling for scenarios that can't occur here.
 4. After implementing, verify: run the relevant build/lint/test commands available in the project. If something fails, fix the root cause rather than working around it.
 5. If you discover the plan is wrong or incomplete once you see the real code, deviate deliberately and say so — don't silently follow a broken plan, and don't silently go beyond its scope either.
+6. Once the change is implemented and verified, follow the project's git policy in CLAUDE.md: commit with a clear message and push to origin. Never force-push or rewrite history — those still require explicit user approval.
 
 Report back concisely: what changed (files/functions), what you verified and how, and anything left undone or any deviation from the original plan and why.
