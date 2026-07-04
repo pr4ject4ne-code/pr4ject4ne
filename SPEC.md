@@ -1,6 +1,20 @@
 # AWANG — Integrated Hospital Network (IHN)
 
-Distilled from the founder's 26 source documents (per-document summaries in [docs/research/](docs/research/)). This is the working spec: decisions recorded here override rough notes; open questions are listed at the end.
+Distilled from the founder's 26 source documents (per-document summaries in [docs/research/](docs/research/)). **The source documents are thought-context, not commitments — nothing in them is solid.** They exist so the long-term vision is understood; the section below defines what is actually being built now.
+
+## Current build: Racoon Eye (v1)
+
+A responsive web app (mobile-first; backend/API structured so a native app can reuse it later) with three modules:
+
+1. **Hospital search & info** — hospitals self-register. Institution accounts with a partner-registration flow; each institution manages its own listing (name, location, contact info, departments, services, operating hours). New listings sit in pending-approval until moderated. Public, searchable directory with filters (location, department, service). *Cold-start mitigation:* we seed the 7 Enugu prospect hospitals as pre-created draft listings they can claim.
+2. **Patient data save** — account signup + the two-layer biodata profile from the Farm design. Profile layer: name/alias, gender, phone + email, DOB, photo, next of kin. Biodata layer: patient-filled lifestyle fields (chronic disease, height, weight, occupation, marital/religious status) and clinical fields (genotype, blood group, conditions, disability, health preferences) — clinical fields marked **unverified** until doctor verification exists in a later phase. Private by default; every access logged.
+3. **First aid section** — interactive symptom-based triage: step-by-step decision flows stored as data (not hardcoded), ending in guidance + quick actions (call emergency, open hospital search). ⚠ Requires clinical review before public launch and a prominent not-a-diagnosis disclaimer; the AI-role rule from the vision docs applies — guidance and routing, never diagnosis.
+
+Working stack (default unless overridden): TypeScript + Next.js, PostgreSQL, modular monolith, multi-tenant-ready data layer.
+
+---
+
+Everything below is the long-term AWANG vision for context. Decisions recorded here override rough notes; open questions are listed at the end.
 
 ## What it is
 
@@ -16,7 +30,7 @@ A healthcare platform built around a **persistent patient identity** rather than
 
 Per the founder: "The core need and process the 'bait' needs to be flawless on day 1."
 
-- **Phase 1 — MVP (this is what we build now):** basic administration — appointment booking, timing and reminders, the doctor's window (daily patient lineup), queue tracking — plus the backend that powers it. Validate with 2–5 pilot clinics.
+- **Phase 1 — superseded by Racoon Eye (see top).** The earlier clinic-workflow MVP idea (booking, reminders, doctor's window, queue) remains a candidate for a later phase.
 - **Phase 2 — Digitalisation & Biodata Farm:** two-layer patient profiles, security-key data sharing, document uploads, cross-institution identity.
 - **Phase 3 — Analytics:** wizard-filter graphing over de-identified EHR pools; the flagship paid add-on. Don't mention AI early in sales.
 - **Phase 4 — "The Guild" & beyond:** multi-hospital chain administration, personalised private practice space, telemedicine. Nigeria → Africa → international.
