@@ -1,0 +1,27 @@
+# Secrets & local config — never commit real env files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies & build output (extend when stack is chosen)
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS & editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Logs & temp
+*.log
+tmp/
+.claude/scheduled_tasks.lock

@@ -1,3 +1,7 @@
+# Session start
+
+Read [memory.md](memory.md) before starting any work — it's the cross-session log of decisions, state, and standing policies. This file (CLAUDE.md) is auto-loaded; memory.md is not.
+
 # Agent workflow
 
 This project defines subagents in `.claude/agents/`. Intended pipeline for non-trivial work:
