@@ -33,3 +33,31 @@ Running log of project-level context that should persist across sessions and age
 - [filter-page.md](docs/pages/filter-page.md) created: advanced search/filter across all health service types (hospitals, clinics, pharmacies, radiology, etc.), not just hospitals. Filters: service type, location, speciality/service, rating, availability. Results show name/type/address/contact/hours/rating with links to full profiles. Navigation placement TBD.
 - [dashboard.md](docs/pages/dashboard.md) partially confirmed: main dashboard = "Recent" (left) + expandable on-page calendar overlay (plain calendar for v1, no queue/booking logic yet). Second section = Profile tab = the **Biodata Farm**, founder-stated as one of the product's key trust drivers. Two layers: (1) Profile — freely available, compulsory full name/alias/gender/phone/email/DOB(visibility optional)/next-of-kin, optional address; (2) Biodata — locked behind a changeable, account-holder-chosen `IHN-` prefixed access code, patient-filled (chronic disease, height, weight, occupation, marital/religious status) + official-document-recommended (genotype, blood group, timestamped clinical condition w/ free-text cause, disability, health preferences). For v1, anyone can fill these fields if they have authoritative source docs; the "recommended" means getting them from official records (lab reports, medical records) is preferable but not enforced. Clinical fields stay unverified until doctor-verification exists (later phase). Top bar/footer confirmed as shared components reused unchanged across every page, not just homepage.
 - `IHN-` access code needs security-auditor attention when built (generation, rotation, rate-limiting, access logging) since it's a shareable credential to sensitive biodata.
+
+## 2026-07-05 (continued)
+- **PLAN.md written and approved** (2026-07-05). Full 6-phase implementation plan for Racoon Eye v1:
+  - Phase 0: Scaffold + CI/CD (foundation)
+  - Phase 1: Core backend (auth, data models, APIs)
+  - Phase 2: Public frontend (homepage, hospital profile, filter) — 3 builders can parallelize
+  - Phase 3: Patient dashboard (Biodata Farm + login)
+  - Phase 4: First Aid (public catalog + developer section, disconnected from main site)
+  - Phase 5: Hospital management portal (for verified/institutional hospitals)
+  - Phase 6: Testing, security audit, launch prep (final gate)
+  - Estimated 10–12 weeks for 2–3 builders + QA/test-runner + security-auditor.
+- **Final decisions locked in:**
+  - Symptom search: part of Phase 2 homepage search bar (3 modes: nearest, by name, by symptoms); join with First Aid triage later, not v1.
+  - IHN code: static (never rotates), shareable with close relatives/friends for emergency access. Explained in UI + Terms.
+  - Hospital data tiers: Verified (institution account, self-managed via Phase 5 portal) + Community-managed (dev-seeded, improved via suggestions dashboard). Distinction flagged on hospital-profile page.
+  - Suggestions workflow: simple & informational. Suggestions dashboard in dev portal (/dev/primary); devs manually review and update community-managed hospital data.
+  - Image storage: deferred (use local FS for dev; S3/server TBD when infrastructure ready).
+  - First-aid disclaimer: "Educational reference only, not legal medical advice, always back-check with professionals. Not provided under law." Added to Terms & Conditions, displayed on all first-aid pages.
+  - Hospital management portal: included in Phase 5 for verified hospitals to self-edit listings.
+  - Developer pages: disconnected from main site (no links from header/footer/homepage), only accessible via direct URL or /dev/primary hub.
+  - Legal/compliance: NDPC/NDPA review deferred to post-launch (parallel workstream, doesn't block v1 launch).
+  - Doctor roster: dropdown with specialty filter + alphabetical sort.
+  - Page specs: all 8 pages locked in docs/pages/ (homepage, login, dashboard, hospital-profile, first-aid, hospital-management-portal, primary-dev-page, filter-page); this is the planner's source of truth.
+  - Anthropometric measurements confirmed in biodata: height, weight, waist/chest/hip circumference, BMI (calculated).
+  - Site email: pr4ject4ne@gmail.com for suggestion tabs (kept secure in backend, no client-side exposure).
+  - Top bar/footer: shared components consistent across all pages.
+  - Theme: matte blue/white/amethyst, sans-serif fonts, no gradients into white, no blue/amethyst text directly on white.
+- Builders should now pull PLAN.md, read the corresponding page specs in docs/pages/, and start Phase 0 (scaffold). Ready for builder handoff.
