@@ -44,14 +44,14 @@ This is the **Biodata Farm** — per the founder, one of the key trust/value dri
   - Occupation
   - Marital status
   - Religious status
-- **Doctor-filled (recommended, not required at signup):**
+- **Recommended to source from official documents/reports (not required at signup):**
   - Genotype
   - Blood group
   - Clinical condition — with timestamp; presented as selectable options plus free-text space to write the cause
   - Disability
   - Known health preferences
 
-Per SPEC.md, clinical fields (genotype, blood group, clinical condition, disability) remain **unverified** until a doctor-verification mechanism exists in a later phase — the "doctor-filled" designation here is aspirational/target state, not necessarily enforced in v1 if doctor accounts/verification aren't built yet. Flag this gap to planner when scoping.
+For v1, anyone (patient, family member, or later a doctor) can enter these fields if they have reliable/official source documents (lab reports, medical records, etc.). The "recommended" designation means these are most valuable when sourced from authoritative records rather than guesswork. Per SPEC.md, clinical fields remain **unverified** until a doctor-verification mechanism exists in a later phase — for now, the patient/account-holder is responsible for accuracy if they're filling them in manually.
 
 ## Open items / not yet decided
 
