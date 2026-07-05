@@ -9,10 +9,18 @@
 node_modules/
 dist/
 build/
+.next/
+next-env.d.ts
+coverage/
+*.tsbuildinfo
 __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Local uploaded media (dev only; keep the folder, ignore its contents)
+uploads/*
+!uploads/.gitkeep
 
 # OS & editor noise
 .DS_Store

@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: racoon-eye-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: racoon
+      POSTGRES_PASSWORD: racoon_dev_password
+      POSTGRES_DB: racoon_eye
+    ports:
+      - '5432:5432'
+    volumes:
+      - racoon_pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U racoon -d racoon_eye']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  racoon_pgdata:
