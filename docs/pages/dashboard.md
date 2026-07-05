@@ -39,11 +39,16 @@ This is the **Biodata Farm** — per the founder, one of the key trust/value dri
 
 - **Patient-filled:**
   - Chronic disease
-  - Height
-  - Weight
   - Occupation
   - Marital status
   - Religious status
+  - **Anthropometric measurements:**
+    - Height (cm)
+    - Weight (kg)
+    - Waist circumference (cm)
+    - Chest circumference (cm)
+    - Hip circumference (cm)
+    - BMI (calculated automatically from height and weight, display-only)
 - **Recommended to source from official documents/reports (not required at signup):**
   - Genotype
   - Blood group
