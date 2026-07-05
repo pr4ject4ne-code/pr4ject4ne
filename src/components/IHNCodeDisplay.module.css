@@ -1,0 +1,24 @@
+.card {
+  border-color: var(--color-amethyst);
+}
+.title {
+  font-size: 1.05rem;
+  margin: 0 0 0.5rem;
+}
+.code {
+  font-family: ui-monospace, monospace;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: var(--color-amethyst-light);
+  color: var(--color-amethyst-dark);
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius);
+  text-align: center;
+  margin: 0 0 0.6rem;
+}
+.note {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin: 0;
+}

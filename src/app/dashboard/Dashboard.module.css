@@ -1,0 +1,48 @@
+.wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 2rem;
+}
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.title {
+  margin: 0.25rem 0;
+}
+.mainGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+.heading {
+  font-size: 1.1rem;
+  margin: 0;
+}
+.calHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.sectionTitle {
+  font-size: 1.4rem;
+  margin: 1.5rem 0 1rem;
+}
+.muted {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+.saved {
+  color: var(--color-green);
+  font-weight: 600;
+  margin: 0.75rem 0;
+}
+
+@media (max-width: 700px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+}

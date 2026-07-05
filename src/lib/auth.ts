@@ -3,6 +3,10 @@ import bcrypt from 'bcryptjs';
 import { query, queryOne } from '@/lib/db';
 import type { AccountType, PublicUser, User } from '@/types';
 
+// Re-export the pure validators so existing server imports keep working. Client
+// components should import these from '@/lib/validation' to avoid pulling in pg.
+export { isValidEmail, validatePasswordStrength } from '@/lib/validation';
+
 const BCRYPT_ROUNDS = 12;
 const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
 export const SESSION_COOKIE = 'racoon_session';
@@ -19,34 +23,6 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
-}
-
-// ---------------------------------------------------------------------------
-// Validation
-// ---------------------------------------------------------------------------
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export function isValidEmail(email: string): boolean {
-  return typeof email === 'string' && email.length <= 254 && EMAIL_RE.test(email);
-}
-
-/**
- * Password policy: ≥8 chars, at least one lowercase, one uppercase, one digit,
- * and one symbol.
- */
-export function validatePasswordStrength(password: string): { ok: boolean; reason?: string } {
-  if (typeof password !== 'string' || password.length < 8) {
-    return { ok: false, reason: 'Password must be at least 8 characters.' };
-  }
-  if (password.length > 200) {
-    return { ok: false, reason: 'Password is too long.' };
-  }
-  if (!/[a-z]/.test(password)) return { ok: false, reason: 'Include a lowercase letter.' };
-  if (!/[A-Z]/.test(password)) return { ok: false, reason: 'Include an uppercase letter.' };
-  if (!/[0-9]/.test(password)) return { ok: false, reason: 'Include a number.' };
-  if (!/[^A-Za-z0-9]/.test(password)) return { ok: false, reason: 'Include a symbol.' };
-  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------

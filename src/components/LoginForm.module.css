@@ -1,0 +1,57 @@
+.card {
+  max-width: 420px;
+  margin: 2rem auto;
+}
+.title {
+  margin-top: 0;
+}
+.tabs {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+.tabs button {
+  flex: 1;
+  border: none;
+  background: var(--color-white);
+  padding: 0.6rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-muted);
+}
+.activeTab {
+  background: var(--color-blue) !important;
+  color: var(--color-white) !important;
+}
+.agree {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.9rem;
+}
+.agree a {
+  color: var(--color-blue-dark);
+}
+.error {
+  color: var(--color-red);
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+}
+.submit {
+  width: 100%;
+}
+.ihn {
+  font-family: ui-monospace, monospace;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: var(--color-amethyst-light);
+  color: var(--color-amethyst-dark);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  text-align: center;
+  margin: 1rem 0;
+}
