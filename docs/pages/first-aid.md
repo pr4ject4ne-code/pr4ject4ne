@@ -16,16 +16,29 @@ A **read-only, developer-managed catalog** of first aid and safety scenario proc
 - **Suggestion tab** (on this page and every page): a small affordance (icon, button, or link) to submit suggestions, feedback, or corrections. Submissions go to the site's designated support email (currently TBD — see open items).
 - No clinical disclaimers on this page itself (it's a reference catalog, not triage guidance), but security-auditor should flag if any liability language is needed.
 
-## Developer section
+## Developer section (disconnected from main site)
 
-- **Access:** secure developer login (separate from patient/user login) with developer-specific credentials.
-- **Rights & scope:** authenticated developers can upload, edit, and manage the first aid catalog (exact CRUD operations TBD at build time).
+- **Access:** secure developer login (separate from patient/user login and from main site navigation). Developer pages are **not directly linked** from the main site — they are only accessible via a primary developer management page (see primary-dev-page.md).
+- **Rights & scope:** authenticated developers can upload, edit, and manage the first aid catalog.
+- **Upload form fields:**
+  - Picture upload (one or more images per entry)
+  - Definition (concise definition of the condition/scenario)
+  - Description (detailed explanation)
+  - Process (step-by-step procedure or technique)
+  - Do's and Don'ts (bulleted do's and don'ts)
+  - Things to look out for (warning signs, complications, etc.)
+  - Implications (consequences if not treated, potential outcomes)
+  - Indication (when this procedure/technique is appropriate)
+  - Contraindications (when this procedure/technique should NOT be used)
+- **Content categories:** entries are split into two types:
+  - **Procedures** (medical/first-aid procedures)
+  - **Techniques** (methods, approaches, or specialized techniques)
 - **Security requirements:**
   - Developer credentials must be stored securely (hashed passwords, no plaintext storage).
-  - All developer actions (uploads, edits, deletions) must be logged with timestamp, developer ID, and change description (audit trail for compliance/review).
+  - All developer actions (uploads, edits, deletions) must be logged with timestamp, developer ID, change type, and description (audit trail for compliance/review).
   - Developer session management: timeouts, rate-limiting on login attempts to prevent brute force.
   - Security-auditor must review before build: this is sensitive access that bypasses the read-only public view.
-- **Login credentials:** TBD — to be generated and provided to you separately once infrastructure is set up (do not store in code/git; use env vars or a secure credential manager).
+- **Login credentials & management:** Handled via the primary developer management page (primary-dev-page.md) — credentials are generated there and do not appear in code/git (use env vars or secure credential manager).
 
 ## Open items / not yet decided
 
