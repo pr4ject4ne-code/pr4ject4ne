@@ -49,6 +49,10 @@ Left to right:
 - Logo on the **right**.
 - Left side: links to Privacy Policy, Terms & Conditions, and a link-tree (social links aggregator).
 
+## Cross-page consistency
+
+The top bar and footer defined here are shared components — every other page in the app (dashboard, login, first aid, hospital profile, etc.) reuses them as-is. Confirmed 2026-07-05 when the dashboard was discussed.
+
 ## Open items / not yet decided
 
 - Symptom-search → hospital recommendation: needs explicit design attention (safety, liability, wording) before build — flag to security-auditor and treat like the first-aid disclaimer requirement.
