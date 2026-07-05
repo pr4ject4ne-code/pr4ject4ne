@@ -1,0 +1,15 @@
+.wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 2rem;
+}
+.back {
+  display: inline-block;
+  color: var(--color-blue-dark);
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+.back:hover {
+  text-decoration: underline;
+}

@@ -1,0 +1,22 @@
+import type { FirstAidCategory } from '@/types';
+
+export interface FirstAidQuery {
+  category?: FirstAidCategory | '';
+  q?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export function buildFirstAidQuery(params: FirstAidQuery): string {
+  const sp = new URLSearchParams();
+  if (params.category) sp.set('category', params.category);
+  if (params.q) sp.set('q', params.q);
+  sp.set('limit', String(params.limit ?? 12));
+  sp.set('offset', String(params.offset ?? 0));
+  return sp.toString();
+}
+
+export const FIRST_AID_DISCLAIMER =
+  'This is educational reference only and should not replace professional medical advice. ' +
+  'Always consult a qualified healthcare provider and back-check any guidance. ' +
+  'This guidance is not provided under law.';

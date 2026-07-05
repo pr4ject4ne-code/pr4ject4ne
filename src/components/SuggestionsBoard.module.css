@@ -1,0 +1,81 @@
+.filters {
+  margin-bottom: 1rem;
+}
+.filters select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  background: var(--color-white);
+}
+.meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+.status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--color-blue-light);
+  color: var(--color-blue-dark);
+}
+.status[data-status='applied'] {
+  background: var(--color-green);
+  color: var(--color-white);
+}
+.status[data-status='dismissed'] {
+  background: var(--color-border);
+  color: var(--color-ink);
+}
+.hospital {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.category {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+.content {
+  margin: 0.25rem 0;
+}
+.email {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  margin: 0.2rem 0;
+}
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+.actions button {
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.actions button:hover {
+  background: var(--color-blue-light);
+}
+.empty {
+  color: var(--color-muted);
+}

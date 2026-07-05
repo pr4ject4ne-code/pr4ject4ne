@@ -1,0 +1,104 @@
+.section {
+  margin-bottom: 2rem;
+}
+.section h2 {
+  font-size: 1.2rem;
+  margin: 0 0 0.75rem;
+}
+.createForm {
+  display: grid;
+  grid-template-columns: 1fr 200px auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+.error {
+  color: var(--color-red);
+  font-size: 0.85rem;
+}
+.temp {
+  background: var(--color-amethyst-light);
+  color: var(--color-amethyst-dark);
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+.temp code {
+  font-weight: 700;
+}
+.accountList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+}
+.badge {
+  margin-left: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--color-blue-light);
+  color: var(--color-blue-dark);
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+.revoked {
+  margin-left: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--color-red);
+  color: var(--color-white);
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+.accountActions {
+  display: flex;
+  gap: 0.5rem;
+}
+.accountActions button {
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.logTable {
+  overflow-x: auto;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+.logTable table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.logTable th,
+.logTable td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.logTable th {
+  background: var(--color-off-white);
+  color: var(--color-muted);
+}
+.mono {
+  font-family: ui-monospace, monospace;
+}
+
+@media (max-width: 700px) {
+  .createForm {
+    grid-template-columns: 1fr;
+  }
+}
