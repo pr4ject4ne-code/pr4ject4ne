@@ -1,0 +1,32 @@
+.title {
+  font-size: 1.1rem;
+  margin: 0 0 0.6rem;
+}
+.badge {
+  display: inline-block;
+  background: var(--color-green);
+  color: var(--color-white);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-muted);
+  padding: 0.3rem 0.5rem 0.3rem 0;
+}
+.table td {
+  padding: 0.3rem 0;
+}
+.muted {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}

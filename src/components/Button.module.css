@@ -1,0 +1,55 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Colored text sits on a colored surface, never on plain white. */
+.primary {
+  background: var(--color-blue);
+  color: var(--color-white);
+}
+.primary:hover:not(:disabled) {
+  background: var(--color-blue-dark);
+}
+
+.secondary {
+  background: var(--color-amethyst);
+  color: var(--color-white);
+}
+.secondary:hover:not(:disabled) {
+  background: var(--color-amethyst-dark);
+}
+
+/* Ghost keeps text on a tinted (non-white) surface so the colored-text rule holds. */
+.ghost {
+  background: var(--color-blue-light);
+  color: var(--color-blue-dark);
+  border-color: var(--color-border);
+}
+.ghost:hover:not(:disabled) {
+  background: var(--color-amethyst-light);
+}
+
+.danger {
+  background: var(--color-red);
+  color: var(--color-white);
+}
+.danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}

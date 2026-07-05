@@ -1,0 +1,31 @@
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--color-blue-dark);
+  color: var(--color-white);
+  flex-wrap: wrap;
+}
+
+.links {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+.links a {
+  color: var(--color-white);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.links a:hover {
+  text-decoration: underline;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+}

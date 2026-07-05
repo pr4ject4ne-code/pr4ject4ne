@@ -1,0 +1,17 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+.stars {
+  color: var(--color-yellow);
+  letter-spacing: 1px;
+}
+.empty {
+  color: var(--color-border);
+}
+.meta {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
