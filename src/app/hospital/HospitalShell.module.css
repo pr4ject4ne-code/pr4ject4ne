@@ -1,0 +1,33 @@
+.shell {
+  min-height: 100vh;
+  background: var(--color-off-white);
+}
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  background: var(--color-blue-dark);
+  color: var(--color-white);
+}
+.brand {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.logout {
+  background: var(--color-red);
+  color: var(--color-white);
+  border: none;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 2.5rem;
+}
+.title {
+  margin: 0 0 1.25rem;
+}
