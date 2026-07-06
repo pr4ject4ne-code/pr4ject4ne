@@ -61,3 +61,10 @@ Running log of project-level context that should persist across sessions and age
   - Top bar/footer: shared components consistent across all pages.
   - Theme: matte blue/white/amethyst, sans-serif fonts, no gradients into white, no blue/amethyst text directly on white.
 - Builders should now pull PLAN.md, read the corresponding page specs in docs/pages/, and start Phase 0 (scaffold). Ready for builder handoff.
+
+## 2026-07-06
+- **Racoon Eye v1 build Phases 0–5 COMPLETE, committed + pushed.** Next.js 14 (App Router) + TypeScript + PostgreSQL. Commits: 51ce51d (P0 scaffold), a45b3be (P1 backend), 89b9bdc (P2 public frontend), c95d63d (P3 login+dashboard/Biodata Farm), 75ce331 (P4 First Aid public+dev), deb082e (P5 hospital portal).
+- State at end of build: **89 tests passing, lint clean, production build green** (37 routes). Builder agent was interrupted twice (connection drop mid-P2, session limit mid-P5) but resumed from its own committed work each time; orchestrator (main session) finished + verified P5 and committed it.
+- Fixed a test-mock bug in hospital-isolation.test.ts: it stubbed the intra-module getHospitalStaff (which Jest can't intercept for internal calls) so the real code ran against an incomplete db mock (`queryOne is not a function`). Fix: mock the @/lib/auth boundary (getSession/findUserById) instead and exercise the REAL requireHospitalOwnership guard — stronger test. The isolation logic itself was always correct.
+- Gotcha for future: running multiple `npm run build` concurrently on Windows races on `.next/` and throws a spurious `_not-found/page.js.nft.json` ENOENT during trace collection. Compile itself succeeds. Run builds one at a time.
+- **Phase 6 (validation) still pending:** test-runner + code-reviewer + security-auditor to run against the full diff, plus docs (SECURITY.md, TESTING.md, DEPLOYMENT.md, CHANGELOG.md, COMPLIANCE.md). privacy-policy + terms-and-conditions PAGES already exist from P2; the standalone docs do not yet. User will test the app themselves afterward.
