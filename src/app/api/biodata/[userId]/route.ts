@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { queryOne, query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
-import { getPatientSession, checkRateLimit } from '@/lib/auth';
+import { getPatientSession, checkRateLimit, constantTimeEquals } from '@/lib/auth';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import { isValidIhnCode } from '@/lib/ihn-code';
 import type { Biodata, BiodataLayer, ProfileLayer } from '@/types';
@@ -59,7 +59,7 @@ async function authorize(
   if (!record) {
     return { ok: false, response: apiError('Not found.', 'NOT_FOUND', 404) };
   }
-  if (record.ihn_code !== ihnHeader) {
+  if (!constantTimeEquals(record.ihn_code, ihnHeader)) {
     await logAudit({
       userId: session.user_id,
       action: 'biodata_read',

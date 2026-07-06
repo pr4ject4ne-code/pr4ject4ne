@@ -1,8 +1,12 @@
 import Card from './Card';
+import { safeHttpUrl } from '@/lib/sanitize';
 import type { Hospital } from '@/types';
 import styles from './HospitalInfo.module.css';
 
 export default function HospitalInfo({ hospital }: { hospital: Hospital }) {
+  // Defense in depth: even though URLs are scheme-validated on write, guard the
+  // href sink at render so a stale bad value can never produce a javascript: link.
+  const website = safeHttpUrl(hospital.website);
   return (
     <Card as="section">
       <h2 className={styles.name}>
@@ -25,12 +29,12 @@ export default function HospitalInfo({ hospital }: { hospital: Hospital }) {
             </dd>
           </div>
         )}
-        {hospital.website && (
+        {website && (
           <div className={styles.row}>
             <dt>Website</dt>
             <dd>
-              <a href={hospital.website} target="_blank" rel="noopener noreferrer">
-                {hospital.website}
+              <a href={website} target="_blank" rel="noopener noreferrer">
+                {website}
               </a>
             </dd>
           </div>

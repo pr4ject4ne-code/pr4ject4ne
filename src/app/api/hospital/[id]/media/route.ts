@@ -1,6 +1,7 @@
 import { query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { requireHospitalOwnership } from '@/lib/hospital-auth';
+import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { HospitalPhoto } from '@/types';
 
@@ -25,18 +26,21 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   const body = await readJson<Body>(req);
   if (!body) return apiError('Invalid request body.', 'BAD_REQUEST', 400);
 
+  // Only keep photos whose URL is a valid http(s) URL — blocks javascript:/data:
+  // URLs from ever reaching an <img src>/<a href> sink.
   const photos: HospitalPhoto[] = Array.isArray(body.photos)
     ? body.photos
-        .filter((p) => p && typeof p.url === 'string')
+        .map((p) => ({ p, url: p && safeHttpUrl(p.url) }))
+        .filter((x): x is { p: HospitalPhoto; url: string } => Boolean(x.url))
         .slice(0, 5)
-        .map((p) => ({
-          url: p.url,
-          caption: typeof p.caption === 'string' ? p.caption.slice(0, 200) : undefined,
+        .map(({ p, url }) => ({
+          url,
+          caption: sanitizeText(p.caption, 200) ?? undefined,
           slot: SLOTS.includes(p.slot ?? '') ? p.slot : 'other',
         }))
     : [];
 
-  const logo = typeof body.logo_url === 'string' ? body.logo_url.slice(0, 500) : undefined;
+  const logo = typeof body.logo_url === 'string' ? safeHttpUrl(body.logo_url) ?? undefined : undefined;
 
   if (logo !== undefined) {
     await query(

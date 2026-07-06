@@ -1,6 +1,8 @@
 import { query } from '@/lib/db';
 import { apiError, apiOk, readJson, parseLimit, parseOffset } from '@/lib/api';
+import { checkRateLimit } from '@/lib/auth';
 import { logAudit, clientIpFrom } from '@/lib/audit';
+import { sanitizeText, safeHttpUrl, escapeLikePattern } from '@/lib/sanitize';
 import type { Hospital, ServiceType } from '@/types';
 
 const SERVICE_TYPES: ServiceType[] = ['hospital', 'clinic', 'pharmacy', 'radiology', 'other'];
@@ -19,8 +21,10 @@ export async function GET(req: Request) {
 
   const location = url.searchParams.get('location');
   if (location) {
-    params.push(`%${location}%`);
-    conditions.push(`(city ILIKE $${params.length} OR address ILIKE $${params.length})`);
+    params.push(`%${escapeLikePattern(location)}%`);
+    conditions.push(
+      `(city ILIKE $${params.length} ESCAPE '\\' OR address ILIKE $${params.length} ESCAPE '\\')`,
+    );
   }
 
   const specialty = url.searchParams.get('specialty');
@@ -37,7 +41,10 @@ export async function GET(req: Request) {
 
   const minRating = url.searchParams.get('min_rating');
   if (minRating && Number.isFinite(Number(minRating))) {
-    params.push(Number(minRating));
+    // Clamp to the valid rating range so out-of-range values can't silently
+    // become no-op or nonsensical filters.
+    const clamped = Math.min(5, Math.max(0, Number(minRating)));
+    params.push(clamped);
     conditions.push(`rating_avg >= $${params.length}`);
   }
 
@@ -47,8 +54,8 @@ export async function GET(req: Request) {
 
   const q = url.searchParams.get('q');
   if (q) {
-    params.push(`%${q}%`);
-    conditions.push(`name ILIKE $${params.length}`);
+    params.push(`%${escapeLikePattern(q)}%`);
+    conditions.push(`name ILIKE $${params.length} ESCAPE '\\'`);
   }
 
   const where = `WHERE ${conditions.join(' AND ')}`;
@@ -94,10 +101,16 @@ interface RegisterBody {
  * institution accounts are linked via the partner-registration flow.
  */
 export async function POST(req: Request) {
+  // Unauthenticated public endpoint — rate-limit by IP to stop moderation-queue
+  // flooding and storage abuse (mirrors the suggestion/feedback endpoints).
+  const ip = clientIpFrom(req.headers);
+  const allowed = await checkRateLimit(`hospital_register:${ip ?? 'unknown'}`, 5, 3600);
+  if (!allowed) return apiError('Too many registrations. Try again later.', 'RATE_LIMITED', 429);
+
   const body = await readJson<RegisterBody>(req);
   if (!body) return apiError('Invalid request body.', 'BAD_REQUEST', 400);
 
-  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const name = sanitizeText(body.name, 300)?.trim() ?? '';
   if (!name) return apiError('Hospital name is required.', 'MISSING_NAME', 400);
 
   const serviceType = SERVICE_TYPES.includes(body.service_type as ServiceType)
@@ -105,7 +118,11 @@ export async function POST(req: Request) {
     : 'hospital';
 
   const specialties = Array.isArray(body.specialties)
-    ? body.specialties.filter((s): s is string => typeof s === 'string').slice(0, 50)
+    ? body.specialties
+        .filter((s): s is string => typeof s === 'string')
+        .map((s) => sanitizeText(s, 200) ?? '')
+        .filter(Boolean)
+        .slice(0, 50)
     : [];
 
   const { rows } = await query<{ id: string }>(
@@ -117,13 +134,13 @@ export async function POST(req: Request) {
     [
       name,
       serviceType,
-      body.address ?? null,
-      body.city ?? null,
+      sanitizeText(body.address, 500),
+      sanitizeText(body.city, 200),
       typeof body.latitude === 'number' ? body.latitude : null,
       typeof body.longitude === 'number' ? body.longitude : null,
-      body.website ?? null,
-      body.contact_phone ?? null,
-      body.contact_email ?? null,
+      safeHttpUrl(body.website),
+      sanitizeText(body.contact_phone, 100),
+      sanitizeText(body.contact_email, 254),
       specialties,
       body.is_24_hour === true,
     ],

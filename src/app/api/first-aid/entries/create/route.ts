@@ -2,7 +2,7 @@ import { query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { getDevUser } from '@/lib/dev-auth';
 import { checkRateLimit } from '@/lib/auth';
-import { sanitizeText } from '@/lib/sanitize';
+import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { FirstAidCategory } from '@/types';
 
@@ -44,8 +44,9 @@ export async function POST(req: Request) {
   for (const f of TEXT_FIELDS) values[f] = sanitizeText(body[f]);
 
   // TODO: image storage deferred — accept URLs the dev supplies (local FS in dev).
+  // Validate scheme so a javascript:/data: URL can't reach the <img src> sink.
   const images = Array.isArray(body.images)
-    ? body.images.filter((u): u is string => typeof u === 'string').slice(0, 10)
+    ? body.images.map((u) => safeHttpUrl(u)).filter((u): u is string => Boolean(u)).slice(0, 10)
     : [];
 
   const { rows } = await query<{ id: string }>(

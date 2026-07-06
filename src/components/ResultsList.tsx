@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Card from './Card';
 import Stars from './Stars';
+import { safeHttpUrl } from '@/lib/sanitize';
 import type { Hospital } from '@/types';
 import styles from './ResultsList.module.css';
 
@@ -20,7 +21,9 @@ export default function ResultsList({ hospitals }: { hospitals: Hospital[] }) {
   }
   return (
     <ul className={styles.list}>
-      {hospitals.map((h) => (
+      {hospitals.map((h) => {
+        const website = safeHttpUrl(h.website);
+        return (
         <li key={h.id}>
           <Card as="article" className={styles.card}>
             <div className={styles.head}>
@@ -32,8 +35,8 @@ export default function ResultsList({ hospitals }: { hospitals: Hospital[] }) {
             {h.address && <p className={styles.address}>{h.address}</p>}
             <div className={styles.meta}>
               {h.contact_phone && <span>{h.contact_phone}</span>}
-              {h.website && (
-                <a href={h.website} target="_blank" rel="noopener noreferrer">
+              {website && (
+                <a href={website} target="_blank" rel="noopener noreferrer">
                   Website
                 </a>
               )}
@@ -42,7 +45,8 @@ export default function ResultsList({ hospitals }: { hospitals: Hospital[] }) {
             </div>
           </Card>
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }

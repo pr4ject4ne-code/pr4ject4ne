@@ -1,7 +1,7 @@
 import { query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { requireHospitalOwnership } from '@/lib/hospital-auth';
-import { sanitizeText } from '@/lib/sanitize';
+import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -41,7 +41,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   if ('address' in body) push('address', sanitizeText(body.address, 500));
   if ('city' in body) push('city', sanitizeText(body.city, 200));
-  if ('website' in body) push('website', sanitizeText(body.website, 500));
+  if ('website' in body) push('website', safeHttpUrl(body.website));
   if ('contact_phone' in body) push('contact_phone', sanitizeText(body.contact_phone, 100));
   if ('contact_email' in body) push('contact_email', sanitizeText(body.contact_email, 254));
   if (Array.isArray(body.specialties)) {

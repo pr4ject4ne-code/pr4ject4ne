@@ -93,12 +93,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (COLORS.includes(body.color as AnnouncementColor)) push('color', body.color);
   if ('event_date' in body) push('event_date', body.event_date || null);
 
+  if (body.is_bar === false) push('is_bar', false);
+  // A bar toggle to true is applied inside the transaction below (it also clears
+  // any other bar), but count it here so an is_bar-only edit isn't rejected.
+  const willWrite = sets.length > 0 || body.is_bar === true;
+  if (!willWrite) return apiError('Nothing to update.', 'BAD_REQUEST', 400);
+
   await withTransaction(async (tx) => {
     if (body.is_bar === true) {
       await tx.query(`UPDATE announcements SET is_bar = FALSE WHERE hospital_id = $1`, [params.id]);
       push('is_bar', true);
-    } else if (body.is_bar === false) {
-      push('is_bar', false);
     }
     if (sets.length > 0) {
       values.push(body.id);

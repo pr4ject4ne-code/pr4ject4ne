@@ -1,5 +1,6 @@
 import { query } from '@/lib/db';
 import { apiOk, parseLimit, parseOffset } from '@/lib/api';
+import { escapeLikePattern } from '@/lib/sanitize';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
 
 const CATEGORIES: FirstAidCategory[] = ['procedure', 'technique'];
@@ -24,8 +25,10 @@ export async function GET(req: Request) {
 
   const q = url.searchParams.get('q');
   if (q) {
-    params.push(`%${q}%`);
-    conditions.push(`(title ILIKE $${params.length} OR definition ILIKE $${params.length})`);
+    params.push(`%${escapeLikePattern(q)}%`);
+    conditions.push(
+      `(title ILIKE $${params.length} ESCAPE '\\' OR definition ILIKE $${params.length} ESCAPE '\\')`,
+    );
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

@@ -3,10 +3,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 /**
  * Session/auth middleware skeleton.
  *
- * Phase 0: only attaches baseline security headers. Route-level auth (patient,
- * hospital-staff, developer sessions) is enforced inside the individual route
- * handlers / lib guards, which have access to the database. Edge middleware
- * cannot query Postgres, so it stays lightweight here.
+ * This is intentionally a pass-through. Security headers (CSP, HSTS, X-Frame,
+ * etc.) are set centrally in next.config.mjs `headers()`, NOT here. Route-level
+ * auth (patient, hospital-staff, developer sessions) is enforced inside the
+ * individual route handlers / lib guards, which have database access. Edge
+ * middleware cannot query Postgres, so it stays lightweight.
  */
 export function middleware(_request: NextRequest): NextResponse {
   return NextResponse.next();

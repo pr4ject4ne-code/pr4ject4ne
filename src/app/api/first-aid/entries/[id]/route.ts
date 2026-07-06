@@ -1,7 +1,7 @@
 import { query, queryOne } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { getDevUser, isAdmin } from '@/lib/dev-auth';
-import { sanitizeText } from '@/lib/sanitize';
+import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
 
@@ -65,7 +65,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (f in body) push(f, sanitizeText(body[f]));
   }
   if (Array.isArray(body.images)) {
-    const imgs = body.images.filter((u): u is string => typeof u === 'string').slice(0, 10);
+    const imgs = body.images.map((u) => safeHttpUrl(u)).filter((u): u is string => Boolean(u)).slice(0, 10);
     push('images', JSON.stringify(imgs), '::jsonb');
   }
 
