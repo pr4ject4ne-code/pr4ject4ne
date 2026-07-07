@@ -2,7 +2,7 @@
  * Integration tests for developer-gated first-aid create + single-entry delete.
  */
 import { POST } from '@/app/api/first-aid/entries/create/route';
-import { DELETE } from '@/app/api/first-aid/entries/[id]/route';
+import { DELETE, PATCH } from '@/app/api/first-aid/entries/[id]/route';
 
 const mockGetDevUser = jest.fn();
 const mockCheckRateLimit = jest.fn().mockResolvedValue(true);
@@ -87,6 +87,51 @@ describe('DELETE /api/first-aid/entries/[id]', () => {
     mockQueryOne.mockResolvedValue({ created_by_dev_id: 'other-dev' });
     mockQuery.mockResolvedValue({ rows: [] });
     const res = await DELETE(new Request('http://localhost'), { params: Promise.resolve({ id: ENTRY_ID }) });
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('PATCH /api/first-aid/entries/[id]', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  function patchReq(body: unknown): Request {
+    return new Request('http://localhost', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it('403 when not a developer', async () => {
+    mockGetDevUser.mockResolvedValue(null);
+    const res = await PATCH(patchReq({ title: 'New' }), { params: Promise.resolve({ id: ENTRY_ID }) });
+    expect(res.status).toBe(403);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('403 when a non-owner non-admin dev edits the entry', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'first_aid_editor' });
+    mockQueryOne.mockResolvedValue({ created_by_dev_id: 'other-dev' });
+    const res = await PATCH(patchReq({ title: 'Hijack' }), { params: Promise.resolve({ id: ENTRY_ID }) });
+    expect(res.status).toBe(403);
+    // Blocked before any UPDATE runs.
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('allows the owning dev to edit their own entry', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'first_aid_editor' });
+    mockQueryOne.mockResolvedValue({ created_by_dev_id: 'dev1' });
+    mockQuery.mockResolvedValue({ rows: [] });
+    const res = await PATCH(patchReq({ title: 'Updated CPR' }), { params: Promise.resolve({ id: ENTRY_ID }) });
+    expect(res.status).toBe(200);
+    expect(mockQuery).toHaveBeenCalled();
+  });
+
+  it('allows an admin to edit any entry', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'admin' });
+    mockQueryOne.mockResolvedValue({ created_by_dev_id: 'other-dev' });
+    mockQuery.mockResolvedValue({ rows: [] });
+    const res = await PATCH(patchReq({ title: 'Admin edit' }), { params: Promise.resolve({ id: ENTRY_ID }) });
     expect(res.status).toBe(200);
   });
 });

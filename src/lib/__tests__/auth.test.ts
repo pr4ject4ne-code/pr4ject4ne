@@ -7,8 +7,25 @@ import {
   hashToken,
   constantTimeEquals,
   toPublicUser,
+  getSession,
+  getPatientSession,
+  checkRateLimit,
+  SESSION_COOKIE,
 } from '@/lib/auth';
 import type { User } from '@/types';
+
+const mockQuery = jest.fn();
+const mockQueryOne = jest.fn();
+
+jest.mock('@/lib/db', () => ({
+  query: (...a: unknown[]) => mockQuery(...a),
+  queryOne: (...a: unknown[]) => mockQueryOne(...a),
+}));
+
+beforeEach(() => {
+  mockQuery.mockReset();
+  mockQueryOne.mockReset();
+});
 
 describe('password hashing', () => {
   it('hashes and verifies a password (bcrypt)', async () => {
@@ -65,6 +82,69 @@ describe('session tokens', () => {
     expect(constantTimeEquals('abc', 'abc')).toBe(true);
     expect(constantTimeEquals('abc', 'abd')).toBe(false);
     expect(constantTimeEquals('abc', 'abcd')).toBe(false);
+  });
+});
+
+describe('getSession', () => {
+  it('returns null for an absent token without hitting the DB', async () => {
+    expect(await getSession(undefined)).toBeNull();
+    expect(mockQueryOne).not.toHaveBeenCalled();
+  });
+
+  it('returns null when the token is unknown or expired (query WHERE excludes it)', async () => {
+    // The SQL filters expires_at > now(), so an expired/unknown token yields no row.
+    mockQueryOne.mockResolvedValue(null);
+    expect(await getSession('deadbeef')).toBeNull();
+    expect(mockQueryOne).toHaveBeenCalled();
+  });
+
+  it('returns the session record for a live token', async () => {
+    const record = { user_id: 'u1', account_type: 'patient', expires_at: 'later' };
+    mockQueryOne.mockResolvedValue(record);
+    expect(await getSession('livetoken')).toEqual(record);
+  });
+});
+
+describe('getPatientSession', () => {
+  const cookieGet = (val: string | undefined) => (name: string) =>
+    name === SESSION_COOKIE ? val : undefined;
+
+  it('returns null when there is no session', async () => {
+    mockQueryOne.mockResolvedValue(null);
+    expect(await getPatientSession(cookieGet('tok'))).toBeNull();
+  });
+
+  it('rejects a non-patient account_type replayed on the patient cookie', async () => {
+    // A hospital/dev session token placed in the patient cookie must not resolve.
+    mockQueryOne.mockResolvedValue({ user_id: 'u1', account_type: 'hospital_staff', expires_at: 'later' });
+    expect(await getPatientSession(cookieGet('tok'))).toBeNull();
+  });
+
+  it('resolves a genuine patient session', async () => {
+    mockQueryOne.mockResolvedValue({ user_id: 'u1', account_type: 'patient', expires_at: 'later' });
+    expect(await getPatientSession(cookieGet('tok'))).toEqual(
+      expect.objectContaining({ account_type: 'patient' }),
+    );
+  });
+});
+
+describe('checkRateLimit', () => {
+  it('allows and records the attempt when under the limit', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ count: '4' }] }) // window count
+      .mockResolvedValueOnce({ rows: [] }); // insert
+    const allowed = await checkRateLimit('bucket', 5, 300);
+    expect(allowed).toBe(true);
+    // Two queries: the count SELECT and the recording INSERT.
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it('blocks and does NOT record once the count reaches the limit', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ count: '5' }] });
+    const allowed = await checkRateLimit('bucket', 5, 300);
+    expect(allowed).toBe(false);
+    // Only the count SELECT ran; no INSERT recorded.
+    expect(mockQuery).toHaveBeenCalledTimes(1);
   });
 });
 

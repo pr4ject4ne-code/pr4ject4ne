@@ -5,6 +5,9 @@
  */
 import { PATCH as patchInfo } from '@/app/api/hospital/[id]/info/route';
 import { POST as postDoctor, DELETE as deleteDoctor } from '@/app/api/hospital/[id]/personnel/route';
+import { PATCH as patchHours } from '@/app/api/hospital/[id]/hours/route';
+import { PUT as putMedia } from '@/app/api/hospital/[id]/media/route';
+import { POST as postAnnouncement } from '@/app/api/hospital/[id]/announcements/route';
 
 const mockGetSession = jest.fn();
 const mockFindUserById = jest.fn();
@@ -110,5 +113,41 @@ describe('hospital data isolation', () => {
     );
     const res = await deleteDoctor(req, { params: Promise.resolve({ id: HOSP_B }) });
     expect(res.status).toBe(403);
+  });
+
+  it('403 when staff of hospital A sets hospital B hours', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const req = new Request(`http://localhost/api/hospital/${HOSP_B}/hours`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ hours: { mon: '9-5' } }),
+    });
+    const res = await patchHours(req, { params: Promise.resolve({ id: HOSP_B }) });
+    expect(res.status).toBe(403);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('403 when staff of hospital A replaces hospital B media', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const req = new Request(`http://localhost/api/hospital/${HOSP_B}/media`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ photos: [{ url: 'https://x.test/a.jpg', slot: 'reception' }] }),
+    });
+    const res = await putMedia(req, { params: Promise.resolve({ id: HOSP_B }) });
+    expect(res.status).toBe(403);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('403 when staff of hospital A posts an announcement to hospital B', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const req = new Request(`http://localhost/api/hospital/${HOSP_B}/announcements`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Sneaky notice', color: 'red' }),
+    });
+    const res = await postAnnouncement(req, { params: Promise.resolve({ id: HOSP_B }) });
+    expect(res.status).toBe(403);
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 });
