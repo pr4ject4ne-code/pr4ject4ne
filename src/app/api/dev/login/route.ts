@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   }
 
   const { token, expiresAt } = await createSession(user.id, 'developer');
-  cookies().set(DEV_SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
+  (await cookies()).set(DEV_SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
   await query('UPDATE users SET last_login = now() WHERE id = $1', [user.id]);
   await logAudit({
     userId: user.id,

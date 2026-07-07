@@ -78,7 +78,7 @@ describe('DELETE /api/first-aid/entries/[id]', () => {
   it('403 when the dev does not own the entry and is not admin', async () => {
     mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'first_aid_editor' });
     mockQueryOne.mockResolvedValue({ created_by_dev_id: 'other-dev' });
-    const res = await DELETE(new Request('http://localhost'), { params: { id: ENTRY_ID } });
+    const res = await DELETE(new Request('http://localhost'), { params: Promise.resolve({ id: ENTRY_ID }) });
     expect(res.status).toBe(403);
   });
 
@@ -86,7 +86,7 @@ describe('DELETE /api/first-aid/entries/[id]', () => {
     mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'admin' });
     mockQueryOne.mockResolvedValue({ created_by_dev_id: 'other-dev' });
     mockQuery.mockResolvedValue({ rows: [] });
-    const res = await DELETE(new Request('http://localhost'), { params: { id: ENTRY_ID } });
+    const res = await DELETE(new Request('http://localhost'), { params: Promise.resolve({ id: ENTRY_ID }) });
     expect(res.status).toBe(200);
   });
 });

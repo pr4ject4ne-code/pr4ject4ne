@@ -18,9 +18,9 @@ interface Body {
 }
 
 /** PATCH — edit hospital info (own hospital only). */
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Not found.', 'NOT_FOUND', 404);
-  const staff = await requireHospitalOwnership(params.id);
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
+  const staff = await requireHospitalOwnership((await params).id);
   if (!staff) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const body = await readJson<Body>(req);
@@ -52,7 +52,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   if (sets.length === 0) return apiError('Nothing to update.', 'BAD_REQUEST', 400);
 
-  values.push(params.id);
+  values.push((await params).id);
   await query(
     `UPDATE hospitals SET ${sets.join(', ')}, updated_at = now() WHERE id = $${values.length}`,
     values,
@@ -62,7 +62,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     userId: staff.userId,
     action: 'hospital_update',
     resourceType: 'hospital',
-    resourceId: params.id,
+    resourceId: (await params).id,
     details: { fields: cols },
     ip: clientIpFrom(req.headers),
   });

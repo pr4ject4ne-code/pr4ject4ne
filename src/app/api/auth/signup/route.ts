@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   if (!userId) return apiError('Could not create account.', 'SIGNUP_FAILED', 500);
 
   const { token, expiresAt } = await createSession(userId, 'patient');
-  cookies().set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
+  (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
 
   await logAudit({
     userId,

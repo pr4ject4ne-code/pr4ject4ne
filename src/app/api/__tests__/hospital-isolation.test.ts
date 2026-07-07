@@ -73,21 +73,21 @@ describe('hospital data isolation', () => {
 
   it('403 when staff of hospital A edits hospital B info', async () => {
     setStaff({ userId: 'staffA', hospitalId: HOSP_A });
-    const res = await patchInfo(infoReq({ name: 'Hijack' }, HOSP_B), { params: { id: HOSP_B } });
+    const res = await patchInfo(infoReq({ name: 'Hijack' }, HOSP_B), { params: Promise.resolve({ id: HOSP_B }) });
     expect(res.status).toBe(403);
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it('allows staff to edit their own hospital info', async () => {
     setStaff({ userId: 'staffA', hospitalId: HOSP_A });
-    const res = await patchInfo(infoReq({ name: 'New Name' }, HOSP_A), { params: { id: HOSP_A } });
+    const res = await patchInfo(infoReq({ name: 'New Name' }, HOSP_A), { params: Promise.resolve({ id: HOSP_A }) });
     expect(res.status).toBe(200);
     expect(mockQuery).toHaveBeenCalled();
   });
 
   it('401/403 when there is no hospital session', async () => {
     setStaff(null);
-    const res = await patchInfo(infoReq({ name: 'x' }, HOSP_A), { params: { id: HOSP_A } });
+    const res = await patchInfo(infoReq({ name: 'x' }, HOSP_A), { params: Promise.resolve({ id: HOSP_A }) });
     expect(res.status).toBe(403);
   });
 
@@ -98,7 +98,7 @@ describe('hospital data isolation', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name: 'Dr Sneaky' }),
     });
-    const res = await postDoctor(req, { params: { id: HOSP_B } });
+    const res = await postDoctor(req, { params: Promise.resolve({ id: HOSP_B }) });
     expect(res.status).toBe(403);
   });
 
@@ -108,7 +108,7 @@ describe('hospital data isolation', () => {
       `http://localhost/api/hospital/${HOSP_B}/personnel?doctor_id=cccccccc-cccc-4ccc-8ccc-cccccccccccc`,
       { method: 'DELETE' },
     );
-    const res = await deleteDoctor(req, { params: { id: HOSP_B } });
+    const res = await deleteDoctor(req, { params: Promise.resolve({ id: HOSP_B }) });
     expect(res.status).toBe(403);
   });
 });

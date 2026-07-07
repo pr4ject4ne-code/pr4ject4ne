@@ -4,7 +4,7 @@ import { apiError, apiOk } from '@/lib/api';
 
 /** Returns the current patient session's user (for middleware/verify + dashboard hydration). */
 export async function GET() {
-  const token = cookies().get(SESSION_COOKIE)?.value;
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const session = await getSession(token);
   if (!session || session.account_type !== 'patient') {
     return apiError('Not authenticated.', 'UNAUTHENTICATED', 401);

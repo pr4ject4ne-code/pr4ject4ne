@@ -46,19 +46,19 @@ describe('GET /api/biodata/[userId]', () => {
 
   it('401 when there is no session', async () => {
     mockGetPatientSession.mockResolvedValue(null);
-    const res = await GET(req(IHN), { params: { userId: OWN_ID } });
+    const res = await GET(req(IHN), { params: Promise.resolve({ userId: OWN_ID }) });
     expect(res.status).toBe(401);
   });
 
   it('403 when accessing another users biodata', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
-    const res = await GET(req(IHN), { params: { userId: OWN_ID } });
+    const res = await GET(req(IHN), { params: Promise.resolve({ userId: OWN_ID }) });
     expect(res.status).toBe(403);
   });
 
   it('401 when the IHN header is missing', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: OWN_ID, account_type: 'patient' });
-    const res = await GET(req(), { params: { userId: OWN_ID } });
+    const res = await GET(req(), { params: Promise.resolve({ userId: OWN_ID }) });
     expect(res.status).toBe(401);
     expect((await res.json()).code).toBe('IHN_REQUIRED');
   });
@@ -66,7 +66,7 @@ describe('GET /api/biodata/[userId]', () => {
   it('401 when the IHN code does not match the record', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: OWN_ID, account_type: 'patient' });
     mockQueryOne.mockResolvedValue({ user_id: OWN_ID, ihn_code: 'IHN-ZZZZ-ZZZZ-ZZZZ' });
-    const res = await GET(req(IHN), { params: { userId: OWN_ID } });
+    const res = await GET(req(IHN), { params: Promise.resolve({ userId: OWN_ID }) });
     expect(res.status).toBe(401);
     expect((await res.json()).code).toBe('IHN_INVALID');
   });
@@ -80,7 +80,7 @@ describe('GET /api/biodata/[userId]', () => {
       biodata_layer: { blood_group: 'O+' },
       last_modified_at: '2026-07-05T00:00:00Z',
     });
-    const res = await GET(req(IHN), { params: { userId: OWN_ID } });
+    const res = await GET(req(IHN), { params: Promise.resolve({ userId: OWN_ID }) });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.profile_layer.full_name).toBe('Ada');
@@ -90,7 +90,7 @@ describe('GET /api/biodata/[userId]', () => {
   it('429 when rate limited', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: OWN_ID, account_type: 'patient' });
     mockCheckRateLimit.mockResolvedValueOnce(false);
-    const res = await GET(req(IHN), { params: { userId: OWN_ID } });
+    const res = await GET(req(IHN), { params: Promise.resolve({ userId: OWN_ID }) });
     expect(res.status).toBe(429);
   });
 });

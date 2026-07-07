@@ -13,7 +13,8 @@ import type { Biodata, BiodataLayer, ProfileLayer } from '@/types';
  */
 
 async function requireOwner() {
-  const session = await getPatientSession((n) => cookies().get(n)?.value);
+  const store = await cookies();
+  const session = await getPatientSession((n) => store.get(n)?.value);
   return session?.user_id ?? null;
 }
 

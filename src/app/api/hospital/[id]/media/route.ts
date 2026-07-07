@@ -18,9 +18,9 @@ interface Body {
  * TODO: image storage deferred — accepts URLs (local FS in dev). When S3/server
  * storage is wired, validate file type (jpeg/png/webp) and size (<=5MB) here.
  */
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Not found.', 'NOT_FOUND', 404);
-  const staff = await requireHospitalOwnership(params.id);
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
+  const staff = await requireHospitalOwnership((await params).id);
   if (!staff) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const body = await readJson<Body>(req);
@@ -45,12 +45,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   if (logo !== undefined) {
     await query(
       `UPDATE hospitals SET photos = $2::jsonb, logo_url = $3, updated_at = now() WHERE id = $1`,
-      [params.id, JSON.stringify(photos), logo],
+      [(await params).id, JSON.stringify(photos), logo],
     );
   } else {
     await query(
       `UPDATE hospitals SET photos = $2::jsonb, updated_at = now() WHERE id = $1`,
-      [params.id, JSON.stringify(photos)],
+      [(await params).id, JSON.stringify(photos)],
     );
   }
 
@@ -58,7 +58,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     userId: staff.userId,
     action: 'hospital_update',
     resourceType: 'hospital',
-    resourceId: params.id,
+    resourceId: (await params).id,
     details: { field: 'media', photo_count: photos.length },
     ip: clientIpFrom(req.headers),
   });

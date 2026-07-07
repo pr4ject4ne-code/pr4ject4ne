@@ -32,7 +32,8 @@ async function authorize(
     return { ok: false, response: apiError('Not found.', 'NOT_FOUND', 404) };
   }
 
-  const session = await getPatientSession((n) => cookies().get(n)?.value);
+  const store = await cookies();
+  const session = await getPatientSession((n) => store.get(n)?.value);
   if (!session) {
     return { ok: false, response: apiError('Not authenticated.', 'UNAUTHENTICATED', 401) };
   }
@@ -74,15 +75,15 @@ async function authorize(
   return { ok: true, data: { userId: session.user_id, record } };
 }
 
-export async function GET(req: Request, { params }: { params: { userId: string } }) {
-  const auth = await authorize(params.userId, req.headers);
+export async function GET(req: Request, { params }: { params: Promise<{ userId: string }> }) {
+  const auth = await authorize((await params).userId, req.headers);
   if (!auth.ok) return auth.response;
 
   await logAudit({
     userId: auth.data.userId,
     action: 'biodata_read',
     resourceType: 'biodata',
-    resourceId: params.userId,
+    resourceId: (await params).userId,
     details: { via: 'ihn_code' },
     ip: clientIpFrom(req.headers),
   });
@@ -102,8 +103,8 @@ interface PatchBody {
   biodata_layer?: BiodataLayer;
 }
 
-export async function PATCH(req: Request, { params }: { params: { userId: string } }) {
-  const auth = await authorize(params.userId, req.headers);
+export async function PATCH(req: Request, { params }: { params: Promise<{ userId: string }> }) {
+  const auth = await authorize((await params).userId, req.headers);
   if (!auth.ok) return auth.response;
 
   const body = await readJson<PatchBody>(req);
@@ -136,7 +137,7 @@ export async function PATCH(req: Request, { params }: { params: { userId: string
     userId,
     action: 'biodata_write',
     resourceType: 'biodata',
-    resourceId: params.userId,
+    resourceId: (await params).userId,
     details: {
       profile_fields: Object.keys(body.profile_layer ?? {}),
       biodata_fields: Object.keys(body.biodata_layer ?? {}),

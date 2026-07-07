@@ -11,9 +11,9 @@ interface Body {
 }
 
 /** PATCH — set operating hours (own hospital only). */
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Not found.', 'NOT_FOUND', 404);
-  const staff = await requireHospitalOwnership(params.id);
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
+  const staff = await requireHospitalOwnership((await params).id);
   if (!staff) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const body = await readJson<Body>(req);
@@ -30,14 +30,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   await query(
     `UPDATE hospitals SET hours = $2::jsonb, updated_at = now() WHERE id = $1`,
-    [params.id, JSON.stringify(clean)],
+    [(await params).id, JSON.stringify(clean)],
   );
 
   await logAudit({
     userId: staff.userId,
     action: 'hospital_update',
     resourceType: 'hospital',
-    resourceId: params.id,
+    resourceId: (await params).id,
     details: { field: 'hours' },
     ip: clientIpFrom(req.headers),
   });

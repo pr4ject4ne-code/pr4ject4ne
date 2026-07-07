@@ -20,24 +20,24 @@ const TEXT_FIELDS = [
 ] as const;
 
 /** GET — public single entry (detail page). */
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Not found.', 'NOT_FOUND', 404);
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
   const entry = await queryOne<FirstAidEntry>(`SELECT * FROM first_aid_entries WHERE id = $1`, [
-    params.id,
+    (await params).id,
   ]);
   if (!entry) return apiError('Not found.', 'NOT_FOUND', 404);
   return apiOk({ entry });
 }
 
 /** PATCH — developer only; a dev may edit their own entries (admins edit any). */
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Not found.', 'NOT_FOUND', 404);
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
   const dev = await getDevUser();
   if (!dev) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const entry = await queryOne<FirstAidEntry>(
     `SELECT created_by_dev_id FROM first_aid_entries WHERE id = $1`,
-    [params.id],
+    [(await params).id],
   );
   if (!entry) return apiError('Not found.', 'NOT_FOUND', 404);
   if (entry.created_by_dev_id !== dev.id && !isAdmin(dev)) {
@@ -71,7 +71,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   if (sets.length === 0) return apiError('Nothing to update.', 'BAD_REQUEST', 400);
 
-  values.push(params.id);
+  values.push((await params).id);
   await query(
     `UPDATE first_aid_entries SET ${sets.join(', ')}, updated_at = now()
      WHERE id = $${values.length}`,
@@ -82,7 +82,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     userId: dev.id,
     action: 'first_aid_edit',
     resourceType: 'first_aid_entry',
-    resourceId: params.id,
+    resourceId: (await params).id,
     details: { fields: cols },
     ip: clientIpFrom(req.headers),
   });
@@ -91,26 +91,26 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 /** DELETE — developer only; own entries (admins delete any). */
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Not found.', 'NOT_FOUND', 404);
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
   const dev = await getDevUser();
   if (!dev) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const entry = await queryOne<FirstAidEntry>(
     `SELECT created_by_dev_id FROM first_aid_entries WHERE id = $1`,
-    [params.id],
+    [(await params).id],
   );
   if (!entry) return apiError('Not found.', 'NOT_FOUND', 404);
   if (entry.created_by_dev_id !== dev.id && !isAdmin(dev)) {
     return apiError('You can only delete entries you created.', 'FORBIDDEN', 403);
   }
 
-  await query('DELETE FROM first_aid_entries WHERE id = $1', [params.id]);
+  await query('DELETE FROM first_aid_entries WHERE id = $1', [(await params).id]);
   await logAudit({
     userId: dev.id,
     action: 'first_aid_delete',
     resourceType: 'first_aid_entry',
-    resourceId: params.id,
+    resourceId: (await params).id,
     ip: clientIpFrom(req.headers),
   });
 

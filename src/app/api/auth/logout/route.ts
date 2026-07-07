@@ -4,7 +4,7 @@ import { apiOk } from '@/lib/api';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 
 export async function POST(req: Request) {
-  const store = cookies();
+  const store = (await cookies());
   const token = store.get(SESSION_COOKIE)?.value;
   const session = await getSession(token);
   await destroySession(token);

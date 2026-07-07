@@ -19,7 +19,7 @@ import type { User } from '@/types';
 export { DEV_SESSION_COOKIE, createSession as createDevSessionRecord };
 
 export async function getDevSession(): Promise<SessionRecord | null> {
-  const token = cookies().get(DEV_SESSION_COOKIE)?.value;
+  const token = (await cookies()).get(DEV_SESSION_COOKIE)?.value;
   const session = await getSession(token);
   if (!session || session.account_type !== 'developer') return null;
   return session;
@@ -40,7 +40,7 @@ export function isAdmin(user: User): boolean {
 }
 
 export async function destroyDevSession(): Promise<void> {
-  const token = cookies().get(DEV_SESSION_COOKIE)?.value;
+  const token = (await cookies()).get(DEV_SESSION_COOKIE)?.value;
   await destroySession(token);
-  cookies().delete(DEV_SESSION_COOKIE);
+  (await cookies()).delete(DEV_SESSION_COOKIE);
 }

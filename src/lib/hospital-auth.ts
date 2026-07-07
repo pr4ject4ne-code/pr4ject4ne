@@ -25,7 +25,7 @@ export interface HospitalStaff {
 }
 
 export async function getHospitalStaff(): Promise<HospitalStaff | null> {
-  const token = cookies().get(HOSPITAL_SESSION_COOKIE)?.value;
+  const token = (await cookies()).get(HOSPITAL_SESSION_COOKIE)?.value;
   const session = await getSession(token);
   if (!session || session.account_type !== 'hospital_staff') return null;
 
@@ -43,9 +43,9 @@ export async function getHospitalStaffUser(): Promise<User | null> {
 }
 
 export async function destroyHospitalSession(): Promise<void> {
-  const token = cookies().get(HOSPITAL_SESSION_COOKIE)?.value;
+  const token = (await cookies()).get(HOSPITAL_SESSION_COOKIE)?.value;
   await destroySession(token);
-  cookies().delete(HOSPITAL_SESSION_COOKIE);
+  (await cookies()).delete(HOSPITAL_SESSION_COOKIE);
 }
 
 /**

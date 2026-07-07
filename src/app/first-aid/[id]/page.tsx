@@ -1,5 +1,10 @@
 import FirstAidDetailClient from './FirstAidDetailClient';
 
-export default function FirstAidEntryPage({ params }: { params: { id: string } }) {
-  return <FirstAidDetailClient id={params.id} />;
+export default async function FirstAidEntryPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return <FirstAidDetailClient id={id} />;
 }

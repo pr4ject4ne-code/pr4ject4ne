@@ -14,9 +14,9 @@ interface CreateBody {
 }
 
 /** POST — add a doctor (own hospital only). */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Not found.', 'NOT_FOUND', 404);
-  const staff = await requireHospitalOwnership(params.id);
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
+  const staff = await requireHospitalOwnership((await params).id);
   if (!staff) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const body = await readJson<CreateBody>(req);
@@ -30,7 +30,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const { rows } = await query<{ id: string }>(
     `INSERT INTO doctors (hospital_id, name, specialty, level)
      VALUES ($1, $2, $3, $4) RETURNING id`,
-    [params.id, name, specialty, level],
+    [(await params).id, name, specialty, level],
   );
 
   await logAudit({
@@ -50,9 +50,9 @@ interface PatchBody extends CreateBody {
 }
 
 /** PATCH — edit a doctor (own hospital only). Ratings are read-only, never set here. */
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Not found.', 'NOT_FOUND', 404);
-  const staff = await requireHospitalOwnership(params.id);
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
+  const staff = await requireHospitalOwnership((await params).id);
   if (!staff) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const body = await readJson<PatchBody>(req);
@@ -73,7 +73,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   if (sets.length === 0) return apiError('Nothing to update.', 'BAD_REQUEST', 400);
 
-  values.push(body.id, params.id);
+  values.push(body.id, (await params).id);
   const { rowCount } = await query(
     `UPDATE doctors SET ${sets.join(', ')}, updated_at = now()
      WHERE id = $${values.length - 1} AND hospital_id = $${values.length}`,
@@ -94,9 +94,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 /** DELETE — remove a doctor (own hospital only). Pass ?doctor_id=. */
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Not found.', 'NOT_FOUND', 404);
-  const staff = await requireHospitalOwnership(params.id);
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
+  const staff = await requireHospitalOwnership((await params).id);
   if (!staff) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const doctorId = new URL(req.url).searchParams.get('doctor_id');
@@ -104,7 +104,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 
   const { rowCount } = await query(
     `DELETE FROM doctors WHERE id = $1 AND hospital_id = $2`,
-    [doctorId, params.id],
+    [doctorId, (await params).id],
   );
   if (!rowCount) return apiError('Not found.', 'NOT_FOUND', 404);
 

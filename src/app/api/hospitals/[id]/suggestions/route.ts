@@ -21,8 +21,8 @@ interface Body {
 }
 
 /** POST — submit a community suggestion for a hospital (public). */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Hospital not found.', 'NOT_FOUND', 404);
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Hospital not found.', 'NOT_FOUND', 404);
 
   const body = await readJson<Body>(req);
   if (!body) return apiError('Invalid request body.', 'BAD_REQUEST', 400);
@@ -38,7 +38,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const hospital = await queryOne<{ id: string }>(
     `SELECT id FROM hospitals WHERE id = $1 AND status = 'approved'`,
-    [params.id],
+    [(await params).id],
   );
   if (!hospital) return apiError('Hospital not found.', 'NOT_FOUND', 404);
 
@@ -50,17 +50,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const { rows } = await query<{ id: string }>(
     `INSERT INTO suggestions (hospital_id, submitted_by_email, content, category)
      VALUES ($1, $2, $3, $4) RETURNING id`,
-    [params.id, email, content, category],
+    [(await params).id, email, content, category],
   );
 
   return apiOk({ success: true, id: rows[0]!.id }, 201);
 }
 
 /** GET — list suggestions for a hospital (developer only). */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Hospital not found.', 'NOT_FOUND', 404);
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Hospital not found.', 'NOT_FOUND', 404);
 
-  const token = cookies().get(DEV_SESSION_COOKIE)?.value;
+  const token = (await cookies()).get(DEV_SESSION_COOKIE)?.value;
   const session = await getSession(token);
   if (!session || session.account_type !== 'developer') {
     return apiError('Forbidden.', 'FORBIDDEN', 403);
@@ -68,7 +68,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const url = new URL(req.url);
   const status = url.searchParams.get('status');
-  const params2: unknown[] = [params.id];
+  const params2: unknown[] = [(await params).id];
   let statusClause = '';
   if (status && ['new', 'reviewed', 'applied', 'dismissed'].includes(status)) {
     params2.push(status);

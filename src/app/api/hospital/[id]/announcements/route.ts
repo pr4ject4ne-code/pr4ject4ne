@@ -17,9 +17,9 @@ interface CreateBody {
 }
 
 /** POST — create an announcement (own hospital only). */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Not found.', 'NOT_FOUND', 404);
-  const staff = await requireHospitalOwnership(params.id);
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
+  const staff = await requireHospitalOwnership((await params).id);
   if (!staff) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const body = await readJson<CreateBody>(req);
@@ -37,12 +37,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const id = await withTransaction(async (tx) => {
     // Only one bar announcement per hospital.
     if (isBar) {
-      await tx.query(`UPDATE announcements SET is_bar = FALSE WHERE hospital_id = $1`, [params.id]);
+      await tx.query(`UPDATE announcements SET is_bar = FALSE WHERE hospital_id = $1`, [(await params).id]);
     }
     const { rows } = await tx.query<{ id: string }>(
       `INSERT INTO announcements (hospital_id, title, body, color, event_date, is_bar)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [params.id, title, text, color, eventDate, isBar],
+      [(await params).id, title, text, color, eventDate, isBar],
     );
     return rows[0]!.id;
   });
@@ -64,9 +64,9 @@ interface PatchBody extends CreateBody {
 }
 
 /** PATCH — edit an announcement (own hospital only). */
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Not found.', 'NOT_FOUND', 404);
-  const staff = await requireHospitalOwnership(params.id);
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
+  const staff = await requireHospitalOwnership((await params).id);
   if (!staff) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const body = await readJson<PatchBody>(req);
@@ -75,7 +75,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   // Confirm the announcement belongs to this hospital (isolation).
   const { rows: owned } = await query<{ id: string }>(
     `SELECT id FROM announcements WHERE id = $1 AND hospital_id = $2`,
-    [body.id, params.id],
+    [body.id, (await params).id],
   );
   if (owned.length === 0) return apiError('Not found.', 'NOT_FOUND', 404);
 
@@ -101,7 +101,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   await withTransaction(async (tx) => {
     if (body.is_bar === true) {
-      await tx.query(`UPDATE announcements SET is_bar = FALSE WHERE hospital_id = $1`, [params.id]);
+      await tx.query(`UPDATE announcements SET is_bar = FALSE WHERE hospital_id = $1`, [(await params).id]);
       push('is_bar', true);
     }
     if (sets.length > 0) {
@@ -126,9 +126,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 /** DELETE — remove an announcement (own hospital only). Pass ?announcement_id=. */
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  if (!UUID_RE.test(params.id)) return apiError('Not found.', 'NOT_FOUND', 404);
-  const staff = await requireHospitalOwnership(params.id);
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
+  const staff = await requireHospitalOwnership((await params).id);
   if (!staff) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const annId = new URL(req.url).searchParams.get('announcement_id');
@@ -136,7 +136,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 
   const { rowCount } = await query(
     `DELETE FROM announcements WHERE id = $1 AND hospital_id = $2`,
-    [annId, params.id],
+    [annId, (await params).id],
   );
   if (!rowCount) return apiError('Not found.', 'NOT_FOUND', 404);
 
