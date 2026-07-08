@@ -4,9 +4,10 @@ Status: **discussed and confirmed** (2026-07-05). This is the spec the planner s
 
 ## Theme (applies site-wide, not just homepage)
 
-- Colors: blue, white, amethyst purple. **Matte** finish — no glossy/gradient treatments.
-- No blending of blue/purple into white backgrounds (hard edges between color blocks, not gradients/fades).
-- No text rendered in blue or purple sitting directly on a white background (contrast/legibility rule — pick colors so text always has a compliant background).
+- Colors: blue (lighter azure), white, amethyst purple, plus a luminous **teal highlight/accent** (map route + nearest pin, active/live states).
+- **Finish: Apple-style "liquid glass"** (updated 2026-07-08, supersedes the earlier "matte / hard-edge" rule). Depth comes from soft, layered shadows rather than hard borders; borders are hairline-faint. Frosted-glass surfaces (translucent + backdrop blur) are allowed for floating chrome (popups, overlays). The single source of truth for tokens is `src/app/globals.css`.
+- No blending of blue/purple into white backgrounds as multi-stop gradient *fades* (a colored block still meets white cleanly; soft shadows are the transition, not color bleed).
+- No text rendered in blue or purple sitting directly on a white background (contrast/legibility rule — colored text always sits on a colored surface).
 - Purple = **amethyst** specifically, not generic purple.
 
 ## Logo

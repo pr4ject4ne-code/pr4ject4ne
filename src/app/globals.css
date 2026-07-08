@@ -1,30 +1,45 @@
 /*
- * Racoon Eye theme — matte blue / white / amethyst.
+ * Racoon Eye theme — light blue / white / amethyst, Apple-"liquid" finish.
  * Rules (site-wide):
- *  - Matte finish: no glossy or gradient treatments.
- *  - No gradients blending a color into white (hard edges only).
+ *  - Open, airy feel: depth comes from soft layered shadows, not hard borders.
+ *    Borders are hairline-faint (near-unnoticeable); surfaces float on the page.
+ *  - Frosted-glass surfaces (translucent + backdrop blur) are allowed for floating
+ *    chrome (header, popups) — this supersedes the earlier strict "matte only" rule.
  *  - No blue/amethyst text directly on a white background (contrast rule):
  *    colored text always sits on a colored surface, never on plain white.
- * The full component theme is expanded in Phase 2; these variables are the source of truth.
+ * These variables are the single source of truth for the palette.
  */
 
 :root {
-  /* Matte blue */
-  --color-blue: #2b4a7e;
-  --color-blue-dark: #1e3357;
-  --color-blue-light: #e8edf5;
+  /* Blue — lighter, airier azure (still carries white text at AA) */
+  --color-blue: #3f6dc7;
+  --color-blue-dark: #2f56a3;
+  --color-blue-light: #eef3fc;
+  --color-blue-tint: #f5f8fd;
 
   /* Amethyst (specifically, not generic purple) */
-  --color-amethyst: #6b4c8a;
-  --color-amethyst-dark: #4e3766;
-  --color-amethyst-light: #efeaf5;
+  --color-amethyst: #7b5aa6;
+  --color-amethyst-dark: #5c4084;
+  --color-amethyst-light: #f2ecfa;
+
+  /* Highlight / accent — luminous teal, used on the map (route + nearest pin)
+     and for active/live accents. The "pop" color against muted map tiles. */
+  --color-highlight: #12b5c9;
+  --color-highlight-dark: #0c8fa0;
+  --color-highlight-light: #e4f7fa;
 
   /* Neutrals */
   --color-white: #ffffff;
-  --color-off-white: #f7f8fa;
-  --color-ink: #1c1f26; /* default readable text on white */
-  --color-muted: #5a6172;
-  --color-border: #d7dce4;
+  --color-off-white: #f6f8fc;
+  --color-ink: #1a1d24; /* default readable text on white */
+  --color-muted: #616a7d;
+  --color-border: #ecf0f6; /* hairline-faint; depth lives in the shadows */
+  --color-hairline: rgba(26, 29, 36, 0.06);
+
+  /* Frosted glass (floating chrome) */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-blur: saturate(180%) blur(20px);
 
   /* Announcement severity codes (hospital calendar) */
   --color-green: #2e7d4f;
@@ -33,8 +48,14 @@
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
-  --radius: 10px;
-  --shadow: 0 1px 3px rgba(28, 31, 38, 0.12);
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 22px;
+
+  /* Soft, layered shadows — the primary depth cue in place of borders. */
+  --shadow-sm: 0 1px 2px rgba(20, 30, 60, 0.05);
+  --shadow: 0 2px 6px rgba(20, 30, 60, 0.05), 0 12px 28px rgba(20, 30, 60, 0.07);
+  --shadow-lg: 0 8px 40px rgba(20, 30, 60, 0.12);
 }
 
 * {
@@ -91,4 +112,30 @@ h4 {
 :focus-visible {
   outline: 3px solid var(--color-amethyst);
   outline-offset: 2px;
+}
+
+/* ---- Leaflet map polish (pinpoint markers + clean popups) ---- */
+
+/* Neutralize Leaflet's default white box on div-based markers so our
+   teardrop pins float cleanly, with a soft drop shadow under each pin. */
+.leaflet-div-icon.re-pin {
+  background: transparent;
+  border: none;
+}
+.re-pin svg {
+  display: block;
+  filter: drop-shadow(0 4px 5px rgba(20, 30, 60, 0.35));
+}
+
+/* Soft, rounded, glassy popups to match the liquid finish. */
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow) !important;
+  border: 1px solid var(--color-hairline);
+}
+.leaflet-popup-content {
+  margin: 0.7rem 0.9rem;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  line-height: 1.4;
 }

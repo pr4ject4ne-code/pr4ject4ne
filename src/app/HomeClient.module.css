@@ -5,15 +5,23 @@
   background: var(--color-blue-light);
 }
 
+/* Content sheet rises over the bottom edge of the map (Apple Maps feel):
+   rounded top corners + soft top shadow give the open, floating finish. */
 .results {
+  position: relative;
+  z-index: 1;
   max-width: 1100px;
-  margin: 0 auto;
-  padding: 1.25rem 1rem 2rem;
+  margin: -28px auto 0;
+  padding: 1.75rem 1.5rem 2.5rem;
+  background: var(--color-off-white);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: 0 -10px 30px rgba(20, 30, 60, 0.08);
 }
 
 .heading {
-  font-size: 1.25rem;
-  margin: 0.5rem 0 1rem;
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
+  margin: 0.25rem 0 1.25rem;
 }
 .count {
   color: var(--color-muted);
@@ -25,15 +33,16 @@
   background: var(--color-amethyst-light);
   color: var(--color-amethyst-dark);
   border-radius: var(--radius);
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1.1rem;
   font-size: 0.9rem;
-  margin-bottom: 1rem;
+  line-height: 1.45;
+  margin-bottom: 1.25rem;
 }
 
 .list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .empty {

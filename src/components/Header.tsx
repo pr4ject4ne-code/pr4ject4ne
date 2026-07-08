@@ -49,7 +49,9 @@ export default function Header({ hospitalName, hospitalLogoUrl, onHospitalSearch
     <header className={styles.bar}>
       <div className={styles.left}>
         <Link href="/" className={styles.brand} aria-label="Racoon Eye home">
-          <Logo size={34} />
+          <span className={styles.logoBadge}>
+            <Logo size={26} />
+          </span>
           <span className={styles.brandName}>Racoon Eye</span>
         </Link>
         {hospitalName && (

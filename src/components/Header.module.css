@@ -2,11 +2,13 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 0.6rem 1rem;
+  padding: 0.7rem 1.25rem;
   background: var(--color-blue);
   color: var(--color-white);
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 500;
+  box-shadow: 0 4px 24px rgba(20, 40, 90, 0.16);
 }
 
 .left {
@@ -24,9 +26,22 @@
   color: var(--color-white);
 }
 
+.logoBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--color-white);
+  box-shadow: 0 2px 8px rgba(15, 30, 70, 0.22);
+  flex-shrink: 0;
+}
+
 .brandName {
   font-weight: 700;
   font-size: 1.05rem;
+  letter-spacing: -0.01em;
 }
 
 .hospitalBrand {
@@ -54,17 +69,18 @@
   display: flex;
   align-items: stretch;
   flex: 1;
-  max-width: 560px;
+  max-width: 600px;
   background: var(--color-white);
-  border-radius: var(--radius);
+  border-radius: 999px;
   overflow: hidden;
+  box-shadow: 0 2px 10px rgba(15, 30, 70, 0.14);
 }
 
 .mode {
   border: none;
   background: var(--color-blue-light);
   color: var(--color-blue-dark);
-  padding: 0 0.6rem;
+  padding: 0 0.75rem 0 1rem;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -86,9 +102,10 @@
   border: none;
   background: var(--color-amethyst);
   color: var(--color-white);
-  padding: 0 0.9rem;
+  padding: 0 1.15rem 0 0.95rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 .searchBtn:hover {
   background: var(--color-amethyst-dark);
