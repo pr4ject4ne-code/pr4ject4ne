@@ -68,13 +68,17 @@ owned by the security-auditor agent; this file is the builder-maintained summary
 
 ## Transport & headers
 
-Set in `next.config.mjs` for every route:
+Set in `next.config.mjs` for every route (CSP excepted — see below):
 
-- `Content-Security-Policy` — `default-src 'self'`; scripts locked to `'self'`;
-  styles allow `'unsafe-inline'` (required by Leaflet + CSS modules); `img-src`/
-  `connect-src` allow only the OSM tile hosts and the OSRM routing host;
-  `object-src 'none'`, `frame-ancestors 'none'`, `base-uri 'self'`,
-  `form-action 'self'`.
+- `Content-Security-Policy` — set per-request in `src/middleware.ts` (NOT in
+  next.config: a static `script-src 'self'` blocked Next's inline hydration
+  scripts). `default-src 'self'`; `script-src 'nonce-<fresh per request>'
+  'strict-dynamic'` (+ `'unsafe-eval'` in dev only — Next dev tooling needs it,
+  never shipped in production); styles allow `'unsafe-inline'` (required by
+  Leaflet + CSS modules); `img-src`/`connect-src` allow only the OSM tile hosts
+  and the OSRM routing host; `object-src 'none'`, `frame-ancestors 'none'`,
+  `base-uri 'self'`, `form-action 'self'`. Guarded by
+  `src/__tests__/middleware.test.ts`.
 - `Strict-Transport-Security` — 2 years, `includeSubDomains; preload`, **production
   only** (would break local http dev).
 - `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,

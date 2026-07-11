@@ -99,9 +99,75 @@ describe('getSession', () => {
   });
 
   it('returns the session record for a live token', async () => {
-    const record = { user_id: 'u1', account_type: 'patient', expires_at: 'later' };
+    const record = sessionRow(20 * 60 * 1000, -60 * 1000); // 20 min left, 1 min old
     mockQueryOne.mockResolvedValue(record);
     expect(await getSession('livetoken')).toEqual(record);
+  });
+});
+
+/** Session row with expires_at now+expiresInMs and created_at now+createdOffsetMs. */
+function sessionRow(expiresInMs: number, createdOffsetMs: number) {
+  return {
+    user_id: 'u1',
+    account_type: 'patient',
+    expires_at: new Date(Date.now() + expiresInMs).toISOString(),
+    created_at: new Date(Date.now() + createdOffsetMs).toISOString(),
+  };
+}
+
+describe('getSession sliding expiry', () => {
+  it('extends a session that is within 15 minutes of expiring', async () => {
+    // 5 min left, created 25 min ago — well under the 12h absolute cap.
+    mockQueryOne.mockResolvedValue(sessionRow(5 * 60 * 1000, -25 * 60 * 1000));
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    const session = await getSession('livetoken');
+    expect(session).not.toBeNull();
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql] = mockQuery.mock.calls[0];
+    expect(sql).toContain('UPDATE sessions');
+    expect(sql).toContain(`LEAST(now() + interval '30 minutes', created_at + interval '12 hours')`);
+    // Returned expiry reflects the extension (~30 min out).
+    const newExpiry = new Date(session!.expires_at).getTime();
+    expect(newExpiry).toBeGreaterThan(Date.now() + 25 * 60 * 1000);
+  });
+
+  it('does NOT write when the session is not near expiry', async () => {
+    // 25 min left — above the 15-min renewal threshold, so no UPDATE.
+    mockQueryOne.mockResolvedValue(sessionRow(25 * 60 * 1000, -5 * 60 * 1000));
+    const session = await getSession('livetoken');
+    expect(session).not.toBeNull();
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('caps the extension at created_at + 12 hours', async () => {
+    // Created 11h50m ago with 5 min left: cap = created + 12h = now + 10 min,
+    // so the extension lands on the cap instead of now + 30 min.
+    mockQueryOne.mockResolvedValue(
+      sessionRow(5 * 60 * 1000, -(11 * 60 + 50) * 60 * 1000),
+    );
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    const session = await getSession('livetoken');
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const newExpiry = new Date(session!.expires_at).getTime();
+    // Roughly now + 10 min (the cap), definitely nowhere near now + 30 min.
+    expect(newExpiry).toBeLessThanOrEqual(Date.now() + 10 * 60 * 1000 + 5000);
+    expect(newExpiry).toBeGreaterThan(Date.now() + 8 * 60 * 1000);
+  });
+
+  it('does NOT write when the session already sits at its absolute cap', async () => {
+    // expires_at == created_at + 12h exactly: extension can't move it, so no UPDATE.
+    const now = Date.now();
+    mockQueryOne.mockResolvedValue({
+      user_id: 'u1',
+      account_type: 'patient',
+      expires_at: new Date(now + 5 * 60 * 1000).toISOString(),
+      created_at: new Date(now + 5 * 60 * 1000 - 12 * 60 * 60 * 1000).toISOString(),
+    });
+    const session = await getSession('livetoken');
+    expect(session).not.toBeNull();
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 });
 
@@ -129,21 +195,27 @@ describe('getPatientSession', () => {
 });
 
 describe('checkRateLimit', () => {
-  it('allows and records the attempt when under the limit', async () => {
+  it('allows, records the attempt, and prunes aged-out rows when under the limit', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ count: '4' }] }) // window count
-      .mockResolvedValueOnce({ rows: [] }); // insert
+      .mockResolvedValueOnce({ rows: [] }) // insert
+      .mockResolvedValueOnce({ rows: [] }); // prune
     const allowed = await checkRateLimit('bucket', 5, 300);
     expect(allowed).toBe(true);
-    // Two queries: the count SELECT and the recording INSERT.
-    expect(mockQuery).toHaveBeenCalledTimes(2);
+    // Three queries: the count SELECT, the recording INSERT, the pruning DELETE.
+    expect(mockQuery).toHaveBeenCalledTimes(3);
+    const [pruneSql, pruneParams] = mockQuery.mock.calls[2];
+    expect(pruneSql).toContain('DELETE FROM rate_limit_events');
+    expect(pruneSql).toContain('bucket_key = $1');
+    expect(pruneSql).toContain(`created_at <= now() - ($2 || ' seconds')::interval`);
+    expect(pruneParams).toEqual(['bucket', '300']);
   });
 
-  it('blocks and does NOT record once the count reaches the limit', async () => {
+  it('blocks and does NOT record or prune once the count reaches the limit', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ count: '5' }] });
     const allowed = await checkRateLimit('bucket', 5, 300);
     expect(allowed).toBe(false);
-    // Only the count SELECT ran; no INSERT recorded.
+    // Only the count SELECT ran; no INSERT recorded, no DELETE issued.
     expect(mockQuery).toHaveBeenCalledTimes(1);
   });
 });

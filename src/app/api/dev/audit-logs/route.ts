@@ -27,20 +27,19 @@ export async function GET(req: Request) {
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const totalRow = await query<{ count: string }>(
-    `SELECT count(*)::text AS count FROM audit_logs ${where}`,
-    params,
-  );
+  // Count and page fetch are independent — run them in parallel. No count cap
+  // here: this endpoint is admin-only, not a public DoS surface.
+  const [totalRow, { rows }] = await Promise.all([
+    query<{ count: string }>(`SELECT count(*)::text AS count FROM audit_logs ${where}`, params),
+    query(
+      `SELECT id, user_id, action_type, resource_type, resource_id, details, ip_address, created_at
+       FROM audit_logs ${where}
+       ORDER BY created_at DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset],
+    ),
+  ]);
   const total = Number(totalRow.rows[0]?.count ?? '0');
-
-  params.push(limit, offset);
-  const { rows } = await query(
-    `SELECT id, user_id, action_type, resource_type, resource_id, details, ip_address, created_at
-     FROM audit_logs ${where}
-     ORDER BY created_at DESC
-     LIMIT $${params.length - 1} OFFSET $${params.length}`,
-    params,
-  );
 
   return apiOk({ logs: rows, total, limit, offset });
 }

@@ -160,7 +160,7 @@ describe('PATCH /api/biodata/[userId]', () => {
 
     // The persisted biodata_layer (UPDATE $3) must also carry the derived BMI, not 1.
     const updateArgs = mockQuery.mock.calls[0][1] as string[];
-    const persisted = JSON.parse(updateArgs[2]);
+    const persisted = JSON.parse(updateArgs[2] as string);
     expect(persisted.bmi).toBe(25);
   });
 

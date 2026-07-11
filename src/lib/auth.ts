@@ -9,6 +9,10 @@ export { isValidEmail, validatePasswordStrength } from '@/lib/validation';
 
 const BCRYPT_ROUNDS = 12;
 const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+/** Sliding expiry: extend only when the session is within this window of expiring. */
+const SESSION_RENEW_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+/** Absolute cap: a session never lives more than this past its creation. */
+const SESSION_ABSOLUTE_MAX_MS = 12 * 60 * 60 * 1000; // 12 hours
 export const SESSION_COOKIE = 'racoon_session';
 export const HOSPITAL_SESSION_COOKIE = 'racoon_hospital_session';
 export const DEV_SESSION_COOKIE = 'racoon_dev_session';
@@ -50,6 +54,7 @@ export interface SessionRecord {
   user_id: string;
   account_type: AccountType;
   expires_at: string;
+  created_at: string;
 }
 
 /** Create a session row and return the raw token to set in a cookie. */
@@ -68,16 +73,44 @@ export async function createSession(
   return { token, expiresAt };
 }
 
-/** Look up a live session by raw token; returns null if missing/expired. */
+/**
+ * Look up a live session by raw token; returns null if missing/expired.
+ *
+ * Sliding expiry: when a valid session is within SESSION_RENEW_THRESHOLD_MS of
+ * expiring, extend it by SESSION_TTL_MS — threshold-gated so this is NOT a DB
+ * write on every request. Extension is hard-capped: expires_at never goes past
+ * created_at + SESSION_ABSOLUTE_MAX_MS, so a stolen cookie can't be kept alive
+ * forever.
+ */
 export async function getSession(token: string | undefined): Promise<SessionRecord | null> {
   if (!token) return null;
   const tokenHash = hashToken(token);
   const row = await queryOne<SessionRecord>(
-    `SELECT user_id, account_type, expires_at
+    `SELECT user_id, account_type, expires_at, created_at
      FROM sessions
      WHERE token_hash = $1 AND expires_at > now()`,
     [tokenHash],
   );
+  if (!row) return null;
+
+  const now = Date.now();
+  const expiresAtMs = new Date(row.expires_at).getTime();
+  if (Number.isFinite(expiresAtMs) && expiresAtMs - now < SESSION_RENEW_THRESHOLD_MS) {
+    const createdAtMs = new Date(row.created_at).getTime();
+    const capMs = createdAtMs + SESSION_ABSOLUTE_MAX_MS;
+    const nextExpiryMs = Math.min(now + SESSION_TTL_MS, capMs);
+    if (nextExpiryMs > expiresAtMs) {
+      // LEAST() re-applies the cap in SQL so DB time (not app time) is
+      // authoritative; the guard above just avoids no-op writes.
+      await query(
+        `UPDATE sessions
+         SET expires_at = LEAST(now() + interval '30 minutes', created_at + interval '12 hours')
+         WHERE token_hash = $1 AND expires_at > now()`,
+        [tokenHash],
+      );
+      row.expires_at = new Date(nextExpiryMs).toISOString();
+    }
+  }
   return row;
 }
 
@@ -131,7 +164,9 @@ export async function getPatientSession(
 
 /**
  * Returns true if the action is allowed (under the limit), false if throttled.
- * Records the attempt when allowed.
+ * Records the attempt when allowed, and piggybacks a prune of rows that have
+ * aged out of this bucket's window so rate_limit_events is self-cleaning
+ * instead of growing forever.
  */
 export async function checkRateLimit(
   bucketKey: string,
@@ -147,5 +182,11 @@ export async function checkRateLimit(
   const count = Number(rows[0]?.count ?? '0');
   if (count >= maxAttempts) return false;
   await query('INSERT INTO rate_limit_events (bucket_key) VALUES ($1)', [bucketKey]);
+  // Self-prune: rows older than this bucket's window can never count again.
+  await query(
+    `DELETE FROM rate_limit_events
+     WHERE bucket_key = $1 AND created_at <= now() - ($2 || ' seconds')::interval`,
+    [bucketKey, String(windowSeconds)],
+  );
   return true;
 }

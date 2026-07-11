@@ -7,6 +7,14 @@
 }
 .card {
   padding: 0.9rem 1rem;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
 }
 .head {
   display: flex;

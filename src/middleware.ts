@@ -1,19 +1,64 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 /**
- * Session/auth middleware skeleton.
+ * Per-request nonce-based Content-Security-Policy (Next.js 15 pattern).
  *
- * This is intentionally a pass-through. Security headers (CSP, HSTS, X-Frame,
- * etc.) are set centrally in next.config.mjs `headers()`, NOT here. Route-level
- * auth (patient, hospital-staff, developer sessions) is enforced inside the
+ * A static `script-src 'self'` in next.config.mjs blocked Next's inline
+ * bootstrap/hydration scripts, killing ALL client-side JS (P0). Instead, this
+ * middleware mints a fresh nonce per request, sets the CSP on the response,
+ * and forwards it on the request (`x-nonce` + the CSP header itself) so Next
+ * stamps the same nonce onto every inline script it emits.
+ *
+ * Other security headers (HSTS, X-Frame-Options, etc.) stay in
+ * next.config.mjs `headers()` — the CSP lives ONLY here. Route-level auth
+ * (patient, hospital-staff, developer sessions) is enforced inside the
  * individual route handlers / lib guards, which have database access. Edge
  * middleware cannot query Postgres, so it stays lightweight.
  */
-export function middleware(_request: NextRequest): NextResponse {
-  return NextResponse.next();
+
+/**
+ * Tightest policy compatible with the app: nonce'd scripts with
+ * 'strict-dynamic', plus the OpenStreetMap tile hosts and OSRM routing host
+ * the Leaflet map needs. 'unsafe-inline' for styles is required by Leaflet +
+ * CSS modules. This is the backstop for any URL sink that slips a bad value
+ * through (see safeHttpUrl in lib/sanitize). 'unsafe-eval' is dev-only —
+ * Next's dev tooling needs it; it must NEVER ship in production.
+ */
+function buildCsp(nonce: string): string {
+  const isDev = process.env.NODE_ENV !== 'production';
+  return [
+    "default-src 'self'",
+    `script-src 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com",
+    "connect-src 'self' https://router.project-osrm.org https://*.tile.openstreetmap.org",
+    "font-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; ');
+}
+
+export function middleware(request: NextRequest): NextResponse {
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const csp = buildCsp(nonce);
+
+  // Forward the nonce and policy on the REQUEST so Next.js applies the nonce
+  // to the inline scripts it renders (it reads the incoming CSP header), and
+  // server components can read `x-nonce` via headers() if they ever need it.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', csp);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  // And on the RESPONSE so the browser enforces it.
+  response.headers.set('Content-Security-Policy', csp);
+  return response;
 }
 
 export const config = {
-  // Run on everything except Next internals and static assets.
+  // Run on everything except Next internals and static assets, so every
+  // HTML-serving route (pages) gets a nonce'd CSP.
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

@@ -51,8 +51,18 @@ export async function logAudit(entry: AuditEntry): Promise<void> {
   }
 }
 
-/** Best-effort client IP from a request's forwarded headers. */
+/**
+ * Best-effort client IP from a request's forwarded headers.
+ *
+ * Forwarded headers are client-controlled unless a trusted proxy sets them, so
+ * they are only honored when TRUST_PROXY_HEADERS=true (set it only when the app
+ * is deployed behind a proxy/load balancer that overwrites these headers).
+ * Otherwise returns null — audit rows store a null IP and rate-limit callers
+ * fall back to their 'unknown' bucket, rather than letting a client spoof
+ * per-IP buckets or forge audit trails.
+ */
 export function clientIpFrom(headers: Headers): string | null {
+  if (process.env.TRUST_PROXY_HEADERS !== 'true') return null;
   const fwd = headers.get('x-forwarded-for');
   if (fwd) return fwd.split(',')[0]?.trim() ?? null;
   return headers.get('x-real-ip');

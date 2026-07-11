@@ -60,17 +60,52 @@ describe('logAudit', () => {
 });
 
 describe('clientIpFrom', () => {
-  it('takes the first entry of x-forwarded-for', () => {
-    const h = new Headers({ 'x-forwarded-for': '203.0.113.5, 70.41.3.18, 150.172.238.178' });
-    expect(clientIpFrom(h)).toBe('203.0.113.5');
+  const originalTrust = process.env.TRUST_PROXY_HEADERS;
+
+  afterEach(() => {
+    if (originalTrust === undefined) delete process.env.TRUST_PROXY_HEADERS;
+    else process.env.TRUST_PROXY_HEADERS = originalTrust;
   });
 
-  it('falls back to x-real-ip when no forwarded-for', () => {
-    const h = new Headers({ 'x-real-ip': '198.51.100.7' });
-    expect(clientIpFrom(h)).toBe('198.51.100.7');
+  describe('by default (TRUST_PROXY_HEADERS unset)', () => {
+    beforeEach(() => {
+      delete process.env.TRUST_PROXY_HEADERS;
+    });
+
+    it('ignores x-forwarded-for — it is client-spoofable without a trusted proxy', () => {
+      const h = new Headers({ 'x-forwarded-for': '203.0.113.5, 70.41.3.18' });
+      expect(clientIpFrom(h)).toBeNull();
+    });
+
+    it('ignores x-real-ip', () => {
+      const h = new Headers({ 'x-real-ip': '198.51.100.7' });
+      expect(clientIpFrom(h)).toBeNull();
+    });
   });
 
-  it('returns null when neither header is present', () => {
-    expect(clientIpFrom(new Headers())).toBeNull();
+  it('ignores headers when TRUST_PROXY_HEADERS is any value other than "true"', () => {
+    process.env.TRUST_PROXY_HEADERS = '1';
+    const h = new Headers({ 'x-forwarded-for': '203.0.113.5' });
+    expect(clientIpFrom(h)).toBeNull();
+  });
+
+  describe('with TRUST_PROXY_HEADERS=true', () => {
+    beforeEach(() => {
+      process.env.TRUST_PROXY_HEADERS = 'true';
+    });
+
+    it('takes the first entry of x-forwarded-for', () => {
+      const h = new Headers({ 'x-forwarded-for': '203.0.113.5, 70.41.3.18, 150.172.238.178' });
+      expect(clientIpFrom(h)).toBe('203.0.113.5');
+    });
+
+    it('falls back to x-real-ip when no forwarded-for', () => {
+      const h = new Headers({ 'x-real-ip': '198.51.100.7' });
+      expect(clientIpFrom(h)).toBe('198.51.100.7');
+    });
+
+    it('returns null when neither header is present', () => {
+      expect(clientIpFrom(new Headers())).toBeNull();
+    });
   });
 });

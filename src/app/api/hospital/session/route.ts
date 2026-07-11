@@ -17,16 +17,19 @@ export async function GET() {
   );
   if (!hospital) return apiError('Hospital not found.', 'NOT_FOUND', 404);
 
-  const doctors = await queryOne<{ list: Doctor[] }>(
-    `SELECT coalesce(json_agg(d ORDER BY d.name), '[]') AS list
-     FROM doctors d WHERE d.hospital_id = $1`,
-    [staff.hospitalId],
-  );
-  const announcements = await queryOne<{ list: Announcement[] }>(
-    `SELECT coalesce(json_agg(a ORDER BY a.created_at DESC), '[]') AS list
-     FROM announcements a WHERE a.hospital_id = $1`,
-    [staff.hospitalId],
-  );
+  // Roster and announcements are independent — fetch them in parallel.
+  const [doctors, announcements] = await Promise.all([
+    queryOne<{ list: Doctor[] }>(
+      `SELECT coalesce(json_agg(d ORDER BY d.name), '[]') AS list
+       FROM doctors d WHERE d.hospital_id = $1`,
+      [staff.hospitalId],
+    ),
+    queryOne<{ list: Announcement[] }>(
+      `SELECT coalesce(json_agg(a ORDER BY a.created_at DESC), '[]') AS list
+       FROM announcements a WHERE a.hospital_id = $1`,
+      [staff.hospitalId],
+    ),
+  ]);
 
   return apiOk({
     hospital,

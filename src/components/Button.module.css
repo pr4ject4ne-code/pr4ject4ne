@@ -4,19 +4,28 @@
   justify-content: center;
   gap: 0.4rem;
   padding: 0.55rem 1.1rem;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
   transition:
-    background 0.12s ease,
-    border-color 0.12s ease;
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
 }
 
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* Colored text sits on a colored surface, never on plain white. */
@@ -40,7 +49,7 @@
 .ghost {
   background: var(--color-blue-light);
   color: var(--color-blue-dark);
-  border-color: var(--color-border);
+  border-color: var(--color-hairline);
 }
 .ghost:hover:not(:disabled) {
   background: var(--color-amethyst-light);

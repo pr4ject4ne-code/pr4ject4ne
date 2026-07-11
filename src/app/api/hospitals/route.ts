@@ -8,6 +8,14 @@ import type { Hospital, ServiceType } from '@/types';
 const SERVICE_TYPES: ServiceType[] = ['hospital', 'clinic', 'pharmacy', 'radiology', 'other'];
 
 /**
+ * Cap for the directory COUNT(*): this endpoint is public and unauthenticated,
+ * so an unbounded count over an arbitrary filter is a cheap DoS lever. Counting
+ * stops at the cap; pagination stays exact below it (offset + page < total ⇒
+ * more rows exist).
+ */
+const COUNT_CAP = 500;
+
+/**
  * GET /api/hospitals — paginated, filterable directory (public).
  * Query params: location, specialty, service_type, min_rating, open_24, q, limit, offset.
  */
@@ -60,23 +68,26 @@ export async function GET(req: Request) {
 
   const where = `WHERE ${conditions.join(' AND ')}`;
 
-  const totalRow = await query<{ count: string }>(
-    `SELECT count(*)::text AS count FROM hospitals ${where}`,
-    params,
-  );
+  // Count and page fetch are independent — run them in parallel. The count is
+  // bounded by COUNT_CAP (see above) via a LIMITed subquery.
+  const [totalRow, { rows }] = await Promise.all([
+    query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM (SELECT 1 FROM hospitals ${where} LIMIT ${COUNT_CAP}) t`,
+      params,
+    ),
+    query<Hospital>(
+      `SELECT id, name, service_type, address, city, latitude, longitude, website,
+              contact_phone, contact_email, logo_url, photos, hours, specialties,
+              rating_avg, rating_count, is_24_hour, verified, account_id, status,
+              created_at, updated_at
+       FROM hospitals ${where}
+       ORDER BY verified DESC, rating_avg DESC, name ASC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset],
+    ),
+  ]);
   const total = Number(totalRow.rows[0]?.count ?? '0');
-
-  params.push(limit, offset);
-  const { rows } = await query<Hospital>(
-    `SELECT id, name, service_type, address, city, latitude, longitude, website,
-            contact_phone, contact_email, logo_url, photos, hours, specialties,
-            rating_avg, rating_count, is_24_hour, verified, account_id, status,
-            created_at, updated_at
-     FROM hospitals ${where}
-     ORDER BY verified DESC, rating_avg DESC, name ASC
-     LIMIT $${params.length - 1} OFFSET $${params.length}`,
-    params,
-  );
 
   return apiOk({ hospitals: rows, total, limit, offset });
 }
