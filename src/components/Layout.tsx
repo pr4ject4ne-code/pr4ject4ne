@@ -29,11 +29,12 @@ export default function Layout({
   page,
 }: LayoutProps) {
   return (
-    <div className={styles.shell}>
+    <div className={fullBleed ? `${styles.shell} ${styles.shellFull}` : styles.shell}>
       <Header
         hospitalName={hospitalName}
         hospitalLogoUrl={hospitalLogoUrl}
         onHospitalSearch={onHospitalSearch}
+        floating={fullBleed}
       />
       <main className={fullBleed ? styles.mainFull : styles.main}>{children}</main>
       <SuggestionTab hospitalId={hospitalId} page={page} />

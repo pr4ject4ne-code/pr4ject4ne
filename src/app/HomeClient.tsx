@@ -117,16 +117,18 @@ export default function HomeClient() {
 
   return (
     <Layout fullBleed page="homepage">
-      <div className={styles.mapWrap}>
-        <Map
-          center={center}
-          userLocation={userLocation}
-          hospitals={orderedHospitals}
-          routeGeometry={route}
-        />
-      </div>
+      <div className={styles.stage}>
+        <div className={styles.mapLayer}>
+          <Map
+            center={center}
+            userLocation={userLocation}
+            hospitals={orderedHospitals}
+            routeGeometry={route}
+          />
+        </div>
 
-      <section className={styles.results} aria-label="Hospital results">
+        <section className={styles.panel} aria-label="Hospital results">
+          <span className={styles.grabber} aria-hidden="true" />
         {geoError && (
           <p className={styles.notice} role="status">
             {geoError}
@@ -173,7 +175,8 @@ export default function HomeClient() {
             </Button>
           </div>
         )}
-      </section>
+        </section>
+      </div>
     </Layout>
   );
 }

@@ -67,6 +67,7 @@ export default function Map({
   // Initialize the map once.
   useEffect(() => {
     let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
     (async () => {
       const L = (await import('leaflet')).default;
       await import('leaflet/dist/leaflet.css');
@@ -84,9 +85,17 @@ export default function Map({
       routeLayerRef.current = L.layerGroup().addTo(map);
       mapRef.current = map;
       setReady(true);
+
+      // Leaflet caches the container size at init and won't repaint tiles when
+      // the container later changes (viewport resize, device rotation, the
+      // results panel expanding). Recompute on any container size change so the
+      // full-bleed map always fills its layer.
+      resizeObserver = new ResizeObserver(() => map.invalidateSize());
+      resizeObserver.observe(containerRef.current);
     })();
     return () => {
       cancelled = true;
+      resizeObserver?.disconnect();
       mapRef.current?.remove();
       mapRef.current = null;
       setReady(false);

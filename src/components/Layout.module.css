@@ -9,6 +9,13 @@
   width: 100%;
 }
 
+/* Full-bleed pages (the map homepage): the header floats over the content as
+   glass, so the main area starts at the very top of the viewport and owns the
+   full screen. The footer sits just past the fold, below the map stage. */
+.shellFull {
+  min-height: 100dvh;
+}
+
 .mainFull {
   flex: 1;
   width: 100%;

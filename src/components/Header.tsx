@@ -15,6 +15,8 @@ interface HeaderProps {
   hospitalLogoUrl?: string | null;
   /** When set, the search bar is hospital-specific and calls this instead of navigating. */
   onHospitalSearch?: (query: string) => void;
+  /** Float the bar over a full-bleed background (homepage map) as translucent glass. */
+  floating?: boolean;
 }
 
 const MODE_PLACEHOLDER: Record<SearchMode, string> = {
@@ -23,7 +25,12 @@ const MODE_PLACEHOLDER: Record<SearchMode, string> = {
   symptom: 'Describe your symptoms…',
 };
 
-export default function Header({ hospitalName, hospitalLogoUrl, onHospitalSearch }: HeaderProps) {
+export default function Header({
+  hospitalName,
+  hospitalLogoUrl,
+  onHospitalSearch,
+  floating,
+}: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mode, setMode] = useState<SearchMode>('nearest');
   const [q, setQ] = useState('');
@@ -46,7 +53,7 @@ export default function Header({ hospitalName, hospitalLogoUrl, onHospitalSearch
   }
 
   return (
-    <header className={styles.bar}>
+    <header className={floating ? `${styles.bar} ${styles.floating}` : styles.bar}>
       <div className={styles.left}>
         <Link href="/" className={styles.brand} aria-label="Racoon Eye home">
           <span className={styles.logoBadge}>

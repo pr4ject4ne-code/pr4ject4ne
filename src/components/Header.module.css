@@ -5,12 +5,28 @@
   row-gap: 0.55rem;
   flex-wrap: wrap;
   padding: 0.7rem 1.25rem;
-  background: var(--color-blue);
+  /* Frosted glass: translucent brand blue + blur so scrolled content (and the
+     map on the homepage) reads faintly through the chrome. */
+  background: rgba(63, 109, 199, 0.82);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
   color: var(--color-white);
   position: sticky;
   top: 0;
   z-index: 500;
-  box-shadow: 0 4px 24px rgba(20, 40, 90, 0.16);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 6px 24px rgba(20, 40, 90, 0.18);
+}
+
+/* Homepage: float over the full-bleed map. Lighter tint so the map shows
+   through more strongly — the search pill and white logo tile carry contrast. */
+.floating {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(52, 92, 173, 0.55);
+  box-shadow: 0 6px 30px rgba(15, 30, 70, 0.22);
 }
 
 .left {
