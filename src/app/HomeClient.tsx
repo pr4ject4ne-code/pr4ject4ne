@@ -25,6 +25,7 @@ export default function HomeClient() {
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [route, setRoute] = useState<Array<[number, number]> | null>(null);
   const [etas, setEtas] = useState<Record<string, number>>({});
 
@@ -35,6 +36,7 @@ export default function HomeClient() {
   const loadHospitals = useCallback(
     async (nextOffset: number, append: boolean) => {
       setLoading(true);
+      setLoadError(null);
       const params = new URLSearchParams({
         limit: String(PAGE_SIZE),
         offset: String(nextOffset),
@@ -42,10 +44,19 @@ export default function HomeClient() {
       if (nameQuery) params.set('q', nameQuery);
       try {
         const res = await fetch(`/api/hospitals?${params.toString()}`);
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
         const data = await res.json();
         const list: Hospital[] = data.hospitals ?? [];
         setTotal(data.total ?? 0);
         setHospitals((prev) => (append ? [...prev, ...list] : list));
+      } catch {
+        // A failed load must not leave the page silently empty forever — surface
+        // it and let the user retry (see the retry button in the results panel).
+        setLoadError('Could not load hospitals. Please try again.');
+        if (!append) {
+          setHospitals([]);
+          setTotal(0);
+        }
       } finally {
         setLoading(false);
       }
@@ -135,7 +146,15 @@ export default function HomeClient() {
           {orderedHospitals.map((h) => (
             <HospitalMiniProfile key={h.id} hospital={h} etaSec={etas[h.id]} />
           ))}
-          {!loading && orderedHospitals.length === 0 && (
+          {!loading && loadError && orderedHospitals.length === 0 && (
+            <div className={styles.empty} role="alert">
+              <p>{loadError}</p>
+              <Button variant="ghost" onClick={() => loadHospitals(0, false)} disabled={loading}>
+                Retry
+              </Button>
+            </div>
+          )}
+          {!loading && !loadError && orderedHospitals.length === 0 && (
             <p className={styles.empty}>No hospitals found. Try a different search.</p>
           )}
         </div>

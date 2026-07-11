@@ -26,9 +26,21 @@ export default function HospitalMiniProfile({ hospital, etaSec }: Props) {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={photo} alt="" />
           ) : (
-            <div className={styles.placeholder} aria-hidden="true">
-              🏥
-            </div>
+            <svg
+              className={styles.placeholder}
+              viewBox="0 0 24 24"
+              width="34"
+              height="34"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="4" y="6" width="16" height="14" rx="2" />
+              <path d="M12 10v6M9 13h6" />
+            </svg>
           )}
         </div>
         <div className={styles.body}>

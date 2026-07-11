@@ -29,7 +29,8 @@
   object-fit: cover;
 }
 .placeholder {
-  font-size: 1.8rem;
+  color: var(--color-blue);
+  opacity: 0.85;
 }
 .body {
   padding: 0.75rem 0.75rem 0.75rem 0;
@@ -60,7 +61,7 @@
 .specialties {
   margin: 0.2rem 0;
   font-size: 0.82rem;
-  color: var(--color-amethyst-dark);
+  color: var(--color-muted);
 }
 .meta {
   display: flex;

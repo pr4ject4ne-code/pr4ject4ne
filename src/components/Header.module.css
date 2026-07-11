@@ -2,6 +2,8 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  row-gap: 0.55rem;
+  flex-wrap: wrap;
   padding: 0.7rem 1.25rem;
   background: var(--color-blue);
   color: var(--color-white);
@@ -159,12 +161,26 @@
   background: var(--color-blue-light);
 }
 
+/* Below this width the brand + search + menu stop fitting on one row without
+   the search input clipping its own placeholder. Drop the search onto its own
+   full-width row so it always has room. */
+@media (max-width: 900px) {
+  .left {
+    order: 1;
+  }
+  .right {
+    order: 2;
+  }
+  .search {
+    order: 3;
+    flex-basis: 100%;
+    max-width: none;
+  }
+}
+
 @media (max-width: 640px) {
   .brandName,
   .hospitalName {
     display: none;
-  }
-  .search {
-    max-width: none;
   }
 }
