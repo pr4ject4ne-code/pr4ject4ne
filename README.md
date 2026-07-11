@@ -23,8 +23,7 @@ npm install
 
 # 2. Configure environment
 cp .env.example .env.local
-# Edit .env.local — set DATABASE_URL and generate a SESSION_SECRET:
-node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+# Edit .env.local — set DATABASE_URL and other required variables
 
 # 3. Start PostgreSQL (Docker)
 docker compose up -d
