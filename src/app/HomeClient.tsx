@@ -7,7 +7,7 @@ import Layout from '@/components/Layout';
 import HospitalMiniProfile from '@/components/HospitalMiniProfile';
 import Button from '@/components/Button';
 import { getCurrentPosition, DEFAULT_CENTER, type Coords } from '@/lib/geolocation';
-import { fetchRoute, distanceKm } from '@/lib/map';
+import { fetchRoute, distanceKm, geocode } from '@/lib/map';
 import type { Hospital } from '@/types';
 import styles from './HomeClient.module.css';
 
@@ -28,6 +28,9 @@ export default function HomeClient() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [route, setRoute] = useState<Array<[number, number]> | null>(null);
   const [etas, setEtas] = useState<Record<string, number>>({});
+  const [manualQuery, setManualQuery] = useState('');
+  const [locating, setLocating] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
 
   const nameQuery = searchParams.get('q') ?? '';
   const symptomQuery = searchParams.get('symptom') ?? '';
@@ -75,6 +78,28 @@ export default function HomeClient() {
       })
       .catch((err: Error) => setGeoError(err.message));
   }, [wantNearest]);
+
+  // Manual-location fallback: when geolocation is denied/unavailable, let the
+  // user type an area/landmark and geocode it so "nearest" + routing still work.
+  const onManualLocate = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const q = manualQuery.trim();
+      if (!q) return;
+      setLocating(true);
+      setManualError(null);
+      const coords = await geocode(q, DEFAULT_CENTER);
+      setLocating(false);
+      if (coords) {
+        setUserLocation(coords);
+        setCenter(coords);
+        setGeoError(null);
+      } else {
+        setManualError('Could not find that place. Try a nearby area or landmark.');
+      }
+    },
+    [manualQuery],
+  );
 
   // Load hospitals on query change.
   useEffect(() => {
@@ -130,9 +155,23 @@ export default function HomeClient() {
         <section className={styles.panel} aria-label="Hospital results">
           <span className={styles.grabber} aria-hidden="true" />
         {geoError && (
-          <p className={styles.notice} role="status">
-            {geoError}
-          </p>
+          <div className={styles.notice} role="status">
+            <p className={styles.noticeText}>{geoError}</p>
+            <form className={styles.locateForm} onSubmit={onManualLocate}>
+              <input
+                className={styles.locateInput}
+                type="search"
+                value={manualQuery}
+                onChange={(e) => setManualQuery(e.target.value)}
+                placeholder="e.g. Independence Layout, Enugu"
+                aria-label="Enter your location"
+              />
+              <Button type="submit" variant="secondary" disabled={locating || !manualQuery.trim()}>
+                {locating ? 'Locating…' : 'Use location'}
+              </Button>
+            </form>
+            {manualError && <p className={styles.noticeText}>{manualError}</p>}
+          </div>
         )}
         {symptomQuery && (
           <p className={styles.notice}>

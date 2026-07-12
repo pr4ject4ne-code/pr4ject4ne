@@ -64,13 +64,16 @@ describe('middleware CSP (hydration regression guard)', () => {
     expect(first).not.toBe(second);
   });
 
-  it('preserves the Leaflet/OSM/OSRM allowances and hardening directives', () => {
+  it('preserves the MapTiler/OSM/OSRM allowances and hardening directives', () => {
     const csp = middleware(pageRequest()).headers.get('content-security-policy') as string;
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("style-src 'self' 'unsafe-inline'");
-    expect(csp).toContain("img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com");
+    expect(csp).toContain("worker-src 'self' blob:");
     expect(csp).toContain(
-      "connect-src 'self' https://router.project-osrm.org https://*.tile.openstreetmap.org"
+      "img-src 'self' data: blob: https://api.maptiler.com https://*.tile.openstreetmap.org https://unpkg.com"
+    );
+    expect(csp).toContain(
+      "connect-src 'self' https://api.maptiler.com https://router.project-osrm.org https://*.tile.openstreetmap.org"
     );
     expect(csp).toContain("font-src 'self'");
     expect(csp).toContain("object-src 'none'");

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type * as Leaflet from 'leaflet';
-import type { Map as LeafletMap, LayerGroup } from 'leaflet';
+import maplibregl from 'maplibre-gl';
+import type { Map as MLMap, Marker as MLMarker, StyleSpecification } from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Coords } from '@/lib/geolocation';
 import type { Hospital } from '@/types';
 
@@ -14,39 +15,64 @@ interface MapProps {
   onSelectHospital?: (id: string) => void;
 }
 
-const TILE_URL =
-  process.env.NEXT_PUBLIC_OSM_TILE_URL ?? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-
 // Theme colors (kept in sync with globals.css tokens).
 const COLOR_AMETHYST = '#7b5aa6';
 const COLOR_HIGHLIGHT = '#12b5c9';
 const COLOR_BLUE = '#3f6dc7';
 
+const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+// Vector basemap style. Swap via env without touching code (e.g. streets-v2,
+// streets-v2-light, dataviz-light, basic-v2).
+const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE ?? 'streets-v2';
+
 /**
- * Build a pinpoint teardrop marker as a Leaflet divIcon. The tip of the pin
- * sits exactly on the coordinate (iconAnchor at bottom-center), so hospitals
- * are pinpointed rather than covered by a blob. `.re-pin` styling (transparent
- * background + drop shadow) lives in globals.css.
+ * Resolve the MapLibre style. With a MapTiler key we use their vector tiles
+ * (smooth zoom/rotate, modern cartography). Without one, we degrade to a raster
+ * OpenStreetMap style so the map still renders in local dev / CI without secrets.
  */
-function pinIcon(L: typeof Leaflet, color: string, size = 36) {
-  const w = size * 0.72;
-  const html = `<svg width="${w}" height="${size}" viewBox="0 0 24 34" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <path d="M12 0C5.37 0 0 5.37 0 12c0 8.4 12 22 12 22s12-13.6 12-22C24 5.37 18.63 0 12 0z" fill="${color}"/>
-    <circle cx="12" cy="12" r="4.6" fill="#ffffff"/>
-  </svg>`;
-  return L.divIcon({
-    html,
-    className: 're-pin',
-    iconSize: [w, size],
-    iconAnchor: [w / 2, size],
-    popupAnchor: [0, -size + 6],
-  });
+function resolveStyle(): string | StyleSpecification {
+  if (MAPTILER_KEY) {
+    return `https://api.maptiler.com/maps/${MAP_STYLE}/style.json?key=${MAPTILER_KEY}`;
+  }
+  return {
+    version: 8,
+    sources: {
+      osm: {
+        type: 'raster',
+        tiles: [
+          'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        ],
+        tileSize: 256,
+        attribution: '&copy; OpenStreetMap contributors',
+      },
+    },
+    layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+  };
 }
 
 /**
- * Full-bleed Leaflet + OpenStreetMap map. Leaflet is imported dynamically so it
- * only loads in the browser (it references `window`). Markers are drawn for each
- * hospital; a route polyline is overlaid when provided.
+ * Build a pinpoint teardrop marker element. The tip of the pin sits exactly on
+ * the coordinate (MapLibre anchor 'bottom'), so hospitals are pinpointed rather
+ * than covered by a blob. `.re-pin` styling (drop shadow) lives in globals.css.
+ */
+function pinElement(color: string, size = 36): HTMLDivElement {
+  const w = size * 0.72;
+  const el = document.createElement('div');
+  el.className = 're-pin';
+  el.innerHTML = `<svg width="${w}" height="${size}" viewBox="0 0 24 34" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M12 0C5.37 0 0 5.37 0 12c0 8.4 12 22 12 22s12-13.6 12-22C24 5.37 18.63 0 12 0z" fill="${color}"/>
+    <circle cx="12" cy="12" r="4.6" fill="#ffffff"/>
+  </svg>`;
+  return el;
+}
+
+/**
+ * Full-bleed MapLibre GL + MapTiler map. Loaded client-only (dynamic import in
+ * HomeClient) since MapLibre touches `window`. Hospitals render as teardrop
+ * pins; the nearest is highlighted teal; an OSRM route is overlaid and the view
+ * is framed to the route when present.
  */
 export default function Map({
   center,
@@ -56,129 +82,146 @@ export default function Map({
   onSelectHospital,
 }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<LeafletMap | null>(null);
-  const markerLayerRef = useRef<LayerGroup | null>(null);
-  const routeLayerRef = useRef<LayerGroup | null>(null);
-  // Flips true once the async Leaflet init finishes. The marker/route effects
-  // gate on it so props that are already present at mount (fast data, or the
-  // demo page) still draw once the map + layer groups exist.
+  const mapRef = useRef<MLMap | null>(null);
+  const markersRef = useRef<MLMarker[]>([]);
+  // Flips true once the style has loaded, so the marker/route effects only run
+  // after sources/layers can be added.
   const [ready, setReady] = useState(false);
 
   // Initialize the map once.
   useEffect(() => {
-    let cancelled = false;
-    let resizeObserver: ResizeObserver | null = null;
-    (async () => {
-      const L = (await import('leaflet')).default;
-      await import('leaflet/dist/leaflet.css');
-      if (cancelled || !containerRef.current || mapRef.current) return;
+    if (!containerRef.current || mapRef.current) return;
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: resolveStyle(),
+      center: [center.lng, center.lat],
+      zoom: 13,
+      attributionControl: { compact: true },
+    });
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+    mapRef.current = map;
+    map.on('load', () => setReady(true));
 
-      const map = L.map(containerRef.current, {
-        center: [center.lat, center.lng],
-        zoom: 13,
-      });
-      L.tileLayer(TILE_URL, {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19,
-      }).addTo(map);
-      markerLayerRef.current = L.layerGroup().addTo(map);
-      routeLayerRef.current = L.layerGroup().addTo(map);
-      mapRef.current = map;
-      setReady(true);
+    // MapLibre tracks window resize itself, but the full-bleed container can also
+    // change from layout shifts; resize on any container size change to keep it filled.
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(containerRef.current);
 
-      // Leaflet caches the container size at init and won't repaint tiles when
-      // the container later changes (viewport resize, device rotation, the
-      // results panel expanding). Recompute on any container size change so the
-      // full-bleed map always fills its layer.
-      resizeObserver = new ResizeObserver(() => map.invalidateSize());
-      resizeObserver.observe(containerRef.current);
-    })();
     return () => {
-      cancelled = true;
-      resizeObserver?.disconnect();
-      mapRef.current?.remove();
+      ro.disconnect();
+      map.remove();
       mapRef.current = null;
       setReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-center when the center changes.
-  useEffect(() => {
-    mapRef.current?.setView([center.lat, center.lng]);
-  }, [center.lat, center.lng]);
-
   // Redraw markers when hospitals or user location change.
   useEffect(() => {
-    (async () => {
-      const L = (await import('leaflet')).default;
-      const layer = markerLayerRef.current;
-      if (!layer) return;
-      layer.clearLayers();
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
 
-      if (userLocation) {
-        // "You are here" — blue dot with a soft white ring, distinct from pins.
-        L.circleMarker([userLocation.lat, userLocation.lng], {
-          radius: 8,
-          color: '#ffffff',
-          weight: 3,
-          fillColor: COLOR_BLUE,
-          fillOpacity: 1,
-        })
-          .bindPopup('You are here')
-          .addTo(layer);
-      }
+    if (userLocation) {
+      const dot = document.createElement('div');
+      dot.className = 're-user-dot';
+      const marker = new maplibregl.Marker({ element: dot, anchor: 'center' })
+        .setLngLat([userLocation.lng, userLocation.lat])
+        .setPopup(new maplibregl.Popup({ offset: 14 }).setText('You are here'))
+        .addTo(map);
+      markersRef.current.push(marker);
+    }
 
-      // When we know the user's location the list is proximity-ordered, so the
-      // first hospital with coordinates is the nearest — highlight it in teal.
-      let highlightedNearest = false;
-      hospitals.forEach((h) => {
-        if (typeof h.latitude !== 'number' || typeof h.longitude !== 'number') return;
-        const isNearest = Boolean(userLocation) && !highlightedNearest;
-        if (isNearest) highlightedNearest = true;
-        const marker = L.marker([h.latitude, h.longitude], {
-          icon: pinIcon(L, isNearest ? COLOR_HIGHLIGHT : COLOR_AMETHYST, isNearest ? 42 : 36),
-          title: h.name,
-          zIndexOffset: isNearest ? 1000 : 0,
-        });
-        marker.bindPopup(
-          `<strong>${escapeHtml(h.name)}</strong><br/>${escapeHtml(h.address ?? '')}`,
-        );
-        if (onSelectHospital) marker.on('click', () => onSelectHospital(h.id));
-        marker.addTo(layer);
-      });
-    })();
+    // With the user's location the list is proximity-ordered, so the first
+    // hospital with coordinates is the nearest — highlight it in teal.
+    let highlightedNearest = false;
+    hospitals.forEach((h) => {
+      if (typeof h.latitude !== 'number' || typeof h.longitude !== 'number') return;
+      const isNearest = Boolean(userLocation) && !highlightedNearest;
+      if (isNearest) highlightedNearest = true;
+      const size = isNearest ? 44 : 36;
+      const el = pinElement(isNearest ? COLOR_HIGHLIGHT : COLOR_AMETHYST, size);
+      if (isNearest) el.style.zIndex = '2';
+      const popup = new maplibregl.Popup({ offset: [0, -size + 6] }).setHTML(
+        `<strong>${escapeHtml(h.name)}</strong><br/>${escapeHtml(h.address ?? '')}`,
+      );
+      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([h.longitude, h.latitude])
+        .setPopup(popup)
+        .addTo(map);
+      if (onSelectHospital) el.addEventListener('click', () => onSelectHospital(h.id));
+      markersRef.current.push(marker);
+    });
   }, [hospitals, userLocation, onSelectHospital, ready]);
 
-  // Draw/replace the route polyline.
+  // Draw/replace the route polyline and frame the view to it.
   useEffect(() => {
-    (async () => {
-      const L = (await import('leaflet')).default;
-      const layer = routeLayerRef.current;
-      if (!layer) return;
-      layer.clearLayers();
-      if (routeGeometry && routeGeometry.length > 1) {
-        // Wide translucent glow beneath a solid line → a "liquid" highlighted route.
-        L.polyline(routeGeometry, {
-          color: COLOR_HIGHLIGHT,
-          weight: 11,
-          opacity: 0.25,
-          lineCap: 'round',
-          lineJoin: 'round',
-        }).addTo(layer);
-        L.polyline(routeGeometry, {
-          color: COLOR_HIGHLIGHT,
-          weight: 4,
-          opacity: 0.95,
-          lineCap: 'round',
-          lineJoin: 'round',
-        }).addTo(layer);
-      }
-    })();
-  }, [routeGeometry, ready]);
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const hasRoute = Boolean(routeGeometry && routeGeometry.length > 1);
+    // GeoJSON wants [lng, lat]; our geometry is [lat, lng].
+    const line = hasRoute
+      ? routeGeometry!.map(([lat, lng]) => [lng, lat] as [number, number])
+      : [];
+    const data = {
+      type: 'Feature' as const,
+      geometry: { type: 'LineString' as const, coordinates: line },
+      properties: {},
+    };
+
+    const existing = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
+    if (existing) {
+      existing.setData(data);
+    } else {
+      map.addSource('route', { type: 'geojson', data });
+      // Wide translucent glow beneath a solid line → a "liquid" highlighted route.
+      map.addLayer({
+        id: 'route-glow',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': COLOR_HIGHLIGHT, 'line-width': 11, 'line-opacity': 0.25 },
+      });
+      map.addLayer({
+        id: 'route-line',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': COLOR_HIGHLIGHT, 'line-width': 4, 'line-opacity': 0.95 },
+      });
+    }
+
+    // Frame the whole route (+ the user) instead of leaving it off-screen at a
+    // fixed zoom. Padding accounts for the floating results panel: docked left
+    // on desktop, a bottom sheet on mobile.
+    if (hasRoute) {
+      const bounds = new maplibregl.LngLatBounds();
+      line.forEach((c) => bounds.extend(c));
+      if (userLocation) bounds.extend([userLocation.lng, userLocation.lat]);
+      const wide = typeof window !== 'undefined' && window.innerWidth >= 900;
+      const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+      map.fitBounds(bounds, {
+        padding: wide
+          ? { top: 90, right: 80, bottom: 80, left: 440 }
+          : { top: 100, right: 50, bottom: Math.round(vh * 0.5), left: 50 },
+        maxZoom: 15,
+        duration: 700,
+      });
+    }
+  }, [routeGeometry, userLocation, ready]);
+
+  // Re-center when the center changes — but the route's fitBounds owns the view
+  // whenever a route is present, so don't fight it.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    if (routeGeometry && routeGeometry.length > 1) return;
+    map.easeTo({ center: [center.lng, center.lat], duration: 500 });
+  }, [center.lat, center.lng, ready, routeGeometry]);
 
   return (
-    <div ref={containerRef} data-testid="leaflet-map" style={{ width: '100%', height: '100%' }} />
+    <div ref={containerRef} data-testid="maplibre-map" style={{ width: '100%', height: '100%' }} />
   );
 }
 

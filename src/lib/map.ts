@@ -50,6 +50,38 @@ export function formatEta(durationSec: number): string {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
+/**
+ * Forward-geocode a free-text place (area, landmark, address) to coordinates
+ * using MapTiler's geocoding API. Biased to Nigeria and, when given, to a
+ * nearby point. Returns null on any failure so the caller can show a friendly
+ * "couldn't find that" message. Used as the fallback when browser geolocation
+ * is denied/unavailable, so "nearest" still works.
+ */
+export async function geocode(query: string, near?: Coords): Promise<Coords | null> {
+  const key = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+  const q = query.trim();
+  if (!key || !q) return null;
+  const proximity = near ? `&proximity=${near.lng},${near.lat}` : '';
+  const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(
+    q,
+  )}.json?key=${key}&country=ng&limit=1${proximity}`;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const center = data?.features?.[0]?.center;
+    if (!Array.isArray(center) || center.length < 2) return null;
+    const [lng, lat] = center;
+    if (typeof lat !== 'number' || typeof lng !== 'number') return null;
+    return { lat, lng };
+  } catch {
+    return null;
+  }
+}
+
 /** Haversine distance in km — used to pick "nearest" client-side. */
 export function distanceKm(a: Coords, b: Coords): number {
   const R = 6371;

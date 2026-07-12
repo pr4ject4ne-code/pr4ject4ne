@@ -18,11 +18,14 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 /**
  * Tightest policy compatible with the app: nonce'd scripts with
- * 'strict-dynamic', plus the OpenStreetMap tile hosts and OSRM routing host
- * the Leaflet map needs. 'unsafe-inline' for styles is required by Leaflet +
- * CSS modules. This is the backstop for any URL sink that slips a bad value
- * through (see safeHttpUrl in lib/sanitize). 'unsafe-eval' is dev-only —
- * Next's dev tooling needs it; it must NEVER ship in production.
+ * 'strict-dynamic', plus the map hosts the client needs — MapTiler
+ * (api.maptiler.com: vector style, tiles, sprites, glyphs, geocoding), the
+ * OpenStreetMap tile hosts (raster fallback), and the OSRM routing host.
+ * MapLibre GL runs its renderer in a blob-URL worker, so `worker-src blob:` is
+ * required. 'unsafe-inline' for styles is required by MapLibre + CSS modules.
+ * This is the backstop for any URL sink that slips a bad value through (see
+ * safeHttpUrl in lib/sanitize). 'unsafe-eval' is dev-only — Next's dev tooling
+ * needs it; it must NEVER ship in production.
  */
 function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV !== 'production';
@@ -30,8 +33,9 @@ function buildCsp(nonce: string): string {
     "default-src 'self'",
     `script-src 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com",
-    "connect-src 'self' https://router.project-osrm.org https://*.tile.openstreetmap.org",
+    "worker-src 'self' blob:",
+    "img-src 'self' data: blob: https://api.maptiler.com https://*.tile.openstreetmap.org https://unpkg.com",
+    "connect-src 'self' https://api.maptiler.com https://router.project-osrm.org https://*.tile.openstreetmap.org",
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

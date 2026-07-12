@@ -65,6 +65,30 @@
   line-height: 1.45;
   margin-bottom: 1rem;
 }
+.noticeText {
+  margin: 0;
+}
+
+/* Manual-location fallback shown when geolocation is denied/unavailable. */
+.locateForm {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+.locateInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--glass-border);
+  background: var(--color-surface, #fff);
+  color: var(--color-ink, inherit);
+}
+.locateInput:focus-visible {
+  outline: 2px solid var(--color-amethyst);
+  outline-offset: 1px;
+}
 
 .list {
   display: grid;
