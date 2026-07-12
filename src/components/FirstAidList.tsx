@@ -72,13 +72,9 @@ export default function FirstAidList({
             <li key={e.id}>
               <Link href={`/first-aid/${e.id}`} className={styles.cardLink}>
                 <Card as="article" className={styles.card}>
-                  {e.images?.[0] ? (
+                  {e.images?.[0] && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={e.images[0]} alt="" className={styles.thumb} />
-                  ) : (
-                    <div className={styles.thumbPlaceholder} aria-hidden="true">
-                      ＋
-                    </div>
                   )}
                   <div className={styles.cardBody}>
                     <span className={styles.category}>{e.category}</span>

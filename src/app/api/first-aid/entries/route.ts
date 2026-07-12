@@ -32,8 +32,15 @@ export async function GET(req: Request) {
   const q = url.searchParams.get('q');
   if (q) {
     params.push(`%${escapeLikePattern(q)}%`);
+    const n = params.length;
+    // Search across all the substantive content fields, not just title/definition,
+    // so a term that only appears in the steps/indications still matches. The
+    // catalog is small and dev-curated, so a multi-column ILIKE is cheap.
     conditions.push(
-      `(title ILIKE $${params.length} ESCAPE '\\' OR definition ILIKE $${params.length} ESCAPE '\\')`,
+      `(title ILIKE $${n} ESCAPE '\\' OR definition ILIKE $${n} ESCAPE '\\' ` +
+        `OR description ILIKE $${n} ESCAPE '\\' OR process ILIKE $${n} ESCAPE '\\' ` +
+        `OR indication ILIKE $${n} ESCAPE '\\' OR contraindications ILIKE $${n} ESCAPE '\\' ` +
+        `OR things_to_look_out_for ILIKE $${n} ESCAPE '\\')`,
     );
   }
 

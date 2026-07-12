@@ -113,10 +113,10 @@ describe('sanitizeClinicalConditions', () => {
       { condition: 'Hypertension', cause: 'Family <b>history</b>' },
     ]);
     expect(out).toHaveLength(1);
-    expect(out[0].condition).toBe('Hypertension');
-    expect(out[0].cause).toBe('Family &lt;b&gt;history&lt;/b&gt;');
-    expect(typeof out[0].timestamp).toBe('string');
-    expect(Number.isNaN(Date.parse(out[0].timestamp))).toBe(false);
+    expect(out[0]!.condition).toBe('Hypertension');
+    expect(out[0]!.cause).toBe('Family &lt;b&gt;history&lt;/b&gt;');
+    expect(typeof out[0]!.timestamp).toBe('string');
+    expect(Number.isNaN(Date.parse(out[0]!.timestamp))).toBe(false);
   });
 
   it('drops entries with no condition and honours a valid client timestamp', () => {
@@ -127,8 +127,8 @@ describe('sanitizeClinicalConditions', () => {
       { condition: 'Diabetes', timestamp: ts },
     ]);
     expect(out).toHaveLength(1);
-    expect(out[0].condition).toBe('Diabetes');
-    expect(out[0].timestamp).toBe(ts);
+    expect(out[0]!.condition).toBe('Diabetes');
+    expect(out[0]!.timestamp).toBe(ts);
   });
 
   it('caps the number of entries', () => {
@@ -138,6 +138,6 @@ describe('sanitizeClinicalConditions', () => {
 
   it('omits cause when empty', () => {
     const out = sanitizeClinicalConditions([{ condition: 'Asthma', cause: '   ' }]);
-    expect(out[0].cause).toBeUndefined();
+    expect(out[0]!.cause).toBeUndefined();
   });
 });

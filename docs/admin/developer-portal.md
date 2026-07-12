@@ -116,7 +116,8 @@ hospital record.
 - Access-level taxonomy is fixed to `primary` / `secondary` (+ tertiary via
   `hospital_staff`); finer-grained per-feature "access types" are not built.
 - Multiple primaries are now supported and expected — a level-1 admin can mint or
-  promote peers. There is no cap on the number of primaries, and no DB constraint
-  guaranteeing at least one remains, so a primary must not revoke/demote the last
-  primary (the app blocks self-change but not last-primary removal — an operational
-  caution for now).
+  promote peers. There is no cap on the number of primaries and no DB constraint,
+  but admin lockout is structurally impossible: a primary cannot suspend/revoke/
+  demote **their own** account (self-guard), and only a primary can perform these
+  actions, so the actor always remains an active primary — at least one primary
+  survives every operation.
