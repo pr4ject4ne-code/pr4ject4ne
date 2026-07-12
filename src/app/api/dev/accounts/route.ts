@@ -21,14 +21,15 @@ export async function GET() {
 
 interface CreateBody {
   email?: string;
+  access_level?: 'primary' | 'secondary';
 }
 
 /**
- * POST — create a level-2 **secondary** developer (primary only). Primary is the
- * only creator of secondaries, and this route only ever mints 'secondary' — a
- * second primary is never created through the app. Generates a strong temporary
- * password, returns it ONCE (never stored in plaintext); the new dev sets their
- * own from the dev page afterward.
+ * POST — create a developer account (**level-1 primary only**). A level-1 admin
+ * can mint another level-1 (primary) or a level-2 (secondary); `access_level`
+ * selects which, defaulting to secondary. Generates a strong temporary password,
+ * returns it ONCE (never stored in plaintext); the new dev sets their own from
+ * the dev page afterward.
  */
 export async function POST(req: Request) {
   const dev = await getDevUser();
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
 
   const email = typeof body.email === 'string' ? body.email.trim() : '';
   if (!isValidEmail(email)) return apiError('Invalid email.', 'INVALID_EMAIL', 400);
+  const level = body.access_level === 'primary' ? 'primary' : 'secondary';
 
   // Strong random temp password shown once.
   const tempPassword = randomBytes(12).toString('base64url');
@@ -47,8 +49,8 @@ export async function POST(req: Request) {
   try {
     const { rows } = await query<{ id: string }>(
       `INSERT INTO users (email, password_hash, account_type, access_level, created_by)
-       VALUES ($1, $2, 'developer', 'secondary', $3) RETURNING id`,
-      [email, passwordHash, dev.id],
+       VALUES ($1, $2, 'developer', $3, $4) RETURNING id`,
+      [email, passwordHash, level, dev.id],
     );
     const id = rows[0]!.id;
     await logAudit({
@@ -56,7 +58,7 @@ export async function POST(req: Request) {
       action: 'dev_account_change',
       resourceType: 'user',
       resourceId: id,
-      details: { op: 'create', email, access_level: 'secondary' },
+      details: { op: 'create', email, access_level: level },
       ip: clientIpFrom(req.headers),
     });
     return apiOk({ success: true, id, temp_password: tempPassword }, 201);
@@ -72,10 +74,21 @@ export async function POST(req: Request) {
 
 interface PatchBody {
   id?: string;
-  action?: 'revoke' | 'reactivate' | 'reset_password';
+  action?: 'suspend' | 'reactivate' | 'revoke' | 'promote' | 'reset_password';
+  /** For 'promote': the target access level to set. */
+  level?: 'primary' | 'secondary';
 }
 
-/** PATCH — revoke/reactivate a developer account or reset its password (primary only). */
+/**
+ * PATCH — level-1 (primary) developer lifecycle actions over other devs, all
+ * gated to primary only:
+ *   suspend      — temporarily deactivate (is_active=false), kills sessions
+ *   reactivate   — undo a suspend
+ *   promote      — change access level (secondary <-> primary) via `level`
+ *   revoke       — permanently delete the developer account (FKs cascade/null)
+ *   reset_password — issue a new one-time temp password
+ * A primary can never suspend/revoke/promote their own account.
+ */
 export async function PATCH(req: Request) {
   const dev = await getDevUser();
   if (!dev || !isPrimary(dev)) return apiError('Forbidden.', 'FORBIDDEN', 403);
@@ -85,18 +98,19 @@ export async function PATCH(req: Request) {
   if (!body || !body.id || !UUID_RE.test(body.id) || !body.action) {
     return apiError('Invalid request.', 'BAD_REQUEST', 400);
   }
-  if (body.id === dev.id && body.action === 'revoke') {
-    return apiError('You cannot revoke your own account.', 'SELF_REVOKE', 400);
+  const selfChanging = body.id === dev.id;
+  if (selfChanging && (body.action === 'revoke' || body.action === 'suspend' || body.action === 'promote')) {
+    return apiError('You cannot change your own account here.', 'SELF_CHANGE', 400);
   }
 
-  if (body.action === 'revoke' || body.action === 'reactivate') {
+  if (body.action === 'suspend' || body.action === 'reactivate') {
     const active = body.action === 'reactivate';
     const { rowCount } = await query(
       `UPDATE users SET is_active = $2 WHERE id = $1 AND account_type = 'developer'`,
       [body.id, active],
     );
     if (!rowCount) return apiError('Developer account not found.', 'NOT_FOUND', 404);
-    // Revoking kills existing sessions.
+    // Suspending kills existing sessions.
     if (!active) await query('DELETE FROM sessions WHERE user_id = $1', [body.id]);
     await logAudit({
       userId: dev.id,
@@ -107,6 +121,49 @@ export async function PATCH(req: Request) {
       ip: clientIpFrom(req.headers),
     });
     return apiOk({ success: true });
+  }
+
+  if (body.action === 'promote') {
+    const level = body.level === 'primary' ? 'primary' : body.level === 'secondary' ? 'secondary' : null;
+    if (!level) return apiError('A target level is required.', 'BAD_REQUEST', 400);
+    const { rowCount } = await query(
+      `UPDATE users SET access_level = $2 WHERE id = $1 AND account_type = 'developer'`,
+      [body.id, level],
+    );
+    if (!rowCount) return apiError('Developer account not found.', 'NOT_FOUND', 404);
+    await logAudit({
+      userId: dev.id,
+      action: 'dev_account_change',
+      resourceType: 'user',
+      resourceId: body.id,
+      details: { op: 'promote', access_level: level },
+      ip: clientIpFrom(req.headers),
+    });
+    return apiOk({ success: true });
+  }
+
+  if (body.action === 'revoke') {
+    // Permanent removal. FKs to users(id) are ON DELETE CASCADE (sessions) or
+    // SET NULL (audit_logs, first_aid_entries, suggestions, users.created_by),
+    // so a plain delete detaches everything and preserves the audit trail.
+    const { rowCount } = await query(
+      `DELETE FROM users WHERE id = $1 AND account_type = 'developer'`,
+      [body.id],
+    );
+    if (!rowCount) return apiError('Developer account not found.', 'NOT_FOUND', 404);
+    await logAudit({
+      userId: dev.id,
+      action: 'dev_account_change',
+      resourceType: 'user',
+      resourceId: body.id,
+      details: { op: 'revoke' },
+      ip: clientIpFrom(req.headers),
+    });
+    return apiOk({ success: true });
+  }
+
+  if (body.action !== 'reset_password') {
+    return apiError('Unknown action.', 'BAD_REQUEST', 400);
   }
 
   // reset_password

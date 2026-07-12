@@ -35,17 +35,19 @@ is_primary, is_secondary }`. Logout: `POST /api/dev/logout`.
 
 ## Admin hub — `/dev/primary`
 
-Developer-account management is **primary-only** (`403 FORBIDDEN` for a secondary).
-Suggestions and the audit log are available to any developer (secondaries monitor
-the system).
+**Managing other developers is a level-1 (primary) exclusive power.** Only a
+primary can inspect, add, suspend, promote, revoke, or observe (audit) other
+developers — a secondary gets `403 FORBIDDEN` on all of it. (Secondaries retain
+First Aid management and tertiary/hospital-staff provisioning, which are not
+"dev management".)
 
 ### 1. Developer account management — `/api/dev/accounts` (primary only)
 
 | Method | Action | Notes |
 | --- | --- | --- |
-| `GET` | List developer accounts | Returns id, email, access_level, is_active, last_login, created_at. No password hashes. |
-| `POST` | Create a **secondary** developer | Body `{ email }`. Always mints `access_level='secondary'` — a second primary is never created through the app. Returns a strong temp password **once** in `temp_password`. Duplicate email → `409 EMAIL_EXISTS`. |
-| `PATCH` | `revoke` / `reactivate` / `reset_password` | Body `{ id, action }`. `revoke` sets `is_active=false` **and deletes all that user's sessions**. `reset_password` issues a new temp password (once) and kills sessions. You cannot revoke your own account. 404 on an unknown id. |
+| `GET` | Inspect developer accounts | Returns id, email, access_level, is_active, last_login, created_at. No password hashes. |
+| `POST` | Create a developer | Body `{ email, access_level? }`. A primary can mint **another primary** (`access_level='primary'`) or a secondary (default). Returns a strong temp password **once** in `temp_password`. Duplicate email → `409 EMAIL_EXISTS`. |
+| `PATCH` | `suspend` / `reactivate` / `promote` / `revoke` / `reset_password` | Body `{ id, action, level? }`. `suspend` sets `is_active=false` and deletes sessions (reversible via `reactivate`). `promote` sets `access_level` to `level` (`primary`↔`secondary`). `revoke` **permanently deletes** the account (FKs to `users(id)` are `ON DELETE CASCADE`/`SET NULL`, so sessions drop and audit/first-aid/suggestion references null out, preserving history). `reset_password` issues a new temp password (once) and kills sessions. You cannot suspend/promote/revoke **your own** account. 404 on an unknown id. |
 
 ### 1b. Tertiary provisioning — `/api/dev/tertiary` (any developer)
 
@@ -61,7 +63,7 @@ Every change writes a `dev_account_change` (developers) or `tertiary_account_cha
 (institution staff) audit row. Temp passwords are one-time; the new holder sets
 their own via `PATCH /api/account/password` (email is not editable).
 
-### 2. Audit log — `GET /api/dev/audit-logs` (any developer)
+### 2. Audit log — `GET /api/dev/audit-logs` (primary only)
 
 Searchable, paginated (`limit` default 50, max 200; `offset`). Optional filters:
 `action` (matches `action_type`) and `resource_type`. Ordered newest-first. Returns
@@ -85,11 +87,14 @@ hospital record.
 
 ## Access-level cheatsheet
 
-- `primary` — developer accounts (create secondary, revoke/reset), tertiary
-  provisioning, audit log, suggestions, and full First Aid management.
-- `secondary` — tertiary provisioning, audit log (monitor), suggestions, and full
-  First Aid management (both levels can edit/delete **any** entry). `403` on
-  developer-account management (`/api/dev/accounts`).
+- `primary` (level-1) — **exclusive** control over other developers: create
+  (primary or secondary), inspect, suspend, promote/demote, revoke, reset. Plus
+  the audit log (observe), tertiary provisioning, suggestions, and full First Aid
+  management.
+- `secondary` — tertiary/hospital-staff provisioning, suggestions, and full First
+  Aid management (both levels edit/delete **any** entry). `403` on developer-account
+  management (`/api/dev/accounts`) **and** the audit log (`/api/dev/audit-logs`) —
+  observing devs is primary-only.
 
 ## Security notes
 
@@ -110,6 +115,8 @@ hospital record.
 - No forced temp-password rotation or credential-expiry policy.
 - Access-level taxonomy is fixed to `primary` / `secondary` (+ tertiary via
   `hospital_staff`); finer-grained per-feature "access types" are not built.
-- The single-primary invariant is a convention (the app never mints a second
-  primary), not a DB constraint — a second primary can only exist via the bootstrap
-  script or a manual DB change.
+- Multiple primaries are now supported and expected — a level-1 admin can mint or
+  promote peers. There is no cap on the number of primaries, and no DB constraint
+  guaranteeing at least one remains, so a primary must not revoke/demote the last
+  primary (the app blocks self-change but not last-primary removal — an operational
+  caution for now).

@@ -37,6 +37,24 @@ const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((g) 
 
 const GENOTYPES = ['AA', 'AS', 'AC', 'SS', 'SC'].map((g) => ({ value: g, label: g }));
 
+const CLINICAL_CONDITION_OPTIONS = [
+  'Hypertension',
+  'Diabetes',
+  'Asthma',
+  'Sickle cell disease',
+  'Tuberculosis',
+  'HIV/AIDS',
+  'Hepatitis B',
+  'Epilepsy',
+  'Peptic ulcer disease',
+  'Chronic kidney disease',
+  'Heart disease',
+  'Cancer',
+  'Thyroid disorder',
+  'Mental health condition',
+  'Other',
+].map((c) => ({ value: c, label: c }));
+
 function num(v: string): number | undefined {
   const n = Number(v);
   return v === '' || Number.isNaN(n) ? undefined : n;
@@ -52,6 +70,33 @@ export default function BioDataForm({
   const [profile, setProfile] = useState<ProfileLayer>(initialProfile);
   const [biodata, setBiodata] = useState<BiodataLayer>(initialBiodata);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Add-a-clinical-condition sub-form (selectable condition + free-text cause).
+  const [ccCondition, setCcCondition] = useState('');
+  const [ccOther, setCcOther] = useState('');
+  const [ccCause, setCcCause] = useState('');
+
+  const conditions = biodata.clinical_conditions ?? [];
+  const ccName = (ccCondition === 'Other' ? ccOther : ccCondition).trim();
+
+  function addCondition() {
+    if (!ccName) return;
+    const entry = {
+      condition: ccName,
+      ...(ccCause.trim() ? { cause: ccCause.trim() } : {}),
+      timestamp: new Date().toISOString(),
+    };
+    setB('clinical_conditions', [...conditions, entry]);
+    setCcCondition('');
+    setCcOther('');
+    setCcCause('');
+  }
+
+  function removeCondition(index: number) {
+    setB(
+      'clinical_conditions',
+      conditions.filter((_, i) => i !== index),
+    );
+  }
 
   const bmi = useMemo(() => {
     if (typeof biodata.height_cm === 'number' && typeof biodata.weight_kg === 'number') {
@@ -249,6 +294,62 @@ export default function BioDataForm({
             value={biodata.health_preferences ?? ''}
             onChange={(e) => setB('health_preferences', e.target.value)}
           />
+        </div>
+
+        <h3 className={styles.subheading}>Clinical conditions</h3>
+        <p className={styles.sub}>
+          Select a condition and note its cause. Each entry is timestamped when added.
+        </p>
+        {conditions.length > 0 && (
+          <ul className={styles.conditionList}>
+            {conditions.map((c, i) => (
+              <li key={`${c.condition}-${c.timestamp ?? i}`} className={styles.conditionItem}>
+                <div>
+                  <strong>{c.condition}</strong>
+                  {c.cause ? <span className={styles.conditionCause}> — {c.cause}</span> : null}
+                  {c.timestamp ? (
+                    <span className={styles.conditionTime}>
+                      {new Date(c.timestamp).toLocaleDateString()}
+                    </span>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className={styles.removeBtn}
+                  onClick={() => removeCondition(i)}
+                  aria-label={`Remove ${c.condition}`}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className={styles.conditionAdd}>
+          <Dropdown
+            label="Condition"
+            options={CLINICAL_CONDITION_OPTIONS}
+            placeholder="Select…"
+            value={ccCondition}
+            onChange={(e) => setCcCondition(e.target.value)}
+          />
+          {ccCondition === 'Other' && (
+            <Input
+              label="Specify condition"
+              value={ccOther}
+              onChange={(e) => setCcOther(e.target.value)}
+            />
+          )}
+          <Input
+            label="Cause / notes"
+            value={ccCause}
+            onChange={(e) => setCcCause(e.target.value)}
+          />
+          <div className={styles.conditionAddAction}>
+            <Button type="button" variant="ghost" onClick={addCondition} disabled={!ccName}>
+              Add condition
+            </Button>
+          </div>
         </div>
       </Card>
 

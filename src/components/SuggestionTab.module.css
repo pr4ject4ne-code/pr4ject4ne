@@ -8,7 +8,8 @@
   color: var(--color-white);
   border: none;
   padding: 0.75rem 0.4rem;
-  border-radius: 0 var(--radius) var(--radius) 0;
+  /* Round only the protruding (left) edge; the right side hugs the viewport. */
+  border-radius: var(--radius) 0 0 var(--radius);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;

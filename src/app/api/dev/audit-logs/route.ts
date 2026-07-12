@@ -1,12 +1,12 @@
 import { query } from '@/lib/db';
 import { apiOk, apiError, parseLimit, parseOffset } from '@/lib/api';
-import { getDevUser } from '@/lib/dev-auth';
+import { getDevUser, isPrimary } from '@/lib/dev-auth';
 
-/** GET — searchable/filterable audit log. Any developer (primary + secondary
- * both monitor the system). */
+/** GET — searchable/filterable audit log. **Level-1 (primary) only** — observing
+ * devs and system activity is an exclusive primary power. */
 export async function GET(req: Request) {
   const dev = await getDevUser();
-  if (!dev) return apiError('Forbidden.', 'FORBIDDEN', 403);
+  if (!dev || !isPrimary(dev)) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const url = new URL(req.url);
   const limit = parseLimit(url.searchParams.get('limit'), 50, 200);

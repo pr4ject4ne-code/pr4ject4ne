@@ -1,4 +1,10 @@
-import { sanitizeText, safeHttpUrl, escapeLikePattern, sanitizeLayer } from '@/lib/sanitize';
+import {
+  sanitizeText,
+  safeHttpUrl,
+  escapeLikePattern,
+  sanitizeLayer,
+  sanitizeClinicalConditions,
+} from '@/lib/sanitize';
 
 describe('sanitizeText', () => {
   it('escapes angle brackets', () => {
@@ -92,5 +98,46 @@ describe('escapeLikePattern', () => {
 
   it('leaves ordinary text untouched', () => {
     expect(escapeLikePattern('Enugu General')).toBe('Enugu General');
+  });
+});
+
+describe('sanitizeClinicalConditions', () => {
+  it('returns [] for non-arrays', () => {
+    expect(sanitizeClinicalConditions(undefined)).toEqual([]);
+    expect(sanitizeClinicalConditions('x')).toEqual([]);
+    expect(sanitizeClinicalConditions({ condition: 'x' })).toEqual([]);
+  });
+
+  it('keeps valid entries, escapes text, and stamps a timestamp', () => {
+    const out = sanitizeClinicalConditions([
+      { condition: 'Hypertension', cause: 'Family <b>history</b>' },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].condition).toBe('Hypertension');
+    expect(out[0].cause).toBe('Family &lt;b&gt;history&lt;/b&gt;');
+    expect(typeof out[0].timestamp).toBe('string');
+    expect(Number.isNaN(Date.parse(out[0].timestamp))).toBe(false);
+  });
+
+  it('drops entries with no condition and honours a valid client timestamp', () => {
+    const ts = '2026-01-01T00:00:00.000Z';
+    const out = sanitizeClinicalConditions([
+      { cause: 'no condition' },
+      { condition: '   ' },
+      { condition: 'Diabetes', timestamp: ts },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].condition).toBe('Diabetes');
+    expect(out[0].timestamp).toBe(ts);
+  });
+
+  it('caps the number of entries', () => {
+    const many = Array.from({ length: 60 }, (_, i) => ({ condition: `C${i}` }));
+    expect(sanitizeClinicalConditions(many, 50)).toHaveLength(50);
+  });
+
+  it('omits cause when empty', () => {
+    const out = sanitizeClinicalConditions([{ condition: 'Asthma', cause: '   ' }]);
+    expect(out[0].cause).toBeUndefined();
   });
 });

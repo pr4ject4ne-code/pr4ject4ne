@@ -6,8 +6,11 @@ import { useDevGuard } from '../useDevGuard';
 import SuggestionsBoard from '@/components/SuggestionsBoard';
 import Card from '@/components/Card';
 import Input from '@/components/Input';
+import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
 import styles from './DevPrimary.module.css';
+
+type AccountAction = 'suspend' | 'reactivate' | 'revoke' | 'promote' | 'reset_password';
 
 interface DevAccount {
   id: string;
@@ -32,6 +35,7 @@ export default function DevPrimaryClient() {
   const [accounts, setAccounts] = useState<DevAccount[]>([]);
   const [logs, setLogs] = useState<AuditRow[]>([]);
   const [newEmail, setNewEmail] = useState('');
+  const [newLevel, setNewLevel] = useState<'primary' | 'secondary'>('secondary');
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
 
@@ -59,7 +63,7 @@ export default function DevPrimaryClient() {
     const res = await fetch('/api/dev/accounts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: newEmail }),
+      body: JSON.stringify({ email: newEmail, access_level: newLevel }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -71,11 +75,14 @@ export default function DevPrimaryClient() {
     loadAccounts();
   }
 
-  async function accountAction(id: string, action: 'revoke' | 'reactivate' | 'reset_password') {
+  async function accountAction(id: string, action: AccountAction, level?: 'primary' | 'secondary') {
+    if (action === 'revoke' && !window.confirm('Permanently delete this developer account? This cannot be undone.')) {
+      return;
+    }
     const res = await fetch('/api/dev/accounts', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, action }),
+      body: JSON.stringify({ id, action, ...(level ? { level } : {}) }),
     });
     const data = await res.json();
     if (res.ok && data.temp_password) setTempPassword(data.temp_password);
@@ -103,19 +110,29 @@ export default function DevPrimaryClient() {
       <section className={styles.section}>
         <h2>Developer accounts</h2>
         <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>
-          Create a <strong>secondary</strong> (operational) developer. Secondaries
-          create and manage tertiary institution accounts and the First Aid catalog.
+          As a <strong>level-1 (primary)</strong> admin you can create another primary or a
+          secondary developer, and inspect, suspend, promote, revoke, or reset any developer
+          below. Only a level-1 admin can manage other devs.
         </p>
         <Card style={{ marginBottom: '1rem' }}>
           <form onSubmit={createAccount} className={styles.createForm}>
             <Input
-              label="New secondary developer email"
+              label="New developer email"
               type="email"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               required
             />
-            <Button type="submit">Create secondary</Button>
+            <Dropdown
+              label="Level"
+              value={newLevel}
+              onChange={(e) => setNewLevel(e.target.value as 'primary' | 'secondary')}
+              options={[
+                { value: 'secondary', label: 'Secondary (operational)' },
+                { value: 'primary', label: 'Primary (level-1 admin)' },
+              ]}
+            />
+            <Button type="submit">Create developer</Button>
           </form>
           {accountError && <p className={styles.error}>{accountError}</p>}
           {tempPassword && (
@@ -131,21 +148,40 @@ export default function DevPrimaryClient() {
               <div>
                 <strong>{a.email}</strong>
                 <span className={styles.badge}>{a.access_level}</span>
-                {!a.is_active && <span className={styles.revoked}>revoked</span>}
+                {!a.is_active && <span className={styles.revoked}>suspended</span>}
               </div>
               <div className={styles.accountActions}>
-                {a.is_active ? (
-                  <button type="button" onClick={() => accountAction(a.id, 'revoke')}>
-                    Revoke
+                {a.id !== dev.id && a.is_active ? (
+                  <button type="button" onClick={() => accountAction(a.id, 'suspend')}>
+                    Suspend
                   </button>
-                ) : (
+                ) : a.id !== dev.id ? (
                   <button type="button" onClick={() => accountAction(a.id, 'reactivate')}>
                     Reactivate
+                  </button>
+                ) : null}
+                {a.id !== dev.id && a.access_level === 'secondary' && (
+                  <button type="button" onClick={() => accountAction(a.id, 'promote', 'primary')}>
+                    Promote to primary
+                  </button>
+                )}
+                {a.id !== dev.id && a.access_level === 'primary' && (
+                  <button type="button" onClick={() => accountAction(a.id, 'promote', 'secondary')}>
+                    Demote to secondary
                   </button>
                 )}
                 <button type="button" onClick={() => accountAction(a.id, 'reset_password')}>
                   Reset password
                 </button>
+                {a.id !== dev.id && (
+                  <button
+                    type="button"
+                    className={styles.revokeBtn}
+                    onClick={() => accountAction(a.id, 'revoke')}
+                  >
+                    Revoke
+                  </button>
+                )}
               </div>
             </li>
           ))}

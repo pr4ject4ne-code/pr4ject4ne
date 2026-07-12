@@ -35,3 +35,52 @@
   display: flex;
   justify-content: flex-end;
 }
+
+/* Clinical conditions: existing entries + an add row. */
+.conditionList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.conditionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.8rem;
+  background: var(--color-amethyst-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+.conditionCause {
+  color: var(--color-ink);
+}
+.conditionTime {
+  color: var(--color-muted);
+  font-size: 0.76rem;
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
+.removeBtn {
+  border: none;
+  background: transparent;
+  color: var(--color-red);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.conditionAdd {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0 1rem;
+  align-items: end;
+}
+.conditionAddAction {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.9rem;
+}

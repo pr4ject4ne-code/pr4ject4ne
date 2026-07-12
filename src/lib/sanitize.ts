@@ -63,6 +63,42 @@ export function sanitizeLayer(
   return out;
 }
 
+export interface SanitizedClinicalCondition {
+  condition: string;
+  cause?: string;
+  timestamp: string;
+}
+
+/**
+ * Sanitize the biodata layer's `clinical_conditions` array. sanitizeLayer drops
+ * nested arrays, so this whitelisted structure is validated separately: each
+ * entry keeps a required (escaped) condition, an optional (escaped) cause, and a
+ * server-fixed ISO timestamp — a client-supplied timestamp is honoured only if it
+ * parses, otherwise "now". Non-objects and entries without a condition are
+ * dropped, and the list is capped.
+ */
+export function sanitizeClinicalConditions(
+  input: unknown,
+  maxItems = 50,
+): SanitizedClinicalCondition[] {
+  if (!Array.isArray(input)) return [];
+  const out: SanitizedClinicalCondition[] = [];
+  for (const item of input.slice(0, maxItems)) {
+    if (typeof item !== 'object' || item === null) continue;
+    const rec = item as Record<string, unknown>;
+    const condition = sanitizeText(rec.condition, 200);
+    if (!condition || !condition.trim()) continue;
+    const cause = sanitizeText(rec.cause, 2000);
+    const rawTs = rec.timestamp;
+    const timestamp =
+      typeof rawTs === 'string' && !Number.isNaN(Date.parse(rawTs))
+        ? new Date(rawTs).toISOString()
+        : new Date().toISOString();
+    out.push({ condition, ...(cause && cause.trim() ? { cause } : {}), timestamp });
+  }
+  return out;
+}
+
 /**
  * Escape LIKE/ILIKE metacharacters (`\`, `%`, `_`) in user input so a search
  * term is matched literally, not as a wildcard pattern. Without this, a term of
