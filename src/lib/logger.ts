@@ -24,9 +24,11 @@ export function errMessage(err: unknown): string {
 
 function emit(level: Level, event: string, fields?: LogFields): void {
   const line = JSON.stringify({ level, event, time: new Date().toISOString(), ...fields });
+  /* eslint-disable no-console -- this is the single sanctioned console sink */
   if (level === 'error') console.error(line);
   else if (level === 'warn') console.warn(line);
   else console.log(line);
+  /* eslint-enable no-console */
 }
 
 export const logger = {

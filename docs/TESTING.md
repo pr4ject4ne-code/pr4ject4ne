@@ -7,16 +7,34 @@ gating) plus the pure library helpers.
 ## Running the tests
 
 ```bash
-npm test               # run the full suite once
+npm test               # run the full mocked suite once (no DB needed)
 npm run test:watch     # watch mode
 npm run test:coverage  # with a coverage report
+npm run test:integration  # real-Postgres tests (needs DATABASE_URL)
 npm run type-check     # tsc --noEmit (no test run, type safety only)
 npm run lint           # eslint
 ```
 
-Tests need no database or network — every DB and auth boundary is mocked (see
-below). CI runs `lint`, `type-check`, `format:check`, the full test suite, a
-production build, and `npm audit --audit-level=critical` on every push.
+The **default suite needs no database or network** — every DB and auth boundary is
+mocked (see below). CI runs `lint`, `type-check`, `format:check`, the mocked suite,
+a production build, and `npm audit --audit-level=critical` on every push, plus a
+separate **integration job**.
+
+## Integration tests (real Postgres)
+
+`*.integration.test.ts` files run against a live database via `DATABASE_URL` and
+exercise the SQL the mocked suite can't — the advisory-lock rate limiter, real
+session rows, and the trigram search path (`src/lib/__tests__/backend.integration.test.ts`).
+They are excluded from `npm test` (via `testPathIgnorePatterns`) and run with
+`npm run test:integration` (config: `jest.integration.config.mjs`).
+
+- **Locally:** `DATABASE_URL` is read from `.env.local` by `scripts/jest-load-env.cjs`
+  (Next skips `.env.local` under `NODE_ENV=test`, so we load it ourselves). Each test
+  uses random identifiers and cleans up after itself.
+- **CI:** the `integration` job spins up a `postgres:16` service, runs
+  `npm run db:migrate` against it, then `npm run test:integration`.
+- Without a `DATABASE_URL`, the suite **skips** cleanly (`describe.skip`), so a
+  DB-less checkout stays green.
 
 ## Mocking conventions
 

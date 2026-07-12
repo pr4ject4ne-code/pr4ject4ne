@@ -20,7 +20,13 @@ const customJestConfig = {
     '!src/**/__tests__/**',
     '!src/types/**',
   ],
-  testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
+  // Integration tests (real Postgres) run via `npm run test:integration`, not the
+  // default mocked suite.
+  testPathIgnorePatterns: [
+    '<rootDir>/.next/',
+    '<rootDir>/node_modules/',
+    '\\.integration\\.test\\.ts$',
+  ],
 };
 
 export default createJestConfig(customJestConfig);
