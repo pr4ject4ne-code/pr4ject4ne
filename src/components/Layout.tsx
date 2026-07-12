@@ -35,6 +35,7 @@ export default function Layout({
         hospitalLogoUrl={hospitalLogoUrl}
         onHospitalSearch={onHospitalSearch}
         floating={fullBleed}
+        showSearch={fullBleed}
       />
       <main className={fullBleed ? styles.mainFull : styles.main}>{children}</main>
       <SuggestionTab hospitalId={hospitalId} page={page} />

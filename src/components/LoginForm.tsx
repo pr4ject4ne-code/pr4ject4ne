@@ -86,6 +86,12 @@ export default function LoginForm() {
 
   return (
     <Card className={styles.card}>
+      <h1 className={styles.title}>{mode === 'signup' ? 'Create your account' : 'Welcome back'}</h1>
+      <p className={styles.subtitle}>
+        {mode === 'signup'
+          ? 'Save your biodata and reach care faster.'
+          : 'Sign in to your Racoon Eye account.'}
+      </p>
       <div className={styles.tabs} role="tablist">
         <button
           type="button"

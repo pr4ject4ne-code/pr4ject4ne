@@ -95,6 +95,15 @@ h4 {
   padding: 1.5rem 1rem;
 }
 
+/* Centered auth screens (login / sign-up) */
+.auth-page {
+  min-height: calc(100vh - 168px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+}
+
 /* Visually-hidden but screen-reader accessible */
 .sr-only {
   position: absolute;

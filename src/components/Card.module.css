@@ -1,7 +1,12 @@
 .card {
-  background: var(--color-white);
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  padding: 1.25rem;
+  /* Frosted-glass surface: translucent white + backdrop blur reads as liquid
+     glass over the page's ambient wash, with depth from a soft layered shadow
+     rather than a hard border. */
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 1.4rem 1.5rem;
 }

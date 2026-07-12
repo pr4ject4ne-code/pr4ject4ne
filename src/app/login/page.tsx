@@ -6,7 +6,7 @@ export const metadata = { title: 'Log in — Racoon Eye' };
 export default function LoginPage() {
   return (
     <Layout page="login">
-      <div className="page-container">
+      <div className="auth-page">
         <LoginForm />
       </div>
     </Layout>

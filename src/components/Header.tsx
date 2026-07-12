@@ -17,6 +17,9 @@ interface HeaderProps {
   onHospitalSearch?: (query: string) => void;
   /** Float the bar over a full-bleed background (homepage map) as translucent glass. */
   floating?: boolean;
+  /** Show the hospital search bar. The map homepage sets this; other pages (login,
+   * dashboard, first-aid…) get a clean brand+menu header with no map search. */
+  showSearch?: boolean;
 }
 
 const MODE_PLACEHOLDER: Record<SearchMode, string> = {
@@ -30,6 +33,7 @@ export default function Header({
   hospitalLogoUrl,
   onHospitalSearch,
   floating,
+  showSearch,
 }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mode, setMode] = useState<SearchMode>('nearest');
@@ -72,31 +76,33 @@ export default function Header({
         )}
       </div>
 
-      <form className={styles.search} onSubmit={onSubmit} role="search">
-        {!onHospitalSearch && (
-          <select
-            className={styles.mode}
-            value={mode}
-            onChange={(e) => setMode(e.target.value as SearchMode)}
-            aria-label="Search mode"
-          >
-            <option value="nearest">Nearest</option>
-            <option value="hospital">By name</option>
-            <option value="symptom">By symptom</option>
-          </select>
-        )}
-        <input
-          className={styles.searchInput}
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={onHospitalSearch ? 'Search this hospital…' : MODE_PLACEHOLDER[mode]}
-          aria-label="Search"
-        />
-        <button type="submit" className={styles.searchBtn}>
-          Search
-        </button>
-      </form>
+      {(onHospitalSearch || showSearch) && (
+        <form className={styles.search} onSubmit={onSubmit} role="search">
+          {!onHospitalSearch && (
+            <select
+              className={styles.mode}
+              value={mode}
+              onChange={(e) => setMode(e.target.value as SearchMode)}
+              aria-label="Search mode"
+            >
+              <option value="nearest">Nearest</option>
+              <option value="hospital">By name</option>
+              <option value="symptom">By symptom</option>
+            </select>
+          )}
+          <input
+            className={styles.searchInput}
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={onHospitalSearch ? 'Search this hospital…' : MODE_PLACEHOLDER[mode]}
+            aria-label="Search"
+          />
+          <button type="submit" className={styles.searchBtn}>
+            Search
+          </button>
+        </form>
+      )}
 
       <div className={styles.right}>
         <button
