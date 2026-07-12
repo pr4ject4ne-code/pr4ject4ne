@@ -84,4 +84,31 @@ describe('PATCH /api/biodata/me', () => {
     );
     expect(res.status).toBe(400);
   });
+
+  it('400 when a layer is not an object (would corrupt the merged JSON)', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: USER, account_type: 'patient' });
+    const res = await PATCH(
+      new Request('http://localhost/api/biodata/me', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ profile_layer: 'not-an-object' }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('BAD_REQUEST');
+  });
+
+  it('escapes HTML in string field values on write', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: USER, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({ profile_layer: {}, biodata_layer: {} });
+    const res = await PATCH(
+      new Request('http://localhost/api/biodata/me', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ profile_layer: { full_name: '<b>Ada</b>' } }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).profile_layer.full_name).toBe('&lt;b&gt;Ada&lt;/b&gt;');
+  });
 });

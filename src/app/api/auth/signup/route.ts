@@ -8,6 +8,7 @@ import {
   sessionCookieOptions,
   SESSION_COOKIE,
   findUserByEmail,
+  checkRateLimit,
 } from '@/lib/auth';
 import { generateIhnCode } from '@/lib/ihn-code';
 import { apiError, apiOk, readJson } from '@/lib/api';
@@ -28,6 +29,14 @@ export async function POST(req: Request) {
   if (!isValidEmail(email)) return apiError('Invalid email address.', 'INVALID_EMAIL', 400);
   const strength = validatePasswordStrength(password);
   if (!strength.ok) return apiError(strength.reason!, 'WEAK_PASSWORD', 400);
+
+  // Throttle before the existence check and bcrypt: signup is unauthenticated and
+  // each call costs a ~250ms bcrypt hash, so an unthrottled loop of fresh emails
+  // is a CPU-DoS lever (and the pre-hash 409 is an enumeration oracle). Per-IP
+  // bucket; see SECURITY.md on making the IP source trustworthy in production.
+  const ip = clientIpFrom(req.headers) ?? 'unknown';
+  const allowed = await checkRateLimit(`signup:${ip}`, 15, 3600);
+  if (!allowed) return apiError('Too many attempts. Try again later.', 'RATE_LIMITED', 429);
 
   const existing = await findUserByEmail(email);
   if (existing) return apiError('Email already registered.', 'EMAIL_EXISTS', 409);

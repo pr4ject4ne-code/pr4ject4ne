@@ -14,6 +14,7 @@
     "test:coverage": "jest --coverage",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "db:bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""
   },

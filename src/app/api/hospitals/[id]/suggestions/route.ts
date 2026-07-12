@@ -1,7 +1,9 @@
 import { cookies } from 'next/headers';
 import { query, queryOne } from '@/lib/db';
-import { apiError, apiOk, readJson } from '@/lib/api';
+import { apiError, apiOk, readJson, parseLimit, parseOffset } from '@/lib/api';
 import { getSession, DEV_SESSION_COOKIE, checkRateLimit } from '@/lib/auth';
+import { isValidEmail } from '@/lib/validation';
+import { sanitizeText } from '@/lib/sanitize';
 import { clientIpFrom } from '@/lib/audit';
 import type { Suggestion, SuggestionCategory } from '@/types';
 
@@ -45,12 +47,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const category = CATEGORIES.includes(body.category as SuggestionCategory)
     ? (body.category as SuggestionCategory)
     : 'other';
-  const email = typeof body.email === 'string' && body.email.length <= 254 ? body.email : null;
+  // Validate the email (drop if invalid) to block header injection into the
+  // email worker; sanitize content for a safe stored/emailed value.
+  const email = typeof body.email === 'string' && isValidEmail(body.email.trim())
+    ? body.email.trim()
+    : null;
+  const safeContent = sanitizeText(content, 4000) ?? '';
 
   const { rows } = await query<{ id: string }>(
     `INSERT INTO suggestions (hospital_id, submitted_by_email, content, category)
      VALUES ($1, $2, $3, $4) RETURNING id`,
-    [(await params).id, email, content, category],
+    [(await params).id, email, safeContent, category],
   );
 
   return apiOk({ success: true, id: rows[0]!.id }, 201);
@@ -68,6 +75,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const url = new URL(req.url);
   const status = url.searchParams.get('status');
+  const limit = parseLimit(url.searchParams.get('limit'), 50, 200);
+  const offset = parseOffset(url.searchParams.get('offset'));
   const params2: unknown[] = [(await params).id];
   let statusClause = '';
   if (status && ['new', 'reviewed', 'applied', 'dismissed'].includes(status)) {
@@ -75,11 +84,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     statusClause = ` AND status = $${params2.length}`;
   }
 
+  const totalRow = await query<{ count: string }>(
+    `SELECT count(*)::text AS count FROM suggestions WHERE hospital_id = $1${statusClause}`,
+    params2,
+  );
+  const total = Number(totalRow.rows[0]?.count ?? '0');
+
+  params2.push(limit, offset);
   const { rows } = await query<Suggestion>(
     `SELECT * FROM suggestions WHERE hospital_id = $1${statusClause}
-     ORDER BY created_at DESC`,
+     ORDER BY created_at DESC
+     LIMIT $${params2.length - 1} OFFSET $${params2.length}`,
     params2,
   );
 
-  return apiOk({ suggestions: rows });
+  return apiOk({ suggestions: rows, total, limit, offset });
 }

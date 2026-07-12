@@ -25,8 +25,13 @@ export function parseLimit(raw: string | null, fallback = 20, max = 100): number
   return Math.min(Math.floor(n), max);
 }
 
-export function parseOffset(raw: string | null): number {
+/**
+ * Parse a pagination offset, clamped to a sane maximum so an unauthenticated
+ * `?offset=999999999` can't force Postgres to walk-and-discard a huge row count
+ * (deep-pagination DoS lever on public list endpoints).
+ */
+export function parseOffset(raw: string | null, max = 100_000): number {
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.floor(n);
+  return Math.min(Math.floor(n), max);
 }

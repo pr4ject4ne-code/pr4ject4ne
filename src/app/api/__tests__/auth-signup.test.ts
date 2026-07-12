@@ -11,6 +11,7 @@ jest.mock('next/headers', () => ({
 
 const mockFindUserByEmail = jest.fn();
 const mockWithTransaction = jest.fn();
+const mockCheckRateLimit = jest.fn();
 
 jest.mock('@/lib/db', () => ({
   withTransaction: (...args: unknown[]) => mockWithTransaction(...args),
@@ -23,6 +24,7 @@ jest.mock('@/lib/auth', () => {
     findUserByEmail: (...args: unknown[]) => mockFindUserByEmail(...args),
     hashPassword: jest.fn().mockResolvedValue('$2a$12$hashedhashedhashed'),
     createSession: jest.fn().mockResolvedValue({ token: 'tok', expiresAt: new Date() }),
+    checkRateLimit: (...args: unknown[]) => mockCheckRateLimit(...args),
   };
 });
 
@@ -42,6 +44,18 @@ function makeReq(body: unknown): Request {
 describe('POST /api/auth/signup', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCheckRateLimit.mockResolvedValue(true); // under the limit by default
+  });
+
+  it('returns 429 when the signup rate limit is exceeded', async () => {
+    mockFindUserByEmail.mockResolvedValue(null);
+    mockCheckRateLimit.mockResolvedValue(false);
+    const res = await POST(makeReq({ email: 'a@b.co', password: 'SecurePass123!' }));
+    expect(res.status).toBe(429);
+    expect((await res.json()).code).toBe('RATE_LIMITED');
+    // Throttled before any DB work / bcrypt.
+    expect(mockFindUserByEmail).not.toHaveBeenCalled();
+    expect(mockWithTransaction).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid email', async () => {

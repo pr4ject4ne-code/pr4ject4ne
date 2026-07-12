@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { queryOne, query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { getPatientSession } from '@/lib/auth';
+import { sanitizeLayer } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { Biodata, BiodataLayer, ProfileLayer } from '@/types';
 
@@ -61,14 +62,22 @@ export async function PATCH(req: Request) {
     return apiError('Nothing to update.', 'BAD_REQUEST', 400);
   }
 
+  // Reject non-object layers (a string/array would spread into corrupt keys) and
+  // sanitize/cap each supplied layer before merging.
+  const profilePatch = body.profile_layer === undefined ? {} : sanitizeLayer(body.profile_layer);
+  const biodataPatch = body.biodata_layer === undefined ? {} : sanitizeLayer(body.biodata_layer);
+  if (profilePatch === null || biodataPatch === null) {
+    return apiError('profile_layer and biodata_layer must be objects.', 'BAD_REQUEST', 400);
+  }
+
   const record = await queryOne<Biodata>(
     `SELECT profile_layer, biodata_layer FROM biodata WHERE user_id = $1`,
     [userId],
   );
   if (!record) return apiError('Biodata not found.', 'NOT_FOUND', 404);
 
-  const nextProfile: ProfileLayer = { ...record.profile_layer, ...(body.profile_layer ?? {}) };
-  const nextBiodata: BiodataLayer = { ...record.biodata_layer, ...(body.biodata_layer ?? {}) };
+  const nextProfile: ProfileLayer = { ...record.profile_layer, ...(profilePatch as Partial<ProfileLayer>) };
+  const nextBiodata: BiodataLayer = { ...record.biodata_layer, ...(biodataPatch as Partial<BiodataLayer>) };
 
   // BMI is always derived server-side, never client-authoritative.
   if (typeof nextBiodata.height_cm === 'number' && typeof nextBiodata.weight_kg === 'number') {

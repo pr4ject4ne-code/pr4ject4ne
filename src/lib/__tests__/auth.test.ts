@@ -20,6 +20,10 @@ const mockQueryOne = jest.fn();
 jest.mock('@/lib/db', () => ({
   query: (...a: unknown[]) => mockQuery(...a),
   queryOne: (...a: unknown[]) => mockQueryOne(...a),
+  // checkRateLimit runs inside a transaction guarded by an advisory lock; route
+  // the scoped tx.query to the same mock so call assertions still work.
+  withTransaction: (fn: (tx: { query: (...a: unknown[]) => unknown }) => unknown) =>
+    fn({ query: (...a: unknown[]) => mockQuery(...a) }),
 }));
 
 beforeEach(() => {
@@ -186,8 +190,17 @@ describe('getPatientSession', () => {
     expect(await getPatientSession(cookieGet('tok'))).toBeNull();
   });
 
-  it('resolves a genuine patient session', async () => {
-    mockQueryOne.mockResolvedValue({ user_id: 'u1', account_type: 'patient', expires_at: 'later' });
+  it('rejects a session whose patient account is deactivated', async () => {
+    mockQueryOne
+      .mockResolvedValueOnce({ user_id: 'u1', account_type: 'patient', expires_at: 'later' }) // session
+      .mockResolvedValueOnce({ id: 'u1', account_type: 'patient', is_active: false }); // user
+    expect(await getPatientSession(cookieGet('tok'))).toBeNull();
+  });
+
+  it('resolves a genuine patient session backed by an active user', async () => {
+    mockQueryOne
+      .mockResolvedValueOnce({ user_id: 'u1', account_type: 'patient', expires_at: 'later' }) // session
+      .mockResolvedValueOnce({ id: 'u1', account_type: 'patient', is_active: true }); // user
     expect(await getPatientSession(cookieGet('tok'))).toEqual(
       expect.objectContaining({ account_type: 'patient' }),
     );
@@ -195,16 +208,37 @@ describe('getPatientSession', () => {
 });
 
 describe('checkRateLimit', () => {
+  let randomSpy: jest.SpyInstance;
+  beforeEach(() => {
+    // Pin Math.random above the sweep probability so the probabilistic global
+    // GC never fires — keeps the query count deterministic for these assertions.
+    randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.99);
+  });
+  afterEach(() => randomSpy.mockRestore());
+
+  it('takes the per-bucket advisory lock before counting', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] }) // advisory lock
+      .mockResolvedValueOnce({ rows: [{ count: '0' }] }) // window count
+      .mockResolvedValueOnce({ rows: [] }) // insert
+      .mockResolvedValueOnce({ rows: [] }); // prune
+    await checkRateLimit('bucket', 5, 300);
+    const [lockSql, lockParams] = mockQuery.mock.calls[0];
+    expect(lockSql).toContain('pg_advisory_xact_lock');
+    expect(lockParams).toEqual(['bucket']);
+  });
+
   it('allows, records the attempt, and prunes aged-out rows when under the limit', async () => {
     mockQuery
+      .mockResolvedValueOnce({ rows: [] }) // advisory lock
       .mockResolvedValueOnce({ rows: [{ count: '4' }] }) // window count
       .mockResolvedValueOnce({ rows: [] }) // insert
       .mockResolvedValueOnce({ rows: [] }); // prune
     const allowed = await checkRateLimit('bucket', 5, 300);
     expect(allowed).toBe(true);
-    // Three queries: the count SELECT, the recording INSERT, the pruning DELETE.
-    expect(mockQuery).toHaveBeenCalledTimes(3);
-    const [pruneSql, pruneParams] = mockQuery.mock.calls[2];
+    // Four queries: advisory lock, count SELECT, recording INSERT, pruning DELETE.
+    expect(mockQuery).toHaveBeenCalledTimes(4);
+    const [pruneSql, pruneParams] = mockQuery.mock.calls[3];
     expect(pruneSql).toContain('DELETE FROM rate_limit_events');
     expect(pruneSql).toContain('bucket_key = $1');
     expect(pruneSql).toContain(`created_at <= now() - ($2 || ' seconds')::interval`);
@@ -212,11 +246,28 @@ describe('checkRateLimit', () => {
   });
 
   it('blocks and does NOT record or prune once the count reaches the limit', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ count: '5' }] });
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] }) // advisory lock
+      .mockResolvedValueOnce({ rows: [{ count: '5' }] }); // count
     const allowed = await checkRateLimit('bucket', 5, 300);
     expect(allowed).toBe(false);
-    // Only the count SELECT ran; no INSERT recorded, no DELETE issued.
-    expect(mockQuery).toHaveBeenCalledTimes(1);
+    // Only the lock + count SELECT ran; no INSERT recorded, no DELETE issued.
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it('runs the global sweep when the dice fall below the sweep probability', async () => {
+    randomSpy.mockReturnValue(0); // force the sweep
+    mockQuery
+      .mockResolvedValueOnce({ rows: [] }) // advisory lock
+      .mockResolvedValueOnce({ rows: [{ count: '0' }] }) // window count
+      .mockResolvedValueOnce({ rows: [] }) // insert
+      .mockResolvedValueOnce({ rows: [] }) // per-bucket prune
+      .mockResolvedValueOnce({ rows: [] }); // global sweep
+    await checkRateLimit('bucket', 5, 300);
+    expect(mockQuery).toHaveBeenCalledTimes(5);
+    const [sweepSql] = mockQuery.mock.calls[4];
+    expect(sweepSql).toContain('DELETE FROM rate_limit_events');
+    expect(sweepSql).not.toContain('bucket_key');
   });
 });
 

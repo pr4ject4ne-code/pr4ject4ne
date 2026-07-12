@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { queryOne, query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { getPatientSession, checkRateLimit, constantTimeEquals } from '@/lib/auth';
+import { sanitizeLayer } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import { isValidIhnCode } from '@/lib/ihn-code';
 import type { Biodata, BiodataLayer, ProfileLayer } from '@/types';
@@ -114,9 +115,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ userId
 
   const { record, userId } = auth.data;
 
+  // Reject non-object layers and sanitize/cap each supplied layer before merging.
+  const profilePatch = body.profile_layer === undefined ? {} : sanitizeLayer(body.profile_layer);
+  const biodataPatch = body.biodata_layer === undefined ? {} : sanitizeLayer(body.biodata_layer);
+  if (profilePatch === null || biodataPatch === null) {
+    return apiError('profile_layer and biodata_layer must be objects.', 'BAD_REQUEST', 400);
+  }
+
   // Merge onto existing layers so partial updates don't wipe fields.
-  const nextProfile: ProfileLayer = { ...record.profile_layer, ...(body.profile_layer ?? {}) };
-  const nextBiodata: BiodataLayer = { ...record.biodata_layer, ...(body.biodata_layer ?? {}) };
+  const nextProfile: ProfileLayer = { ...record.profile_layer, ...(profilePatch as Partial<ProfileLayer>) };
+  const nextBiodata: BiodataLayer = { ...record.biodata_layer, ...(biodataPatch as Partial<BiodataLayer>) };
 
   // BMI is always derived, never client-authoritative.
   if (typeof nextBiodata.height_cm === 'number' && typeof nextBiodata.weight_kg === 'number') {

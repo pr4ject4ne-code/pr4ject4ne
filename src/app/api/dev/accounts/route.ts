@@ -90,10 +90,11 @@ export async function PATCH(req: Request) {
 
   if (body.action === 'revoke' || body.action === 'reactivate') {
     const active = body.action === 'reactivate';
-    await query(`UPDATE users SET is_active = $2 WHERE id = $1 AND account_type = 'developer'`, [
-      body.id,
-      active,
-    ]);
+    const { rowCount } = await query(
+      `UPDATE users SET is_active = $2 WHERE id = $1 AND account_type = 'developer'`,
+      [body.id, active],
+    );
+    if (!rowCount) return apiError('Developer account not found.', 'NOT_FOUND', 404);
     // Revoking kills existing sessions.
     if (!active) await query('DELETE FROM sessions WHERE user_id = $1', [body.id]);
     await logAudit({
@@ -110,10 +111,11 @@ export async function PATCH(req: Request) {
   // reset_password
   const tempPassword = randomBytes(12).toString('base64url');
   const passwordHash = await hashPassword(tempPassword);
-  await query(`UPDATE users SET password_hash = $2 WHERE id = $1 AND account_type = 'developer'`, [
-    body.id,
-    passwordHash,
-  ]);
+  const { rowCount } = await query(
+    `UPDATE users SET password_hash = $2 WHERE id = $1 AND account_type = 'developer'`,
+    [body.id, passwordHash],
+  );
+  if (!rowCount) return apiError('Developer account not found.', 'NOT_FOUND', 404);
   await query('DELETE FROM sessions WHERE user_id = $1', [body.id]);
   await logAudit({
     userId: dev.id,

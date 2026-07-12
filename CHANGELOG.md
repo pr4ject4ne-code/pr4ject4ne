@@ -3,6 +3,36 @@
 All notable changes to Racoon Eye are recorded here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+Backend hardening pass (second deep security + correctness review) and operational
+documentation for the admin/dev surfaces. No user-facing UI changes.
+
+### Added
+
+- **Admin bootstrap** — `scripts/bootstrap-admin.ts` + `npm run db:bootstrap-admin`
+  create/promote the first `admin` developer from env vars, unblocking the
+  otherwise-unreachable `/dev/primary` hub on a fresh database.
+- **Operational docs** — `docs/admin/` (README + developer-portal, first-aid-catalog,
+  hospital-portal) documenting access, endpoints, audit, rate limits, and known gaps
+  for every admin/dev page.
+- **Search indexes** — migration `003_search_trgm_indexes.sql` adds `pg_trgm` GIN
+  indexes so public ILIKE searches are index-backed instead of sequential scans.
+
+### Security
+
+- Rate limiter is now race-free (per-bucket `pg_advisory_xact_lock`) and globally
+  self-cleaning; signup is rate-limited; login timing equalized against enumeration
+  (dummy bcrypt on the miss path); patient sessions re-check `is_active`.
+- Biodata layers validated/sanitized/size-capped (`sanitizeLayer`); public
+  suggestion/feedback email validated and content escaped.
+
+### Fixed
+
+- Per-hospital suggestions list is paginated; `parseOffset` is clamped; hospital
+  logo can be cleared; `event_date` is validated (was a 500); dev-account and
+  dev-suggestion PATCH return 404 on zero rows instead of a false `success`.
+
 ## [1.0.0] — 2026-07-07
 
 First release of Racoon Eye v1 — a responsive web app for hospital discovery and

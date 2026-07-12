@@ -7,6 +7,7 @@ import {
   SESSION_COOKIE,
   findUserByEmail,
   checkRateLimit,
+  DUMMY_PASSWORD_HASH,
 } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
@@ -39,7 +40,13 @@ export async function POST(req: Request) {
   // Only patient accounts log in here; hospital staff and developers use their
   // dedicated portals.
   const isPatient = user?.account_type === 'patient';
-  const ok = user && isPatient ? await verifyPassword(password, user.password_hash) : false;
+  // Always run bcrypt — against the real hash for a valid patient, else a dummy —
+  // so an unknown/wrong-type email costs the same time as a real one (no timing
+  // enumeration oracle).
+  const ok = await verifyPassword(
+    password,
+    user && isPatient ? user.password_hash : DUMMY_PASSWORD_HASH,
+  );
 
   if (!user || !isPatient || !ok || !user.is_active) {
     await logAudit({ userId: user?.id ?? null, action: 'login_failed', details: { email }, ip });

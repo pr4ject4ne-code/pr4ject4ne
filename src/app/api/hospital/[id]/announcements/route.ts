@@ -7,6 +7,13 @@ import type { AnnouncementColor } from '@/types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const COLORS: AnnouncementColor[] = ['green', 'yellow', 'red'];
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** true when the value is absent/empty (allowed) or a valid YYYY-MM-DD date. */
+function isValidEventDate(v: unknown): boolean {
+  if (v === undefined || v === null || v === '') return true;
+  return typeof v === 'string' && DATE_RE.test(v) && !Number.isNaN(Date.parse(v));
+}
 
 interface CreateBody {
   title?: string;
@@ -27,6 +34,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const title = sanitizeText(body.title, 300);
   if (!title || !title.trim()) return apiError('Title is required.', 'MISSING_TITLE', 400);
+  if (!isValidEventDate(body.event_date)) {
+    return apiError('event_date must be a valid YYYY-MM-DD date.', 'INVALID_DATE', 400);
+  }
   const color = COLORS.includes(body.color as AnnouncementColor)
     ? (body.color as AnnouncementColor)
     : 'green';
@@ -71,6 +81,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const body = await readJson<PatchBody>(req);
   if (!body || !body.id || !UUID_RE.test(body.id)) return apiError('Invalid request.', 'BAD_REQUEST', 400);
+  if (!isValidEventDate(body.event_date)) {
+    return apiError('event_date must be a valid YYYY-MM-DD date.', 'INVALID_DATE', 400);
+  }
 
   // Confirm the announcement belongs to this hospital (isolation).
   const { rows: owned } = await query<{ id: string }>(

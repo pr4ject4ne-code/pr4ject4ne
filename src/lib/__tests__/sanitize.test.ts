@@ -1,4 +1,4 @@
-import { sanitizeText, safeHttpUrl, escapeLikePattern } from '@/lib/sanitize';
+import { sanitizeText, safeHttpUrl, escapeLikePattern, sanitizeLayer } from '@/lib/sanitize';
 
 describe('sanitizeText', () => {
   it('escapes angle brackets', () => {
@@ -42,6 +42,40 @@ describe('safeHttpUrl', () => {
     expect(safeHttpUrl(42)).toBeNull();
     expect(safeHttpUrl(null)).toBeNull();
     expect(safeHttpUrl({ url: 'https://x.test' })).toBeNull();
+  });
+});
+
+describe('sanitizeLayer', () => {
+  it('returns null for non-plain-object inputs (would corrupt merged JSON)', () => {
+    expect(sanitizeLayer('a string')).toBeNull();
+    expect(sanitizeLayer(['a', 'b'])).toBeNull();
+    expect(sanitizeLayer(null)).toBeNull();
+    expect(sanitizeLayer(42)).toBeNull();
+    expect(sanitizeLayer(undefined)).toBeNull();
+  });
+
+  it('keeps primitive leaves and escapes string values', () => {
+    expect(
+      sanitizeLayer({ full_name: '<b>Ada</b>', height_cm: 170, is_public: true, address: null }),
+    ).toEqual({ full_name: '&lt;b&gt;Ada&lt;/b&gt;', height_cm: 170, is_public: true, address: null });
+  });
+
+  it('drops nested objects and arrays (layers are flat)', () => {
+    expect(sanitizeLayer({ ok: 'x', nested: { a: 1 }, arr: [1, 2] })).toEqual({ ok: 'x' });
+  });
+
+  it('caps the number of keys', () => {
+    const big: Record<string, number> = {};
+    for (let i = 0; i < 200; i += 1) big[`k${i}`] = i;
+    expect(Object.keys(sanitizeLayer(big, 60)!).length).toBe(60);
+  });
+
+  it('truncates over-long string values', () => {
+    expect(sanitizeLayer({ note: 'x'.repeat(50) }, 60, 10)).toEqual({ note: 'x'.repeat(10) });
+  });
+
+  it('returns an empty object for an empty object (valid, no-op patch)', () => {
+    expect(sanitizeLayer({})).toEqual({});
   });
 });
 

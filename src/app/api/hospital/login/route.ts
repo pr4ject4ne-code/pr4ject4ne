@@ -6,6 +6,7 @@ import {
   HOSPITAL_SESSION_COOKIE,
   findUserByEmail,
   checkRateLimit,
+  DUMMY_PASSWORD_HASH,
 } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
@@ -35,7 +36,12 @@ export async function POST(req: Request) {
 
   const user = await findUserByEmail(email);
   const isStaff = user?.account_type === 'hospital_staff';
-  const ok = user && isStaff ? await verifyPassword(password, user.password_hash) : false;
+  // Equalize timing on the miss path (see patient login) — dummy bcrypt when
+  // there's no valid staff account to compare against.
+  const ok = await verifyPassword(
+    password,
+    user && isStaff ? user.password_hash : DUMMY_PASSWORD_HASH,
+  );
 
   if (!user || !isStaff || !ok || !user.is_active || !user.hospital_id) {
     await logAudit({ userId: user?.id ?? null, action: 'login_failed', details: { portal: 'hospital', email }, ip });

@@ -40,12 +40,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         }))
     : [];
 
-  const logo = typeof body.logo_url === 'string' ? safeHttpUrl(body.logo_url) ?? undefined : undefined;
+  // Distinguish three cases for the logo:
+  //   key absent            -> leave logo_url untouched
+  //   key present, null/'' -> clear it (set NULL)
+  //   key present, string   -> set the safe URL (invalid scheme also clears)
+  const clearLogo = 'logo_url' in body && !body.logo_url;
+  const newLogo =
+    typeof body.logo_url === 'string' && body.logo_url ? safeHttpUrl(body.logo_url) ?? null : null;
 
-  if (logo !== undefined) {
+  if ('logo_url' in body) {
     await query(
       `UPDATE hospitals SET photos = $2::jsonb, logo_url = $3, updated_at = now() WHERE id = $1`,
-      [(await params).id, JSON.stringify(photos), logo],
+      [(await params).id, JSON.stringify(photos), clearLogo ? null : newLogo],
     );
   } else {
     await query(

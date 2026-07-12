@@ -64,12 +64,13 @@ export async function PATCH(req: Request) {
     return apiError('Invalid request.', 'BAD_REQUEST', 400);
   }
 
-  await query(
+  const { rowCount } = await query(
     `UPDATE suggestions
      SET status = $2, reviewed_by_dev_id = $3, reviewed_at = now()
      WHERE id = $1`,
     [body.id, body.status, dev.id],
   );
+  if (!rowCount) return apiError('Suggestion not found.', 'NOT_FOUND', 404);
 
   await logAudit({
     userId: dev.id,

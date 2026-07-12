@@ -84,7 +84,10 @@ describe('POST /api/auth/login (patient portal)', () => {
     const res = await patientLogin(req());
     const json = await res.json();
     expectGeneric401(res.status, json.code);
-    expect(mockVerifyPassword).not.toHaveBeenCalled();
+    // Timing equalization: bcrypt still runs on the miss path (against a dummy
+    // hash) so an unknown email costs the same as a real one — no enumeration.
+    expect(mockVerifyPassword).toHaveBeenCalledWith(CREDS.password, expect.stringMatching(/^\$2/));
+    expect(mockCreateSession).not.toHaveBeenCalled();
     expect(mockLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'login_failed' }),
     );
@@ -107,8 +110,8 @@ describe('POST /api/auth/login (patient portal)', () => {
     mockVerifyPassword.mockResolvedValue(true);
     const res = await patientLogin(req());
     expectGeneric401(res.status, (await res.json()).code);
-    // The account_type gate short-circuits before any password check.
-    expect(mockVerifyPassword).not.toHaveBeenCalled();
+    // Even though bcrypt runs (against a dummy hash) to equalize timing, the
+    // account_type gate still rejects a developer at the patient portal.
     expect(mockCreateSession).not.toHaveBeenCalled();
   });
 

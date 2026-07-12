@@ -1,6 +1,6 @@
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import { query, queryOne } from '@/lib/db';
+import { query, queryOne, withTransaction } from '@/lib/db';
 import type { AccountType, PublicUser, User } from '@/types';
 
 // Re-export the pure validators so existing server imports keep working. Client
@@ -28,6 +28,15 @@ export async function hashPassword(password: string): Promise<string> {
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
+
+/**
+ * A valid cost-12 bcrypt hash of a throwaway string. Login handlers compare the
+ * supplied password against THIS when no real account matches, so an unknown
+ * email costs the same ~250ms bcrypt as a real one — closing the timing side
+ * channel that would otherwise reveal which emails are registered. Not a secret.
+ */
+export const DUMMY_PASSWORD_HASH =
+  '$2a$12$YJny8LsD5qxiSH5.aE2OYeRvdRdTEJEYWzObazjg48Cjl6PUUhUyO';
 
 // ---------------------------------------------------------------------------
 // Session tokens
@@ -149,12 +158,18 @@ export function sessionCookieOptions(expiresAt: Date) {
 /**
  * Resolve the current patient session from the request cookies.
  * Returns the session record or null.
+ *
+ * Re-loads the user and checks it still exists, is a patient, and is active —
+ * mirroring getDevUser/getHospitalStaff — so a deactivated or deleted patient
+ * can't keep acting on a still-valid session cookie.
  */
 export async function getPatientSession(
   cookieGet: (name: string) => string | undefined,
 ): Promise<SessionRecord | null> {
   const session = await getSession(cookieGet(SESSION_COOKIE));
   if (!session || session.account_type !== 'patient') return null;
+  const user = await findUserById(session.user_id);
+  if (!user || user.account_type !== 'patient' || !user.is_active) return null;
   return session;
 }
 
@@ -162,31 +177,61 @@ export async function getPatientSession(
 // Rate limiting (DB-backed sliding window)
 // ---------------------------------------------------------------------------
 
+/** Rows older than this are swept globally regardless of bucket (see below). */
+const RATE_LIMIT_MAX_AGE_SECONDS = 24 * 60 * 60; // 1 day
+/** Probability of running the global sweep on any given allowed call. */
+const RATE_LIMIT_SWEEP_PROBABILITY = 0.02;
+
 /**
  * Returns true if the action is allowed (under the limit), false if throttled.
- * Records the attempt when allowed, and piggybacks a prune of rows that have
- * aged out of this bucket's window so rate_limit_events is self-cleaning
- * instead of growing forever.
+ *
+ * The count + insert run inside a transaction guarded by a per-bucket advisory
+ * lock (`pg_advisory_xact_lock`), so concurrent requests for the same bucket are
+ * serialized. Without this, a burst of concurrent logins could all read the same
+ * pre-increment count and all pass the gate (check-then-act race), defeating the
+ * brute-force limit. The lock is keyed on the bucket, so unrelated buckets never
+ * contend.
+ *
+ * Cleanup is two-tiered so rate_limit_events can't grow forever: a per-bucket
+ * prune drops rows aged out of *this* bucket's window, and a probabilistic global
+ * sweep drops any row older than RATE_LIMIT_MAX_AGE_SECONDS across all buckets —
+ * the latter matters for one-shot buckets (e.g. login:<unique-email>) that are
+ * never revisited and so would never be pruned by the per-bucket path alone.
  */
 export async function checkRateLimit(
   bucketKey: string,
   maxAttempts: number,
   windowSeconds: number,
 ): Promise<boolean> {
-  const { rows } = await query<{ count: string }>(
-    `SELECT count(*)::text AS count
-     FROM rate_limit_events
-     WHERE bucket_key = $1 AND created_at > now() - ($2 || ' seconds')::interval`,
-    [bucketKey, String(windowSeconds)],
-  );
-  const count = Number(rows[0]?.count ?? '0');
-  if (count >= maxAttempts) return false;
-  await query('INSERT INTO rate_limit_events (bucket_key) VALUES ($1)', [bucketKey]);
-  // Self-prune: rows older than this bucket's window can never count again.
-  await query(
-    `DELETE FROM rate_limit_events
-     WHERE bucket_key = $1 AND created_at <= now() - ($2 || ' seconds')::interval`,
-    [bucketKey, String(windowSeconds)],
-  );
-  return true;
+  return withTransaction(async (tx) => {
+    // Serialize concurrent callers for this bucket. hashtextextended → bigint key
+    // for the advisory lock; released automatically at transaction end.
+    await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [bucketKey]);
+
+    const { rows } = await tx.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM rate_limit_events
+       WHERE bucket_key = $1 AND created_at > now() - ($2 || ' seconds')::interval`,
+      [bucketKey, String(windowSeconds)],
+    );
+    const count = Number(rows[0]?.count ?? '0');
+    if (count >= maxAttempts) return false;
+
+    await tx.query('INSERT INTO rate_limit_events (bucket_key) VALUES ($1)', [bucketKey]);
+    // Per-bucket prune: rows older than this bucket's window can never count again.
+    await tx.query(
+      `DELETE FROM rate_limit_events
+       WHERE bucket_key = $1 AND created_at <= now() - ($2 || ' seconds')::interval`,
+      [bucketKey, String(windowSeconds)],
+    );
+    // Amortized global GC for buckets that are never revisited.
+    if (Math.random() < RATE_LIMIT_SWEEP_PROBABILITY) {
+      await tx.query(
+        `DELETE FROM rate_limit_events
+         WHERE created_at < now() - ($1 || ' seconds')::interval`,
+        [String(RATE_LIMIT_MAX_AGE_SECONDS)],
+      );
+    }
+    return true;
+  });
 }

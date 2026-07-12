@@ -6,6 +6,7 @@ import {
   DEV_SESSION_COOKIE,
   findUserByEmail,
   checkRateLimit,
+  DUMMY_PASSWORD_HASH,
 } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
@@ -35,7 +36,12 @@ export async function POST(req: Request) {
 
   const user = await findUserByEmail(email);
   const isDev = user?.account_type === 'developer';
-  const ok = user && isDev ? await verifyPassword(password, user.password_hash) : false;
+  // Equalize timing on the miss path (see patient login) — dummy bcrypt when
+  // there's no valid developer to compare against.
+  const ok = await verifyPassword(
+    password,
+    user && isDev ? user.password_hash : DUMMY_PASSWORD_HASH,
+  );
 
   if (!user || !isDev || !ok || !user.is_active) {
     await logAudit({
