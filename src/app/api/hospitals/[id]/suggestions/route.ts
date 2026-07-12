@@ -4,7 +4,7 @@ import { apiError, apiOk, readJson, parseLimit, parseOffset } from '@/lib/api';
 import { getSession, DEV_SESSION_COOKIE, checkRateLimit } from '@/lib/auth';
 import { isValidEmail } from '@/lib/validation';
 import { sanitizeText } from '@/lib/sanitize';
-import { clientIpFrom } from '@/lib/audit';
+import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { Suggestion, SuggestionCategory } from '@/types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -59,6 +59,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
      VALUES ($1, $2, $3, $4) RETURNING id`,
     [(await params).id, email, safeContent, category],
   );
+
+  await logAudit({
+    action: 'suggestion_submit',
+    resourceType: 'suggestion',
+    resourceId: rows[0]!.id,
+    details: { hospital_id: (await params).id, category, has_email: Boolean(email) },
+    ip: clientIpFrom(req.headers),
+  });
 
   return apiOk({ success: true, id: rows[0]!.id }, 201);
 }

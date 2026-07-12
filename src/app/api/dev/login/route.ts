@@ -32,7 +32,10 @@ export async function POST(req: Request) {
   }
 
   const allowed = await checkRateLimit(`dev_login:${email.toLowerCase()}`, 5, 300);
-  if (!allowed) return apiError('Too many attempts. Try again later.', 'RATE_LIMITED', 429);
+  if (!allowed) {
+    await logAudit({ action: 'rate_limited', resourceType: 'dev_login', details: { email }, ip });
+    return apiError('Too many attempts. Try again later.', 'RATE_LIMITED', 429);
+  }
 
   const user = await findUserByEmail(email);
   const isDev = user?.account_type === 'developer';

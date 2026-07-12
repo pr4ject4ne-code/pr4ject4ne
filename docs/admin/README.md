@@ -95,10 +95,11 @@ Every privileged action writes an append-only row to `audit_logs` via
 or biodata values), `ip_address`, `created_at`. Audit writes never throw into the
 request path — a failed write is logged to stderr and the request still succeeds.
 
-Action types currently emitted: `login`, `login_failed`, `logout`, `biodata_read`,
-`biodata_write`, `hospital_register`, `hospital_update`, `announcement_change`,
-`personnel_change`, `first_aid_upload`, `first_aid_edit`, `first_aid_delete`,
-`dev_account_change`, `suggestion_review`.
+Action types currently emitted: `login`, `login_failed`, `logout`, `rate_limited`,
+`password_change`, `biodata_read`, `biodata_write`, `hospital_register`,
+`hospital_update`, `announcement_change`, `personnel_change`, `first_aid_upload`,
+`first_aid_edit`, `first_aid_delete`, `dev_account_change`,
+`tertiary_account_change`, `suggestion_submit`, `suggestion_review`.
 
 IP addresses are only recorded when `TRUST_PROXY_HEADERS=true` (set that only when
 deployed behind a proxy/LB that overwrites `x-forwarded-for`); otherwise the IP is

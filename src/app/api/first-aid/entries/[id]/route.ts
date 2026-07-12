@@ -1,6 +1,7 @@
 import { query, queryOne } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { getDevUser } from '@/lib/dev-auth';
+import { checkRateLimit } from '@/lib/auth';
 import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
@@ -29,11 +30,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   return apiOk({ entry });
 }
 
-/** PATCH — developer only; a dev may edit their own entries (admins edit any). */
+/** PATCH — any developer may edit any entry (both dev levels manage the catalog). */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
   const dev = await getDevUser();
   if (!dev) return apiError('Forbidden.', 'FORBIDDEN', 403);
+
+  const allowed = await checkRateLimit(`first_aid_edit:${dev.id}`, 60, 3600);
+  if (!allowed) return apiError('Too many edits. Try again later.', 'RATE_LIMITED', 429);
 
   const entry = await queryOne<FirstAidEntry>(
     `SELECT id FROM first_aid_entries WHERE id = $1`,
@@ -87,11 +91,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   return apiOk({ success: true });
 }
 
-/** DELETE — developer only; own entries (admins delete any). */
+/** DELETE — any developer may delete any entry (both dev levels manage the catalog). */
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!UUID_RE.test((await params).id)) return apiError('Not found.', 'NOT_FOUND', 404);
   const dev = await getDevUser();
   if (!dev) return apiError('Forbidden.', 'FORBIDDEN', 403);
+
+  const allowed = await checkRateLimit(`first_aid_edit:${dev.id}`, 60, 3600);
+  if (!allowed) return apiError('Too many changes. Try again later.', 'RATE_LIMITED', 429);
 
   const entry = await queryOne<FirstAidEntry>(
     `SELECT id FROM first_aid_entries WHERE id = $1`,

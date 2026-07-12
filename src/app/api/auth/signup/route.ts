@@ -13,6 +13,7 @@ import {
 import { generateIhnCode } from '@/lib/ihn-code';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { logAudit, clientIpFrom } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 
 interface Body {
   email?: string;
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
       if (message.includes('users_email_key')) {
         return apiError('Email already registered.', 'EMAIL_EXISTS', 409);
       }
-      console.error('signup_failed', message);
+      logger.error('signup_failed', { error: message });
       return apiError('Could not create account.', 'SIGNUP_FAILED', 500);
     }
   }

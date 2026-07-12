@@ -5,6 +5,7 @@ import { getDevUser, isPrimary } from '@/lib/dev-auth';
 import { hashPassword } from '@/lib/auth';
 import { isValidEmail } from '@/lib/validation';
 import { logAudit, clientIpFrom } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 
 /** GET — list developer (primary + secondary) accounts. Primary only. */
 export async function GET() {
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
     if (message.includes('users_email_key')) {
       return apiError('Email already in use.', 'EMAIL_EXISTS', 409);
     }
-    console.error('dev_account_create_failed', message);
+    logger.error('dev_account_create_failed', { error: message });
     return apiError('Could not create account.', 'CREATE_FAILED', 500);
   }
 }

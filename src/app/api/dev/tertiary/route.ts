@@ -5,6 +5,7 @@ import { getDevUser } from '@/lib/dev-auth';
 import { hashPassword } from '@/lib/auth';
 import { isValidEmail } from '@/lib/validation';
 import { logAudit, clientIpFrom } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 
 /**
  * Tertiary (level-3) accounts = `hospital_staff`, provisioned by a developer
@@ -105,7 +106,7 @@ export async function POST(req: Request) {
     if (message.includes('users_email_key')) {
       return apiError('Email already in use.', 'EMAIL_EXISTS', 409);
     }
-    console.error('tertiary_create_failed', message);
+    logger.error('tertiary_create_failed', { error: message });
     return apiError('Could not create account.', 'CREATE_FAILED', 500);
   }
 }

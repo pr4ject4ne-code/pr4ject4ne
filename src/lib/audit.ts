@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { logger, errMessage } from '@/lib/logger';
 
 /**
  * Centralized audit logging. Writes an append-only row for every sensitive
@@ -18,8 +19,10 @@ export type AuditAction =
   | 'first_aid_delete'
   | 'dev_account_change'
   | 'tertiary_account_change'
+  | 'suggestion_submit'
   | 'suggestion_review'
   | 'password_change'
+  | 'rate_limited'
   | 'login'
   | 'login_failed'
   | 'logout';
@@ -49,7 +52,7 @@ export async function logAudit(entry: AuditEntry): Promise<void> {
     );
   } catch (err) {
     // Audit logging must never break the primary request; surface for ops.
-    console.error('audit_log_write_failed', entry.action, err);
+    logger.error('audit_log_write_failed', { action: entry.action, error: errMessage(err) });
   }
 }
 

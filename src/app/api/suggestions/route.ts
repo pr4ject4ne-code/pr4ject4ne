@@ -3,7 +3,7 @@ import { apiError, apiOk, readJson } from '@/lib/api';
 import { checkRateLimit } from '@/lib/auth';
 import { isValidEmail } from '@/lib/validation';
 import { sanitizeText } from '@/lib/sanitize';
-import { clientIpFrom } from '@/lib/audit';
+import { logAudit, clientIpFrom } from '@/lib/audit';
 
 /**
  * General site feedback ("suggestion tab", present on every page).
@@ -43,6 +43,13 @@ export async function POST(req: Request) {
      VALUES (NULL, $1, $2, 'other')`,
     [email, page ? `[${page}] ${safeContent}` : safeContent],
   );
+
+  await logAudit({
+    action: 'suggestion_submit',
+    resourceType: 'feedback',
+    details: { has_email: Boolean(email), page },
+    ip: clientIpFrom(req.headers),
+  });
 
   return apiOk({ success: true }, 201);
 }
