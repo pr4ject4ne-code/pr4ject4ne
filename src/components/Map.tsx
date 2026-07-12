@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
-import type { Map as MLMap, Marker as MLMarker, StyleSpecification } from 'maplibre-gl';
+import type {
+  Map as MLMap,
+  Marker as MLMarker,
+  StyleSpecification,
+  PaddingOptions,
+} from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Coords } from '@/lib/geolocation';
 import type { Hospital } from '@/types';
@@ -66,6 +71,18 @@ function pinElement(color: string, size = 36): HTMLDivElement {
     <circle cx="12" cy="12" r="4.6" fill="#ffffff"/>
   </svg>`;
   return el;
+}
+
+/**
+ * Padding for fitBounds so framed content clears the floating results panel:
+ * docked on the left on desktop, a bottom sheet on mobile.
+ */
+function framePadding(): PaddingOptions {
+  const wide = typeof window !== 'undefined' && window.innerWidth >= 900;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+  return wide
+    ? { top: 90, right: 80, bottom: 80, left: 440 }
+    : { top: 100, right: 50, bottom: Math.round(vh * 0.5), left: 50 };
 }
 
 /**
@@ -199,26 +216,37 @@ export default function Map({
       const bounds = new maplibregl.LngLatBounds();
       line.forEach((c) => bounds.extend(c));
       if (userLocation) bounds.extend([userLocation.lng, userLocation.lat]);
-      const wide = typeof window !== 'undefined' && window.innerWidth >= 900;
-      const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-      map.fitBounds(bounds, {
-        padding: wide
-          ? { top: 90, right: 80, bottom: 80, left: 440 }
-          : { top: 100, right: 50, bottom: Math.round(vh * 0.5), left: 50 },
-        maxZoom: 15,
-        duration: 700,
-      });
+      map.fitBounds(bounds, { padding: framePadding(), maxZoom: 15, duration: 700 });
     }
   }, [routeGeometry, userLocation, ready]);
 
-  // Re-center when the center changes — but the route's fitBounds owns the view
-  // whenever a route is present, so don't fight it.
+  // Frame the view. A route (above) owns the view when present. Otherwise, frame
+  // all hospital pins so the map opens showing every result rather than a fixed
+  // center with most pins off-screen. Refit on a genuinely new result set (the
+  // top result changes) but NOT on "load more" (same top result, appended) or on
+  // pan/zoom. With a user location we defer to the center/route flow instead.
+  const lastTopIdRef = useRef<string | null>(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     if (routeGeometry && routeGeometry.length > 1) return;
+
+    const topId = hospitals[0]?.id ?? null;
+    const isNewSet = topId !== lastTopIdRef.current;
+    lastTopIdRef.current = topId;
+
+    const coords = hospitals
+      .filter((h) => typeof h.latitude === 'number' && typeof h.longitude === 'number')
+      .map((h) => [h.longitude as number, h.latitude as number] as [number, number]);
+
+    if (!userLocation && isNewSet && coords.length > 0) {
+      const bounds = new maplibregl.LngLatBounds();
+      coords.forEach((c) => bounds.extend(c));
+      map.fitBounds(bounds, { padding: framePadding(), maxZoom: 14, duration: 600 });
+      return;
+    }
     map.easeTo({ center: [center.lng, center.lat], duration: 500 });
-  }, [center.lat, center.lng, ready, routeGeometry]);
+  }, [center.lat, center.lng, hospitals, userLocation, ready, routeGeometry]);
 
   return (
     <div ref={containerRef} data-testid="maplibre-map" style={{ width: '100%', height: '100%' }} />
