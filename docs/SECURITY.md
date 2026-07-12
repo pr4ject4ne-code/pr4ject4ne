@@ -170,12 +170,13 @@ Previously-deferred items now **done** and verified present in code: CR2 (COUNT 
 - **Login-attempt keying:** the login limiter keys on email only, so a knowing
   attacker can burn a victim's budget (lockout DoS), and successful logins count
   toward the limit. A robust fix needs the per-IP dimension above.
-- **IHN "emergency sharing" is not actually reachable:** `/api/biodata/[userId]`
-  requires `session.user_id === paramUserId`, so no relative can present someone
-  else's IHN to read their biodata — the IHN currently only second-gates the
-  owner's own data (which `/api/biodata/me` already returns without it). Either
-  build a real cross-user shared-access endpoint (with its own strict rate-limit +
-  audit) or drop the "shareable" framing from the UI/Terms. **Founder decision.**
+- **IHN cross-user access — intentionally deferred (founder decision, 2026-07-12):**
+  no deep sharing in v1. The IHN mechanism stays in place as scaffolding for a
+  future *emergency / info-access* model whose restrictions and permissions are
+  deliberately left open, to be solidified in a later phase. Today
+  `/api/biodata/[userId]` still requires `session.user_id === paramUserId`, so the
+  IHN only second-gates the owner's own data; a real non-owner emergency-access
+  endpoint (with its own strict rate-limit + audit) is future work, not a v1 gap.
 - **Dependency advisories:** 2 **moderate** transitive `postcss` advisories remain
   (build-time only, not reachable at runtime). Clears with Next 16. CI gates on
   `--audit-level=critical`, so these don't block builds.
