@@ -74,5 +74,6 @@ here. The public hospital-profile page flags which kind a listing is.
   (no "media but not delete" granularity).
 - No bulk import (e.g. doctor rosters).
 - No notifications (new rating posted, announcement expiring).
-- Image upload storage deferred: endpoints accept URLs; add file type/size
-  validation when real storage is wired.
+- Photos/logo are uploaded via `POST /api/uploads` → Supabase Storage (type +
+  ≤5 MB validated, scoped under `hospitals/<hospital_id>/`), with URL entry as a
+  fallback. Uploads degrade to 503 + URL-only when `SUPABASE_*` env is unset.

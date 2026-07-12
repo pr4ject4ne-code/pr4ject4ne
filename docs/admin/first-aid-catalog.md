@@ -37,12 +37,13 @@ plus `images` (an array of URLs).
 
 ## Image handling
 
-Image storage is **deferred** in v1 — the endpoints accept URL strings (local FS in
-dev; S3/server later). Every image URL is passed through `safeHttpUrl()`, so only
-`http(s)` URLs survive; `javascript:`/`data:` URLs are dropped before they can reach
-an `<img src>` sink. Max 10 images per entry. When real upload storage is wired,
-add file-type (jpeg/png/webp) and size (≤5 MB) validation at the write path — this
-is the current `TODO` in the create/edit routes.
+Images are uploaded via `POST /api/uploads` (multipart `file`) → Supabase Storage,
+which returns a public URL saved on the entry. The upload endpoint validates type
+(JPEG/PNG/WebP) and size (≤5 MB), rate-limits per uploader, and namespaces
+first-aid images under a `first-aid/` prefix. Pasting a URL still works as a
+fallback. Every stored URL is additionally passed through `safeHttpUrl()`, so only
+`http(s)` URLs reach an `<img src>` sink. Max 10 images per entry. When
+`SUPABASE_*` env is unset, uploads return 503 and only URL entry is available.
 
 ## Security notes
 

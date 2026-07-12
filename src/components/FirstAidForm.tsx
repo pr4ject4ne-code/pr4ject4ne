@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Input from './Input';
 import Dropdown from './Dropdown';
 import Button from './Button';
+import { uploadFile } from '@/lib/upload-client';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
 import styles from './FirstAidForm.module.css';
 
@@ -61,9 +62,27 @@ interface FirstAidFormProps {
 export default function FirstAidForm({ entry, onSubmit, submitting, error }: FirstAidFormProps) {
   const [values, setValues] = useState<FirstAidFormValues>(() => fromEntry(entry));
   const [imagesText, setImagesText] = useState(values.images.join('\n'));
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   function set<K extends keyof FirstAidFormValues>(key: K, v: FirstAidFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: v }));
+  }
+
+  async function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const url = await uploadFile(file);
+      setImagesText((prev) => (prev.trim() ? `${prev.trim()}\n${url}` : url));
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function submit(e: React.FormEvent) {
@@ -106,15 +125,26 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
       ))}
 
       <div className={styles.field}>
-        {/* TODO: replace URL list with real upload when S3/server storage is wired. */}
-        <label htmlFor="fa-images">Image URLs (one per line)</label>
+        <label htmlFor="fa-images">Images</label>
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={onPickImage}
+          disabled={uploading}
+          aria-label="Upload image file"
+        />
         <textarea
           id="fa-images"
           value={imagesText}
           onChange={(e) => setImagesText(e.target.value)}
           rows={3}
-          placeholder="/uploads/example.jpg"
+          placeholder={uploading ? 'Uploading…' : 'Uploaded image URLs appear here (one per line); you can also paste URLs'}
         />
+        {uploadError && (
+          <p role="alert" style={{ color: 'var(--color-danger, #c0392b)', fontSize: '0.85rem' }}>
+            {uploadError}
+          </p>
+        )}
       </div>
 
       {error && (

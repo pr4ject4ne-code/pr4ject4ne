@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Button from './Button';
 import Modal from './Modal';
+import { uploadFile } from '@/lib/upload-client';
 import type { HospitalPhoto } from '@/types';
 import styles from './PhotoUpload.module.css';
 
@@ -20,8 +21,8 @@ interface PhotoUploadProps {
 }
 
 /**
- * Manage up to 5 hospital photos. TODO: replace URL entry with a real file
- * upload (validate type/size, store to S3/server) once infra is ready.
+ * Manage up to 5 hospital photos. Photos can be uploaded from the device (stored
+ * via /api/uploads → object storage) or added by URL as a fallback.
  */
 export default function PhotoUpload({ photos, onSave, saving }: PhotoUploadProps) {
   const [items, setItems] = useState<HospitalPhoto[]>(photos);
@@ -29,6 +30,8 @@ export default function PhotoUpload({ photos, onSave, saving }: PhotoUploadProps
   const [caption, setCaption] = useState('');
   const [slot, setSlot] = useState<HospitalPhoto['slot']>('other');
   const [confirmRemove, setConfirmRemove] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   function add() {
     if (!url.trim() || items.length >= 5) return;
@@ -36,6 +39,21 @@ export default function PhotoUpload({ photos, onSave, saving }: PhotoUploadProps
     setUrl('');
     setCaption('');
     setSlot('other');
+  }
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      setUrl(await uploadFile(file));
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setUploading(false);
+    }
   }
 
   function remove(index: number) {
@@ -63,8 +81,15 @@ export default function PhotoUpload({ photos, onSave, saving }: PhotoUploadProps
       {items.length < 5 && (
         <div className={styles.addRow}>
           <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={onPick}
+            disabled={uploading}
+            aria-label="Upload image file"
+          />
+          <input
             type="url"
-            placeholder="Image URL"
+            placeholder={uploading ? 'Uploading…' : 'or paste an image URL'}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             aria-label="Image URL"
@@ -87,10 +112,16 @@ export default function PhotoUpload({ photos, onSave, saving }: PhotoUploadProps
               </option>
             ))}
           </select>
-          <Button variant="ghost" onClick={add}>
+          <Button variant="ghost" onClick={add} disabled={uploading || !url.trim()}>
             Add
           </Button>
         </div>
+      )}
+
+      {uploadError && (
+        <p role="alert" style={{ color: 'var(--color-danger, #c0392b)', fontSize: '0.85rem' }}>
+          {uploadError}
+        </p>
       )}
 
       <div className={styles.saveRow}>
