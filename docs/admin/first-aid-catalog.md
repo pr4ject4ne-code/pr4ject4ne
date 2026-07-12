@@ -8,9 +8,9 @@ Read [README.md](README.md) first for auth/access levels. Design spec:
 
 - The catalog is **developer-managed, publicly read-only**. The public browses at
   `/first-aid` and `/first-aid/[id]`; only developers create/edit/delete.
-- Access: **any** logged-in developer may create entries and edit/delete **their
-  own**. An `admin` may edit/delete **any** entry (ownership is by
-  `created_by_dev_id`).
+- Access: **both developer levels** (primary + secondary) may create, edit, and
+  delete **any** entry — the First Aid catalog is a shared operational surface.
+  `created_by_dev_id` is retained for attribution only, not as an edit gate.
 - Every entry is a `procedure` or a `technique` (`category`).
 - Content disclaimer ("Educational reference only, not legal medical advice…")
   is displayed on all public first-aid pages and in the Terms — the catalog is not
@@ -32,8 +32,8 @@ plus `images` (an array of URLs).
 | `GET` | `/api/first-aid/entries` | Public | List/browse (paginated, searchable). |
 | `GET` | `/api/first-aid/entries/[id]` | Public | Single entry detail. 404 on bad UUID. |
 | `POST` | `/api/first-aid/entries/create` | Developer | Create. Rate-limited `first_aid_upload:<devId>` → 10 / hour. Title & valid category required. Emits `first_aid_upload`. |
-| `PATCH` | `/api/first-aid/entries/[id]` | Owner or admin | Partial update; only supplied fields change. `403` if you didn't create it and aren't admin. Emits `first_aid_edit` with the changed field names. |
-| `DELETE` | `/api/first-aid/entries/[id]` | Owner or admin | Hard delete. `403` for non-owner non-admin. Emits `first_aid_delete`. |
+| `PATCH` | `/api/first-aid/entries/[id]` | Any developer | Partial update; only supplied fields change. 404 on unknown id. Emits `first_aid_edit` with the changed field names. |
+| `DELETE` | `/api/first-aid/entries/[id]` | Any developer | Hard delete. 404 on unknown id. Emits `first_aid_delete`. |
 
 ## Image handling
 

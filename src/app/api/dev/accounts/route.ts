@@ -1,15 +1,15 @@
 import { randomBytes } from 'node:crypto';
 import { query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
-import { getDevUser, isAdmin } from '@/lib/dev-auth';
+import { getDevUser, isPrimary } from '@/lib/dev-auth';
 import { hashPassword } from '@/lib/auth';
 import { isValidEmail } from '@/lib/validation';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 
-/** GET — list developer accounts (admin only). */
+/** GET — list developer (primary + secondary) accounts. Primary only. */
 export async function GET() {
   const dev = await getDevUser();
-  if (!dev || !isAdmin(dev)) return apiError('Forbidden.', 'FORBIDDEN', 403);
+  if (!dev || !isPrimary(dev)) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const { rows } = await query(
     `SELECT id, email, access_level, is_active, last_login, created_at
@@ -20,24 +20,24 @@ export async function GET() {
 
 interface CreateBody {
   email?: string;
-  access_level?: string;
 }
 
 /**
- * POST — create a developer account (admin only). Generates a strong temporary
- * password, returns it ONCE (never stored in plaintext), and the dev must save it.
+ * POST — create a level-2 **secondary** developer (primary only). Primary is the
+ * only creator of secondaries, and this route only ever mints 'secondary' — a
+ * second primary is never created through the app. Generates a strong temporary
+ * password, returns it ONCE (never stored in plaintext); the new dev sets their
+ * own from the dev page afterward.
  */
 export async function POST(req: Request) {
   const dev = await getDevUser();
-  if (!dev || !isAdmin(dev)) return apiError('Forbidden.', 'FORBIDDEN', 403);
+  if (!dev || !isPrimary(dev)) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const body = await readJson<CreateBody>(req);
   if (!body) return apiError('Invalid request body.', 'BAD_REQUEST', 400);
 
   const email = typeof body.email === 'string' ? body.email.trim() : '';
   if (!isValidEmail(email)) return apiError('Invalid email.', 'INVALID_EMAIL', 400);
-
-  const accessLevel = body.access_level === 'admin' ? 'admin' : 'first_aid_editor';
 
   // Strong random temp password shown once.
   const tempPassword = randomBytes(12).toString('base64url');
@@ -46,8 +46,8 @@ export async function POST(req: Request) {
   try {
     const { rows } = await query<{ id: string }>(
       `INSERT INTO users (email, password_hash, account_type, access_level, created_by)
-       VALUES ($1, $2, 'developer', $3, $4) RETURNING id`,
-      [email, passwordHash, accessLevel, dev.id],
+       VALUES ($1, $2, 'developer', 'secondary', $3) RETURNING id`,
+      [email, passwordHash, dev.id],
     );
     const id = rows[0]!.id;
     await logAudit({
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       action: 'dev_account_change',
       resourceType: 'user',
       resourceId: id,
-      details: { op: 'create', email, access_level: accessLevel },
+      details: { op: 'create', email, access_level: 'secondary' },
       ip: clientIpFrom(req.headers),
     });
     return apiOk({ success: true, id, temp_password: tempPassword }, 201);
@@ -74,10 +74,10 @@ interface PatchBody {
   action?: 'revoke' | 'reactivate' | 'reset_password';
 }
 
-/** PATCH — revoke/reactivate an account or reset its password (admin only). */
+/** PATCH — revoke/reactivate a developer account or reset its password (primary only). */
 export async function PATCH(req: Request) {
   const dev = await getDevUser();
-  if (!dev || !isAdmin(dev)) return apiError('Forbidden.', 'FORBIDDEN', 403);
+  if (!dev || !isPrimary(dev)) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const body = await readJson<PatchBody>(req);
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

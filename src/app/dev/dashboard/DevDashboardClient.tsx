@@ -36,7 +36,7 @@ export default function DevDashboardClient() {
           </p>
           <Link href="/dev/first-aid">Manage entries →</Link>
         </Card>
-        {dev?.is_admin && (
+        {dev?.is_primary && (
           <Card>
             <h2 style={{ fontSize: '1.1rem', marginTop: 0 }}>Admin</h2>
             <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem' }}>

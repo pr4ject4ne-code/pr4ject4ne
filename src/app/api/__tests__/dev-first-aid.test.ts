@@ -75,19 +75,20 @@ describe('POST /api/first-aid/entries/create', () => {
 describe('DELETE /api/first-aid/entries/[id]', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('403 when the dev does not own the entry and is not admin', async () => {
-    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'first_aid_editor' });
-    mockQueryOne.mockResolvedValue({ created_by_dev_id: 'other-dev' });
-    const res = await DELETE(new Request('http://localhost'), { params: Promise.resolve({ id: ENTRY_ID }) });
-    expect(res.status).toBe(403);
-  });
-
-  it('allows admin to delete any entry', async () => {
-    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'admin' });
-    mockQueryOne.mockResolvedValue({ created_by_dev_id: 'other-dev' });
+  it('allows any developer (secondary) to delete an entry they did not create', async () => {
+    // Both dev levels manage the whole catalog now — no per-entry ownership gate.
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'secondary' });
+    mockQueryOne.mockResolvedValue({ id: ENTRY_ID });
     mockQuery.mockResolvedValue({ rows: [] });
     const res = await DELETE(new Request('http://localhost'), { params: Promise.resolve({ id: ENTRY_ID }) });
     expect(res.status).toBe(200);
+  });
+
+  it('404 when the entry does not exist', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'primary' });
+    mockQueryOne.mockResolvedValue(null);
+    const res = await DELETE(new Request('http://localhost'), { params: Promise.resolve({ id: ENTRY_ID }) });
+    expect(res.status).toBe(404);
   });
 });
 
@@ -109,29 +110,28 @@ describe('PATCH /api/first-aid/entries/[id]', () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  it('403 when a non-owner non-admin dev edits the entry', async () => {
-    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'first_aid_editor' });
-    mockQueryOne.mockResolvedValue({ created_by_dev_id: 'other-dev' });
-    const res = await PATCH(patchReq({ title: 'Hijack' }), { params: Promise.resolve({ id: ENTRY_ID }) });
-    expect(res.status).toBe(403);
-    // Blocked before any UPDATE runs.
-    expect(mockQuery).not.toHaveBeenCalled();
-  });
-
-  it('allows the owning dev to edit their own entry', async () => {
-    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'first_aid_editor' });
-    mockQueryOne.mockResolvedValue({ created_by_dev_id: 'dev1' });
+  it('allows any developer (secondary) to edit an entry they did not create', async () => {
+    // Both dev levels manage the whole catalog now — no per-entry ownership gate.
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'secondary' });
+    mockQueryOne.mockResolvedValue({ id: ENTRY_ID });
     mockQuery.mockResolvedValue({ rows: [] });
-    const res = await PATCH(patchReq({ title: 'Updated CPR' }), { params: Promise.resolve({ id: ENTRY_ID }) });
+    const res = await PATCH(patchReq({ title: 'Updated' }), { params: Promise.resolve({ id: ENTRY_ID }) });
     expect(res.status).toBe(200);
     expect(mockQuery).toHaveBeenCalled();
   });
 
-  it('allows an admin to edit any entry', async () => {
-    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'admin' });
-    mockQueryOne.mockResolvedValue({ created_by_dev_id: 'other-dev' });
+  it('allows a primary dev to edit any entry', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'primary' });
+    mockQueryOne.mockResolvedValue({ id: ENTRY_ID });
     mockQuery.mockResolvedValue({ rows: [] });
-    const res = await PATCH(patchReq({ title: 'Admin edit' }), { params: Promise.resolve({ id: ENTRY_ID }) });
+    const res = await PATCH(patchReq({ title: 'Primary edit' }), { params: Promise.resolve({ id: ENTRY_ID }) });
     expect(res.status).toBe(200);
+  });
+
+  it('404 when editing an entry that does not exist', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'secondary' });
+    mockQueryOne.mockResolvedValue(null);
+    const res = await PATCH(patchReq({ title: 'x' }), { params: Promise.resolve({ id: ENTRY_ID }) });
+    expect(res.status).toBe(404);
   });
 });

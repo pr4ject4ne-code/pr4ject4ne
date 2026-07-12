@@ -17,7 +17,9 @@ export type AuditAction =
   | 'first_aid_edit'
   | 'first_aid_delete'
   | 'dev_account_change'
+  | 'tertiary_account_change'
   | 'suggestion_review'
+  | 'password_change'
   | 'login'
   | 'login_failed'
   | 'logout';

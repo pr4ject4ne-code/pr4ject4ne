@@ -10,51 +10,63 @@ Design specs: [`docs/pages/primary-dev-page.md`](../pages/primary-dev-page.md).
 
 | URL | Purpose | Access |
 | --- | --- | --- |
-| `/dev/login` | Developer login form | Any developer |
-| `/dev/dashboard` | Landing hub after login; links to First Aid, and (admins only) the Admin hub | Any developer |
-| `/dev/primary` | Admin hub: developer accounts, audit log, suggestions | `admin` only |
+| `/login` | **Unified login** — the single entry for all account types | Everyone |
+| `/dev/dashboard` | Landing hub after login; links to First Aid, and (primary only) the Admin hub | Any developer |
+| `/dev/primary` | Admin hub: developer accounts, audit log, suggestions | `primary` only |
 
 The portal renders inside `DevShell` (`src/app/dev/DevShell.tsx`) — a self-contained
 chrome with **no links back into the public site**. The dashboard only surfaces the
-"Admin" card when the signed-in developer is an admin (`dev.is_admin`), but the real
-gate is server-side: `/dev/primary`'s data endpoints all re-check `isAdmin`.
+"Admin" card when the signed-in developer is primary (`dev.is_primary`), but the real
+gate is server-side: `/dev/primary`'s data endpoints all re-check `isPrimary`.
+`/dev/login` still exists but just redirects to `/login`.
 
-## Login — `POST /api/dev/login`
+## Login (unified) — `POST /api/auth/login`
 
-Body: `{ email, password }`. Rate-limited `dev_login:<email>` → 5 / 5 min. Rejects
-any account whose `account_type` is not `developer` before checking the password,
-and rejects inactive accounts. On success sets `racoon_dev_session`, updates
-`last_login`, and emits a `login` audit event. Failures emit `login_failed` and
-return a generic 401.
+Everyone — patient, developer, tertiary — signs in at `/login`. Body
+`{ email, password }`, rate-limited `login:<email>` → 10 / 5 min. On success the
+response includes `account_type`, `access_level`, and a `redirect`; the developer
+case sets `racoon_dev_session` and lands on `/dev/dashboard`. bcrypt runs on the
+miss path too (timing equalization). Failures emit `login_failed` and return a
+generic 401. *Only a developer credential opens dev pages* — the pages check the
+dev session, so the shared entry form doesn't weaken that.
 
-Session check: `GET /api/dev/session` → `{ authenticated, email, access_level }`.
-Logout: `POST /api/dev/logout` (deletes the session row and clears the cookie).
+Session check: `GET /api/dev/session` → `{ authenticated, email, access_level,
+is_primary, is_secondary }`. Logout: `POST /api/dev/logout`.
 
 ## Admin hub — `/dev/primary`
 
-All three sections below are **admin-only** (`403 FORBIDDEN` for a
-`first_aid_editor`), except suggestions which any developer may review.
+Developer-account management is **primary-only** (`403 FORBIDDEN` for a secondary).
+Suggestions and the audit log are available to any developer (secondaries monitor
+the system).
 
-### 1. Developer account management — `/api/dev/accounts`
+### 1. Developer account management — `/api/dev/accounts` (primary only)
 
 | Method | Action | Notes |
 | --- | --- | --- |
 | `GET` | List developer accounts | Returns id, email, access_level, is_active, last_login, created_at. No password hashes. |
-| `POST` | Create a developer | Body `{ email, access_level }`. `access_level` is `admin` or (default) `first_aid_editor`. Generates a strong temp password and returns it **once** in `temp_password` — it is never stored in plaintext and cannot be retrieved again. Duplicate email → `409 EMAIL_EXISTS`. |
-| `PATCH` | `revoke` / `reactivate` / `reset_password` | Body `{ id, action }`. `revoke` sets `is_active=false` **and deletes all of that user's sessions** (immediate logout). `reset_password` issues a new temp password (returned once) and also kills sessions. You cannot revoke your own account. |
+| `POST` | Create a **secondary** developer | Body `{ email }`. Always mints `access_level='secondary'` — a second primary is never created through the app. Returns a strong temp password **once** in `temp_password`. Duplicate email → `409 EMAIL_EXISTS`. |
+| `PATCH` | `revoke` / `reactivate` / `reset_password` | Body `{ id, action }`. `revoke` sets `is_active=false` **and deletes all that user's sessions**. `reset_password` issues a new temp password (once) and kills sessions. You cannot revoke your own account. 404 on an unknown id. |
 
-Every account change writes a `dev_account_change` audit row with the operation and
-target. Temp passwords are `randomBytes(12).toString('base64url')` — share them over
-a secure channel; the recipient should change theirs after first login (there is no
-forced-rotation flow in v1 — track this if it matters).
+### 1b. Tertiary provisioning — `/api/dev/tertiary` (any developer)
 
-### 2. Audit log — `GET /api/dev/audit-logs`
+Secondaries (and primary) create/oversee level-3 **hospital_staff** accounts.
+
+| Method | Action | Notes |
+| --- | --- | --- |
+| `GET` | List tertiary accounts | Optional `?hospital_id=`; paginated. |
+| `POST` | Create a tertiary | Body `{ email, hospital_id }`. The hospital must exist (404 otherwise). Creates a `hospital_staff` user linked to that `hospital_id`, `verified=true`, and returns a one-time temp password. Duplicate email → 409. |
+| `PATCH` | `revoke` / `reactivate` / `reset_password` | Body `{ id, action }`. Same semantics as dev accounts; scoped to `hospital_staff`. |
+
+Every change writes a `dev_account_change` (developers) or `tertiary_account_change`
+(institution staff) audit row. Temp passwords are one-time; the new holder sets
+their own via `PATCH /api/account/password` (email is not editable).
+
+### 2. Audit log — `GET /api/dev/audit-logs` (any developer)
 
 Searchable, paginated (`limit` default 50, max 200; `offset`). Optional filters:
 `action` (matches `action_type`) and `resource_type`. Ordered newest-first. Returns
-`{ logs, total, limit, offset }`. Admin-only. No count cap here (unlike public
-endpoints) because it isn't a public DoS surface. See the action-type list in
-[README.md](README.md#audit-logging).
+`{ logs, total, limit, offset }`. No count cap here (not a public DoS surface). See
+the action-type list in [README.md](README.md#audit-logging).
 
 ### 3. Suggestions — `/api/dev/suggestions`
 
@@ -73,10 +85,11 @@ hospital record.
 
 ## Access-level cheatsheet
 
-- `admin` — accounts, audit log, suggestions, first-aid, edit/delete **any**
-  first-aid entry.
-- `first_aid_editor` — first-aid (own entries), suggestions. `403` on accounts and
-  audit log.
+- `primary` — developer accounts (create secondary, revoke/reset), tertiary
+  provisioning, audit log, suggestions, and full First Aid management.
+- `secondary` — tertiary provisioning, audit log (monitor), suggestions, and full
+  First Aid management (both levels can edit/delete **any** entry). `403` on
+  developer-account management (`/api/dev/accounts`).
 
 ## Security notes
 
@@ -95,5 +108,8 @@ hospital record.
   segregated hardened session, rate limiting, full audit trail, disconnection.
 - No IP allow-listing.
 - No forced temp-password rotation or credential-expiry policy.
-- Access-level taxonomy is fixed to two roles (`admin`, `first_aid_editor`); the
-  spec's general "access type management" is not built.
+- Access-level taxonomy is fixed to `primary` / `secondary` (+ tertiary via
+  `hospital_staff`); finer-grained per-feature "access types" are not built.
+- The single-primary invariant is a convention (the app never mints a second
+  primary), not a DB constraint — a second primary can only exist via the bootstrap
+  script or a manual DB change.

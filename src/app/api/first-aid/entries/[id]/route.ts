@@ -1,6 +1,6 @@
 import { query, queryOne } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
-import { getDevUser, isAdmin } from '@/lib/dev-auth';
+import { getDevUser } from '@/lib/dev-auth';
 import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
@@ -36,13 +36,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!dev) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const entry = await queryOne<FirstAidEntry>(
-    `SELECT created_by_dev_id FROM first_aid_entries WHERE id = $1`,
+    `SELECT id FROM first_aid_entries WHERE id = $1`,
     [(await params).id],
   );
   if (!entry) return apiError('Not found.', 'NOT_FOUND', 404);
-  if (entry.created_by_dev_id !== dev.id && !isAdmin(dev)) {
-    return apiError('You can only edit entries you created.', 'FORBIDDEN', 403);
-  }
 
   const body = await readJson<Record<string, unknown>>(req);
   if (!body) return apiError('Invalid request body.', 'BAD_REQUEST', 400);
@@ -97,13 +94,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (!dev) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const entry = await queryOne<FirstAidEntry>(
-    `SELECT created_by_dev_id FROM first_aid_entries WHERE id = $1`,
+    `SELECT id FROM first_aid_entries WHERE id = $1`,
     [(await params).id],
   );
   if (!entry) return apiError('Not found.', 'NOT_FOUND', 404);
-  if (entry.created_by_dev_id !== dev.id && !isAdmin(dev)) {
-    return apiError('You can only delete entries you created.', 'FORBIDDEN', 403);
-  }
 
   await query('DELETE FROM first_aid_entries WHERE id = $1', [(await params).id]);
   await logAudit({

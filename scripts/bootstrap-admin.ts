@@ -14,9 +14,14 @@
  *   BOOTSTRAP_ADMIN_EMAIL     required — the admin's login email
  *   BOOTSTRAP_ADMIN_PASSWORD  required — must satisfy the app password policy
  *
+ * Creates the level-1 **primary** developer (the executive account that manages
+ * all other levels). The password policy is intentionally NOT enforced here — the
+ * bootstrap value is meant to be rotated from the dev page after first login — but
+ * a weak one is warned about.
+ *
  * Behaviour is idempotent and safe to re-run:
- *   - No user with that email        → creates a new admin developer.
- *   - Existing *developer*           → promotes to admin, reactivates, and
+ *   - No user with that email        → creates a new primary developer.
+ *   - Existing *developer*           → promotes to primary, reactivates, and
  *                                       resets the password to the supplied one.
  *   - Existing patient/hospital user → refuses (won't hijack another account).
  *
@@ -47,10 +52,15 @@ async function main() {
     console.error('BOOTSTRAP_ADMIN_EMAIL is missing or not a valid email address.');
     process.exit(1);
   }
+  if (!password || password.length < 6) {
+    console.error('BOOTSTRAP_ADMIN_PASSWORD is missing or shorter than 6 characters.');
+    process.exit(1);
+  }
   const strength = validatePasswordStrength(password);
   if (!strength.ok) {
-    console.error(`BOOTSTRAP_ADMIN_PASSWORD rejected: ${strength.reason}`);
-    process.exit(1);
+    // Not fatal for the bootstrap — this account rotates its password in-app —
+    // but make the weakness loud.
+    console.warn(`WARNING: bootstrap password is weak (${strength.reason}). Rotate it after first login.`);
   }
 
   const pool = new Pool({ connectionString });
@@ -73,21 +83,21 @@ async function main() {
       }
       await pool.query(
         `UPDATE users
-         SET access_level = 'admin', is_active = TRUE, password_hash = $2
+         SET access_level = 'primary', is_active = TRUE, password_hash = $2
          WHERE id = $1`,
         [user.id, passwordHash],
       );
       // Invalidate any live sessions so the reset password takes effect everywhere.
       await pool.query('DELETE FROM sessions WHERE user_id = $1', [user.id]);
-      console.warn(`Promoted existing developer ${email} to admin and reset its password.`);
+      console.warn(`Promoted existing developer ${email} to primary and reset its password.`);
     } else {
       const { rows } = await pool.query<{ id: string }>(
         `INSERT INTO users (email, password_hash, account_type, access_level, is_active)
-         VALUES ($1, $2, 'developer', 'admin', TRUE)
+         VALUES ($1, $2, 'developer', 'primary', TRUE)
          RETURNING id`,
         [email, passwordHash],
       );
-      console.warn(`Created admin developer ${email} (id ${rows[0]!.id}).`);
+      console.warn(`Created primary developer ${email} (id ${rows[0]!.id}).`);
     }
 
     // Record the bootstrap in the audit trail (self-referential: the admin acted).
@@ -102,7 +112,7 @@ async function main() {
       [adminId, adminId, JSON.stringify({ op: 'bootstrap_admin', email })],
     );
 
-    console.warn('Done. Log in at /dev/login, then manage accounts at /dev/primary.');
+    console.warn('Done. Log in at /login, then manage accounts at /dev/primary.');
   } finally {
     await pool.end();
   }

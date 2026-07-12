@@ -24,10 +24,14 @@ owned by the security-auditor agent; this file is the builder-maintained summary
     token replayed on the patient cookie).
   - `racoon_hospital_session` — hospital staff (`getHospitalStaff`).
   - `racoon_dev_session` — developers (`getDevSession`/`getDevUser`).
-- **Login portals are segregated:** `/api/auth/login`, `/api/hospital/login`, and
-  `/api/dev/login` each reject accounts whose `account_type` does not match the
-  portal, *before* the password check. A patient credential cannot authenticate at
-  the dev or hospital portal, and vice versa.
+- **Unified login entry, per-type sessions:** everyone signs in at `/login`
+  (`/api/auth/login`); the account's own `account_type` decides which session cookie
+  is issued and where it lands. Authorization is still enforced downstream — a
+  patient credential issues only a patient session and can never open a dev or
+  institution page (those pages check the matching session type). The legacy
+  `/api/dev/login` and `/api/hospital/login` endpoints remain for API clients and
+  still reject a mismatched `account_type` before the password check. See the
+  three-level access model in [`docs/admin/README.md`](admin/README.md).
 - **No user enumeration:** every login failure (unknown email, wrong password,
   inactive account, misconfigured staff) returns the same generic
   `Invalid email or password.` / 401 and emits a `login_failed` audit event.

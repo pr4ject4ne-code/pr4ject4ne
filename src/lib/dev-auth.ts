@@ -34,9 +34,22 @@ export async function getDevUser(): Promise<User | null> {
   return user;
 }
 
-/** True when the developer has admin (primary-dev) access. */
+/** Level-1 executive: manages all levels, creates secondary accounts. */
+export function isPrimary(user: User): boolean {
+  return user.access_level === 'primary';
+}
+
+/** Level-2 operational: creates tertiary accounts, edits First Aid, monitors. */
+export function isSecondary(user: User): boolean {
+  return user.access_level === 'secondary';
+}
+
+/**
+ * Back-compat alias — "admin" now means the primary level. Kept so existing
+ * callers that gate first-aid edit/delete on admin-override keep working.
+ */
 export function isAdmin(user: User): boolean {
-  return user.access_level === 'admin';
+  return isPrimary(user);
 }
 
 export async function destroyDevSession(): Promise<void> {

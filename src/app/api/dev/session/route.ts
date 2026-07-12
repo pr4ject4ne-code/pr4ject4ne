@@ -1,7 +1,7 @@
-import { getDevUser, isAdmin } from '@/lib/dev-auth';
+import { getDevUser, isPrimary, isSecondary } from '@/lib/dev-auth';
 import { apiError, apiOk } from '@/lib/api';
 
-/** Returns the current developer (for portal hydration). */
+/** Returns the current developer + level capabilities (for portal hydration). */
 export async function GET() {
   const user = await getDevUser();
   if (!user) return apiError('Not authenticated.', 'UNAUTHENTICATED', 401);
@@ -11,7 +11,10 @@ export async function GET() {
       id: user.id,
       email: user.email,
       access_level: user.access_level,
-      is_admin: isAdmin(user),
+      is_primary: isPrimary(user),
+      is_secondary: isSecondary(user),
+      // Back-compat for any client still reading is_admin.
+      is_admin: isPrimary(user),
     },
   });
 }

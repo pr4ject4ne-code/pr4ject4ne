@@ -59,7 +59,9 @@ export default function LoginForm() {
         setIhn(data.ihn_code);
         return;
       }
-      router.push('/dashboard');
+      // Unified login routes by account type: patients → dashboard, developers →
+      // dev portal, hospital staff → institution portal.
+      router.push(data.redirect ?? '/dashboard');
     } catch {
       setServerError('Network error. Please try again.');
     } finally {

@@ -20,7 +20,7 @@ export default function HospitalShell({
 
   async function logout() {
     await fetch('/api/hospital/logout', { method: 'POST' });
-    router.push('/hospital/login');
+    router.push('/login');
   }
 
   return (

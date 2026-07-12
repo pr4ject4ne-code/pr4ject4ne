@@ -25,7 +25,8 @@ export default function DevFirstAidClient() {
     const data = await res.json();
     setEntries(data.entries ?? []);
     setDevId(data.dev_id ?? null);
-    setIsAdmin(data.is_admin ?? false);
+    // Both developer levels manage the whole catalog now.
+    setIsAdmin(data.can_edit_all ?? false);
   }, []);
 
   useEffect(() => {

@@ -3,9 +3,9 @@
  * @/lib/auth boundary (getSession / findUserById) that dev-auth calls across a
  * module boundary, plus next/headers cookies(), and exercise the real dev-auth
  * logic: only account_type 'developer', active accounts, and live sessions pass;
- * isAdmin is true only for access_level 'admin'.
+ * level helpers reflect the primary/secondary model.
  */
-import { getDevSession, getDevUser, isAdmin } from '@/lib/dev-auth';
+import { getDevSession, getDevUser, isPrimary, isSecondary, isAdmin } from '@/lib/dev-auth';
 import type { User } from '@/types';
 
 const mockGetSession = jest.fn();
@@ -30,7 +30,7 @@ function devUser(overrides: Partial<User> = {}): User {
     email: 'dev@test.com',
     account_type: 'developer',
     is_active: true,
-    access_level: 'first_aid_editor',
+    access_level: 'secondary',
     ...overrides,
   } as User;
 }
@@ -82,10 +82,20 @@ describe('getDevUser', () => {
   });
 });
 
-describe('isAdmin', () => {
-  it('is true only for access_level admin', () => {
-    expect(isAdmin(devUser({ access_level: 'admin' }))).toBe(true);
-    expect(isAdmin(devUser({ access_level: 'first_aid_editor' }))).toBe(false);
-    expect(isAdmin(devUser({ access_level: undefined }))).toBe(false);
+describe('level helpers', () => {
+  it('isPrimary is true only for access_level primary', () => {
+    expect(isPrimary(devUser({ access_level: 'primary' }))).toBe(true);
+    expect(isPrimary(devUser({ access_level: 'secondary' }))).toBe(false);
+    expect(isPrimary(devUser({ access_level: undefined }))).toBe(false);
+  });
+
+  it('isSecondary is true only for access_level secondary', () => {
+    expect(isSecondary(devUser({ access_level: 'secondary' }))).toBe(true);
+    expect(isSecondary(devUser({ access_level: 'primary' }))).toBe(false);
+  });
+
+  it('isAdmin is a back-compat alias for primary', () => {
+    expect(isAdmin(devUser({ access_level: 'primary' }))).toBe(true);
+    expect(isAdmin(devUser({ access_level: 'secondary' }))).toBe(false);
   });
 });

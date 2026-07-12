@@ -42,7 +42,7 @@ export default function HospitalDashboardClient() {
   const load = useCallback(async () => {
     const res = await fetch('/api/hospital/session');
     if (res.status === 401) {
-      router.replace('/hospital/login');
+      router.replace('/login');
       return;
     }
     if (res.ok) setData(await res.json());

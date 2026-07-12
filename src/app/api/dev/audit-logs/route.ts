@@ -1,11 +1,12 @@
 import { query } from '@/lib/db';
 import { apiOk, apiError, parseLimit, parseOffset } from '@/lib/api';
-import { getDevUser, isAdmin } from '@/lib/dev-auth';
+import { getDevUser } from '@/lib/dev-auth';
 
-/** GET — searchable/filterable audit log (admin only). */
+/** GET — searchable/filterable audit log. Any developer (primary + secondary
+ * both monitor the system). */
 export async function GET(req: Request) {
   const dev = await getDevUser();
-  if (!dev || !isAdmin(dev)) return apiError('Forbidden.', 'FORBIDDEN', 403);
+  if (!dev) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const url = new URL(req.url);
   const limit = parseLimit(url.searchParams.get('limit'), 50, 200);

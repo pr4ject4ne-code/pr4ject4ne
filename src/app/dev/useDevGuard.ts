@@ -7,10 +7,11 @@ interface DevInfo {
   id: string;
   email: string;
   access_level: string | null;
-  is_admin: boolean;
+  is_primary: boolean;
+  is_secondary: boolean;
 }
 
-/** Redirects to /dev/login if there is no active developer session. */
+/** Redirects to the unified /login if there is no active developer session. */
 export function useDevGuard(): { loading: boolean; dev: DevInfo | null } {
   const router = useRouter();
   const [state, setState] = useState<{ loading: boolean; dev: DevInfo | null }>({
@@ -23,7 +24,7 @@ export function useDevGuard(): { loading: boolean; dev: DevInfo | null } {
     fetch('/api/dev/session')
       .then((res) => {
         if (res.status === 401) {
-          router.replace('/dev/login');
+          router.replace('/login');
           return null;
         }
         return res.ok ? res.json() : null;

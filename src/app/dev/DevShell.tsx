@@ -22,7 +22,7 @@ export default function DevShell({
 
   async function logout() {
     await fetch('/api/dev/logout', { method: 'POST' });
-    router.push('/dev/login');
+    router.push('/login');
   }
 
   return (

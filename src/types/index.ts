@@ -1,6 +1,13 @@
 // Shared domain types for Racoon Eye.
 
 export type AccountType = 'patient' | 'hospital_staff' | 'developer';
+/**
+ * Developer access levels (the three-level dev/admin model):
+ *  - primary   (executive)  — manages all levels, creates secondaries
+ *  - secondary (operational) — creates tertiaries, edits First Aid, monitors
+ * Tertiary is not an access_level — it is the `hospital_staff` account_type.
+ */
+export type AccessLevel = 'primary' | 'secondary';
 export type ServiceType = 'hospital' | 'clinic' | 'pharmacy' | 'radiology' | 'other';
 export type AnnouncementColor = 'green' | 'yellow' | 'red';
 export type FirstAidCategory = 'procedure' | 'technique';

@@ -21,62 +21,71 @@ link to any of these from a public component.** Access control is still enforced
 server-side regardless (see below) — the disconnection is defence-in-depth, not the
 lock itself.
 
+## The three-level model
+
+Dev/admin access has three levels:
+
+| Level | Name | `account_type` / `access_level` | Responsibilities |
+| --- | --- | --- | --- |
+| **1** | **Primary** (executive) | `developer` / `primary` | Manages all levels; grants/revokes; **creates secondary** accounts; full audit/monitor. Currently a single account. |
+| **2** | **Secondary** (operational) | `developer` / `secondary` | **Creates tertiary** accounts; oversees level 3; manages the First Aid catalog; monitors the system. |
+| **3** | **Tertiary** (non-developer) | `hospital_staff` (+ `hospital_id`) | Manages **only its own institution's** outlook (listing, media, hours, announcements, personnel) via the hospital portal. |
+
+**Creation cascade:** Primary creates Secondary; Secondary creates Tertiary. Each
+new account gets a one-time temp password (shown once); the holder then sets their
+own from the dev page. **Email is immutable; passwords are self-editable** via
+`PATCH /api/account/password`.
+
 ## Shared authentication model
 
-All three account kinds live in one `users` table keyed by `account_type`
-(`patient` | `hospital_staff` | `developer`). What separates the portals:
+All account kinds live in one `users` table keyed by `account_type`
+(`patient` | `hospital_staff` | `developer`).
 
-- **Three isolated session cookies**, each bound to a matching `account_type`. A
-  token minted for one portal is rejected by the others:
-  - `racoon_session` — patients
-  - `racoon_hospital_session` — hospital staff
-  - `racoon_dev_session` — developers
+- **Unified login entry:** everyone signs in at **`/login`** with email + password
+  (`POST /api/auth/login`). The account's own type decides which session cookie is
+  set and where it lands (patient → `/dashboard`, developer → `/dev/dashboard`,
+  tertiary → `/hospital/dashboard`). *Only dev credentials open dev pages* — the
+  pages check the session type, so a patient credential can never reach them even
+  though the entry form is shared. The legacy `/api/dev/login` and
+  `/api/hospital/login` endpoints still work for API clients and enforce the same
+  type gate.
+- **Three session cookies**, each bound to a matching `account_type`; a token minted
+  for one is rejected by the other guards:
+  - `racoon_session` — patients · `racoon_hospital_session` — tertiary ·
+    `racoon_dev_session` — developers
 - Cookies are `HttpOnly`, `SameSite=Strict`, `Path=/`, and `Secure` in production.
-- Login portals are **segregated before the password check**: `/api/dev/login` and
-  `/api/hospital/login` reject any account whose `account_type` doesn't match, so a
-  patient credential can never authenticate at a privileged portal, and vice versa.
 - Session tokens are 256-bit random; only their SHA-256 hash is stored. Sessions
   have a 30-minute sliding TTL, hard-capped at 12 hours absolute
-  (`src/lib/auth.ts`).
+  (`src/lib/auth.ts`). Login runs bcrypt on the miss path too, so response time
+  can't enumerate registered emails.
 - No user enumeration: every login failure returns the same generic
   `Invalid email or password.` (401) and emits a `login_failed` audit event.
 
-See [`docs/SECURITY.md`](../SECURITY.md) for the full posture.
+See [`docs/SECURITY.md`](../SECURITY.md) for the full posture. `isPrimary` /
+`isSecondary` (`src/lib/dev-auth.ts`) are the level checks; `isAdmin` is a
+back-compat alias for `isPrimary`.
 
-## Developer access levels
+## Bootstrapping the first primary
 
-Developers carry an `access_level`:
-
-| `access_level` | Can do |
-| --- | --- |
-| `admin` | Everything below **plus** the primary-dev hub: create/revoke/reset developer accounts, view the full audit log. |
-| `first_aid_editor` | Log in, manage the first-aid catalog, review suggestions. Cannot manage developer accounts or read the audit log. |
-
-`isAdmin(user)` (`src/lib/dev-auth.ts`) is the single check; admin-only endpoints
-return `403 FORBIDDEN` for a non-admin developer.
-
-## Bootstrapping the first admin
-
-Every `/api/dev/accounts` operation requires an *existing* admin, so a fresh
-database has no way in. Break the cycle once with the bootstrap script — it reads
-credentials from the environment (never hardcoded, never echoed):
+Every account-creation path requires an *existing* higher level, so a fresh
+database has no way in. Break the cycle once with the bootstrap script (reads
+credentials from the environment, never hardcoded/echoed):
 
 ```sh
 # PowerShell
-$env:BOOTSTRAP_ADMIN_EMAIL='admin@example.com'
-$env:BOOTSTRAP_ADMIN_PASSWORD='<strong-password>'   # must pass the password policy
+$env:BOOTSTRAP_ADMIN_EMAIL='primary@example.com'
+$env:BOOTSTRAP_ADMIN_PASSWORD='<password>'   # policy is not enforced here; rotate after login
 npm run db:bootstrap-admin
 ```
 
-It is idempotent: no existing user → creates an admin developer; existing developer
-→ promotes to admin, reactivates, and resets the password; existing
-patient/hospital user with that email → refuses (won't hijack another account). The
-action is written to the audit log. After first login, rotate the password from
-`/dev/primary`. Source: [`scripts/bootstrap-admin.ts`](../../scripts/bootstrap-admin.ts).
+Idempotent: no existing user → creates a **primary** developer; existing developer
+→ promotes to primary, reactivates, resets the password; existing patient/hospital
+user with that email → refuses (won't hijack another account). Written to the audit
+log. After first login, rotate the password in-app. Source:
+[`scripts/bootstrap-admin.ts`](../../scripts/bootstrap-admin.ts).
 
-There is **no** self-service developer signup — new developers only ever come from
-an admin at `/dev/primary`. Hospital-staff accounts are provisioned out-of-band (the
-partner-registration flow) and linked to a `hospital_id`.
+There is **no** self-service developer signup — secondaries come from the primary at
+`/dev/primary`; tertiaries come from a developer via `POST /api/dev/tertiary`.
 
 ## Audit logging
 

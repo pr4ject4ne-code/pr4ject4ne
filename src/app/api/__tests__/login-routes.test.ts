@@ -1,13 +1,15 @@
 /**
- * Auth tests for the three isolated login portals: patient (/api/auth/login),
- * developer (/api/dev/login), hospital staff (/api/hospital/login).
+ * Auth tests for the unified login entry (/api/auth/login — routes every account
+ * type by setting the matching cookie) plus the legacy segregated portals that
+ * remain for API clients: developer (/api/dev/login) and hospital
+ * (/api/hospital/login).
  *
  * Focus: no user-enumeration (unknown email vs wrong password give the same 401),
- * cross-portal rejection via the account_type gate, inactive/misconfigured
- * accounts, the rate-limit branch, and that a login_failed audit event fires on
- * every failure. We mock the @/lib/auth boundary (findUserByEmail / verifyPassword
- * / createSession / checkRateLimit) and the audit boundary; cookies() is stubbed
- * to a plain settable object.
+ * correct per-type routing from the unified entry, cross-portal rejection on the
+ * legacy portals, inactive/misconfigured accounts, the rate-limit branch, and that
+ * a login_failed audit event fires on every failure. We mock the @/lib/auth
+ * boundary (findUserByEmail / verifyPassword / createSession / checkRateLimit) and
+ * the audit boundary; cookies() is stubbed to a plain settable object.
  */
 import { POST as patientLogin } from '@/app/api/auth/login/route';
 import { POST as devLogin } from '@/app/api/dev/login/route';
@@ -76,7 +78,7 @@ function expectGeneric401(status: number, code: string) {
   expect(code).toBe('INVALID_CREDENTIALS');
 }
 
-describe('POST /api/auth/login (patient portal)', () => {
+describe('POST /api/auth/login (unified entry)', () => {
   const req = () => loginReq('http://localhost/api/auth/login', CREDS);
 
   it('401 (generic) for an unknown email — no enumeration', async () => {
@@ -105,25 +107,56 @@ describe('POST /api/auth/login (patient portal)', () => {
     );
   });
 
-  it('rejects a developer credential at the patient portal (cross-portal)', async () => {
-    mockFindUserByEmail.mockResolvedValue(activeUser({ account_type: 'developer' }));
+  it('logs a patient in and routes to the dashboard', async () => {
+    mockFindUserByEmail.mockResolvedValue(activeUser({ account_type: 'patient', hospital_id: null }));
+    mockVerifyPassword.mockResolvedValue(true);
+    const res = await patientLogin(req());
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.account_type).toBe('patient');
+    expect(json.redirect).toBe('/dashboard');
+    expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'patient');
+    expect(mockLogAudit).toHaveBeenCalledWith(expect.objectContaining({ action: 'login' }));
+  });
+
+  it('logs a developer in and routes to the dev portal (unified entry)', async () => {
+    mockFindUserByEmail.mockResolvedValue(
+      activeUser({ account_type: 'developer', hospital_id: null, access_level: 'primary' }),
+    );
+    mockVerifyPassword.mockResolvedValue(true);
+    const res = await patientLogin(req());
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.account_type).toBe('developer');
+    expect(json.access_level).toBe('primary');
+    expect(json.redirect).toBe('/dev/dashboard');
+    expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'developer');
+  });
+
+  it('logs hospital staff in and routes to the institution portal', async () => {
+    mockFindUserByEmail.mockResolvedValue(
+      activeUser({ account_type: 'hospital_staff', hospital_id: 'hosp-1' }),
+    );
+    mockVerifyPassword.mockResolvedValue(true);
+    const res = await patientLogin(req());
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.account_type).toBe('hospital_staff');
+    expect(json.redirect).toBe('/hospital/dashboard');
+    expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'hospital_staff');
+  });
+
+  it('401 for hospital staff with no linked hospital', async () => {
+    mockFindUserByEmail.mockResolvedValue(
+      activeUser({ account_type: 'hospital_staff', hospital_id: null }),
+    );
     mockVerifyPassword.mockResolvedValue(true);
     const res = await patientLogin(req());
     expectGeneric401(res.status, (await res.json()).code);
-    // Even though bcrypt runs (against a dummy hash) to equalize timing, the
-    // account_type gate still rejects a developer at the patient portal.
     expect(mockCreateSession).not.toHaveBeenCalled();
   });
 
-  it('rejects a hospital-staff credential at the patient portal (cross-portal)', async () => {
-    mockFindUserByEmail.mockResolvedValue(activeUser({ account_type: 'hospital_staff' }));
-    mockVerifyPassword.mockResolvedValue(true);
-    const res = await patientLogin(req());
-    expectGeneric401(res.status, (await res.json()).code);
-    expect(mockCreateSession).not.toHaveBeenCalled();
-  });
-
-  it('401 for an inactive patient', async () => {
+  it('401 for an inactive account', async () => {
     mockFindUserByEmail.mockResolvedValue(activeUser({ account_type: 'patient', is_active: false }));
     mockVerifyPassword.mockResolvedValue(true);
     const res = await patientLogin(req());
@@ -137,16 +170,6 @@ describe('POST /api/auth/login (patient portal)', () => {
     expect(res.status).toBe(429);
     expect((await res.json()).code).toBe('RATE_LIMITED');
     expect(mockFindUserByEmail).not.toHaveBeenCalled();
-  });
-
-  it('200 and a session for a valid active patient', async () => {
-    mockFindUserByEmail.mockResolvedValue(activeUser({ account_type: 'patient' }));
-    mockVerifyPassword.mockResolvedValue(true);
-    const res = await patientLogin(req());
-    expect(res.status).toBe(200);
-    expect((await res.json()).success).toBe(true);
-    expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'patient');
-    expect(mockLogAudit).toHaveBeenCalledWith(expect.objectContaining({ action: 'login' }));
   });
 
   it('400 when the email is invalid', async () => {

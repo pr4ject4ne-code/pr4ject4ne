@@ -6,7 +6,6 @@ import { useDevGuard } from '../useDevGuard';
 import SuggestionsBoard from '@/components/SuggestionsBoard';
 import Card from '@/components/Card';
 import Input from '@/components/Input';
-import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
 import styles from './DevPrimary.module.css';
 
@@ -33,7 +32,6 @@ export default function DevPrimaryClient() {
   const [accounts, setAccounts] = useState<DevAccount[]>([]);
   const [logs, setLogs] = useState<AuditRow[]>([]);
   const [newEmail, setNewEmail] = useState('');
-  const [newLevel, setNewLevel] = useState('first_aid_editor');
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
 
@@ -48,7 +46,7 @@ export default function DevPrimaryClient() {
   }, []);
 
   useEffect(() => {
-    if (!loading && dev?.is_admin) {
+    if (!loading && dev?.is_primary) {
       loadAccounts();
       loadLogs();
     }
@@ -61,7 +59,7 @@ export default function DevPrimaryClient() {
     const res = await fetch('/api/dev/accounts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: newEmail, access_level: newLevel }),
+      body: JSON.stringify({ email: newEmail }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -92,7 +90,7 @@ export default function DevPrimaryClient() {
     );
   }
 
-  if (!dev?.is_admin) {
+  if (!dev?.is_primary) {
     return (
       <DevShell title="Primary Dev Admin">
         <p>You do not have admin access.</p>
@@ -104,25 +102,20 @@ export default function DevPrimaryClient() {
     <DevShell title="Primary Dev Admin">
       <section className={styles.section}>
         <h2>Developer accounts</h2>
+        <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>
+          Create a <strong>secondary</strong> (operational) developer. Secondaries
+          create and manage tertiary institution accounts and the First Aid catalog.
+        </p>
         <Card style={{ marginBottom: '1rem' }}>
           <form onSubmit={createAccount} className={styles.createForm}>
             <Input
-              label="New developer email"
+              label="New secondary developer email"
               type="email"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               required
             />
-            <Dropdown
-              label="Access level"
-              options={[
-                { value: 'first_aid_editor', label: 'First-aid editor' },
-                { value: 'admin', label: 'Admin' },
-              ]}
-              value={newLevel}
-              onChange={(e) => setNewLevel(e.target.value)}
-            />
-            <Button type="submit">Create account</Button>
+            <Button type="submit">Create secondary</Button>
           </form>
           {accountError && <p className={styles.error}>{accountError}</p>}
           {tempPassword && (

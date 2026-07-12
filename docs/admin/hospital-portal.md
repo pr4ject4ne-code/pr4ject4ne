@@ -6,9 +6,11 @@ Design spec: [`docs/pages/hospital-management-portal.md`](../pages/hospital-mana
 
 ## Model
 
-- Hospital-staff accounts live in `users` with `account_type = 'hospital_staff'`
-  and a non-null `hospital_id`. They are provisioned out-of-band (partner
-  registration) — there is **no self-service hospital-staff signup** in v1.
+- Hospital-staff accounts (level-3 **tertiary**) live in `users` with
+  `account_type = 'hospital_staff'` and a non-null `hospital_id`. There is **no
+  self-service signup** — a developer provisions them via `POST /api/dev/tertiary`
+  (see [developer-portal.md](developer-portal.md#1b-tertiary-provisioning--apidevtertiary-any-developer)).
+  They sign in at the unified `/login` and land on `/hospital/dashboard`.
 - **Strict data isolation:** a staff member can only read/write their own
   `hospital_id`. This is the portal's core security property.
 - The portal renders in `HospitalShell` (`src/app/hospital/HospitalShell.tsx`), a
