@@ -2,14 +2,17 @@
 
 import Link from 'next/link';
 import Card from './Card';
+import { FIRST_AID_TAGS } from '@/lib/first-aid-tags';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
 import styles from './FirstAidList.module.css';
 
 interface FirstAidListProps {
   entries: FirstAidEntry[];
   category: FirstAidCategory | '';
+  tag: string;
   query: string;
   onCategoryChange: (c: FirstAidCategory | '') => void;
+  onTagChange: (t: string) => void;
   onQueryChange: (q: string) => void;
   onSearch: () => void;
 }
@@ -17,8 +20,10 @@ interface FirstAidListProps {
 export default function FirstAidList({
   entries,
   category,
+  tag,
   query,
   onCategoryChange,
+  onTagChange,
   onQueryChange,
   onSearch,
 }: FirstAidListProps) {
@@ -64,6 +69,20 @@ export default function FirstAidList({
         </form>
       </div>
 
+      <div className={styles.tagFilter} role="group" aria-label="Filter by topic">
+        {FIRST_AID_TAGS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            aria-pressed={tag === t}
+            className={tag === t ? `${styles.tagChip} ${styles.tagChipOn}` : styles.tagChip}
+            onClick={() => onTagChange(tag === t ? '' : t)}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
       {entries.length === 0 ? (
         <p className={styles.empty}>No entries found.</p>
       ) : (
@@ -80,6 +99,15 @@ export default function FirstAidList({
                     <span className={styles.category}>{e.category}</span>
                     <h3 className={styles.title}>{e.title}</h3>
                     {e.definition && <p className={styles.definition}>{e.definition}</p>}
+                    {e.tags?.length > 0 && (
+                      <div className={styles.cardTags}>
+                        {e.tags.map((t) => (
+                          <span key={t} className={styles.cardTag}>
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </Card>
               </Link>

@@ -24,6 +24,15 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
     <article className={styles.detail}>
       <span className={styles.category}>{entry.category}</span>
       <h1 className={styles.title}>{entry.title}</h1>
+      {entry.tags?.length > 0 && (
+        <div className={styles.tags}>
+          {entry.tags.map((t) => (
+            <span key={t} className={styles.tag}>
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
 
       {hasImages && (
         <div className={styles.gallery}>

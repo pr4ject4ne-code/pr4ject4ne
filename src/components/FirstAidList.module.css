@@ -107,3 +107,40 @@
 .empty {
   color: var(--color-muted);
 }
+
+/* Topic-tag filter chips (public catalog). */
+.tagFilter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+.tagChip {
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  color: var(--color-ink);
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.tagChipOn {
+  background: var(--color-blue);
+  color: var(--color-white);
+  border-color: var(--color-blue);
+}
+
+/* Tags shown on a catalog card. */
+.cardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+.cardTag {
+  font-size: 0.68rem;
+  background: var(--color-blue-light);
+  color: var(--color-blue-dark);
+  border-radius: 999px;
+  padding: 0.08rem 0.45rem;
+}

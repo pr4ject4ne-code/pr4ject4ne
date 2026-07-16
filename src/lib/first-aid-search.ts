@@ -2,6 +2,7 @@ import type { FirstAidCategory } from '@/types';
 
 export interface FirstAidQuery {
   category?: FirstAidCategory | '';
+  tag?: string;
   q?: string;
   limit?: number;
   offset?: number;
@@ -10,6 +11,7 @@ export interface FirstAidQuery {
 export function buildFirstAidQuery(params: FirstAidQuery): string {
   const sp = new URLSearchParams();
   if (params.category) sp.set('category', params.category);
+  if (params.tag) sp.set('tag', params.tag);
   if (params.q) sp.set('q', params.q);
   sp.set('limit', String(params.limit ?? 12));
   sp.set('offset', String(params.offset ?? 0));

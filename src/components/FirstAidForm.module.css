@@ -25,3 +25,24 @@
   font-size: 0.9rem;
   margin: 0;
 }
+
+/* Topic-tag multi-select chips (authoring). */
+.tagPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.tagChip {
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  color: var(--color-ink);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.tagChipOn {
+  background: var(--color-amethyst);
+  color: var(--color-white);
+  border-color: var(--color-amethyst);
+}

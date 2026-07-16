@@ -149,6 +149,7 @@ export interface FirstAidEntry {
   indication: string | null;
   contraindications: string | null;
   images: string[];
+  tags: string[];
   created_by_dev_id: string | null;
   created_at: string;
   updated_at: string;

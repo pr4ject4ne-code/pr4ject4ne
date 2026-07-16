@@ -12,6 +12,10 @@ describe('buildFirstAidQuery', () => {
     const p = new URLSearchParams(buildFirstAidQuery({ category: '' }));
     expect(p.get('category')).toBeNull();
   });
+  it('sets the topic tag when provided and omits it when empty', () => {
+    expect(new URLSearchParams(buildFirstAidQuery({ tag: 'Bleeding' })).get('tag')).toBe('Bleeding');
+    expect(new URLSearchParams(buildFirstAidQuery({ tag: '' })).get('tag')).toBeNull();
+  });
 });
 
 describe('disclaimer', () => {

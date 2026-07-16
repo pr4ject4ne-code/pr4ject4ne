@@ -5,6 +5,7 @@ import Input from './Input';
 import Dropdown from './Dropdown';
 import Button from './Button';
 import { uploadFile } from '@/lib/upload-client';
+import { FIRST_AID_TAGS } from '@/lib/first-aid-tags';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
 import styles from './FirstAidForm.module.css';
 
@@ -21,6 +22,7 @@ export interface FirstAidFormValues {
   indication: string;
   contraindications: string;
   images: string[];
+  tags: string[];
 }
 
 const TEXT_AREAS: Array<[keyof FirstAidFormValues, string]> = [
@@ -49,6 +51,7 @@ function fromEntry(entry?: FirstAidEntry): FirstAidFormValues {
     indication: entry?.indication ?? '',
     contraindications: entry?.contraindications ?? '',
     images: entry?.images ?? [],
+    tags: entry?.tags ?? [],
   };
 }
 
@@ -67,6 +70,13 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
 
   function set<K extends keyof FirstAidFormValues>(key: K, v: FirstAidFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: v }));
+  }
+
+  function toggleTag(tag: string) {
+    setValues((prev) => ({
+      ...prev,
+      tags: prev.tags.includes(tag) ? prev.tags.filter((t) => t !== tag) : [...prev.tags, tag],
+    }));
   }
 
   async function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -111,6 +121,26 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
         value={values.category}
         onChange={(e) => set('category', e.target.value as FirstAidCategory)}
       />
+
+      <div className={styles.field}>
+        <label>Topic tags</label>
+        <div className={styles.tagPicker}>
+          {FIRST_AID_TAGS.map((tag) => {
+            const on = values.tags.includes(tag);
+            return (
+              <button
+                key={tag}
+                type="button"
+                aria-pressed={on}
+                className={on ? `${styles.tagChip} ${styles.tagChipOn}` : styles.tagChip}
+                onClick={() => toggleTag(tag)}
+              >
+                {tag}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {TEXT_AREAS.map(([key, label]) => (
         <div key={key} className={styles.field}>

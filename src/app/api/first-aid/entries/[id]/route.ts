@@ -3,6 +3,7 @@ import { apiError, apiOk, readJson } from '@/lib/api';
 import { getDevUser } from '@/lib/dev-auth';
 import { checkRateLimit } from '@/lib/auth';
 import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
+import { normalizeTags } from '@/lib/first-aid-tags';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
 
@@ -68,6 +69,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (Array.isArray(body.images)) {
     const imgs = body.images.map((u) => safeHttpUrl(u)).filter((u): u is string => Boolean(u)).slice(0, 10);
     push('images', JSON.stringify(imgs), '::jsonb');
+  }
+  if (Array.isArray(body.tags)) {
+    push('tags', normalizeTags(body.tags));
   }
 
   if (sets.length === 0) return apiError('Nothing to update.', 'BAD_REQUEST', 400);

@@ -1,6 +1,7 @@
 import { query } from '@/lib/db';
 import { apiOk, parseLimit, parseOffset } from '@/lib/api';
 import { escapeLikePattern } from '@/lib/sanitize';
+import { isFirstAidTag } from '@/lib/first-aid-tags';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
 
 const CATEGORIES: FirstAidCategory[] = ['procedure', 'technique'];
@@ -29,18 +30,27 @@ export async function GET(req: Request) {
     conditions.push(`category = $${params.length}`);
   }
 
+  // Topic/scenario tag filter (whitelisted). `tags @> ARRAY[tag]` uses the GIN index.
+  const tag = url.searchParams.get('tag');
+  if (tag && isFirstAidTag(tag)) {
+    params.push([tag]);
+    conditions.push(`tags @> $${params.length}::text[]`);
+  }
+
   const q = url.searchParams.get('q');
   if (q) {
     params.push(`%${escapeLikePattern(q)}%`);
     const n = params.length;
-    // Search across all the substantive content fields, not just title/definition,
-    // so a term that only appears in the steps/indications still matches. The
-    // catalog is small and dev-curated, so a multi-column ILIKE is cheap.
+    // Search across all the substantive content fields (and the tags), not just
+    // title/definition, so a term that only appears in the steps/indications/tags
+    // still matches. The catalog is small and dev-curated, so a multi-column
+    // ILIKE is cheap.
     conditions.push(
       `(title ILIKE $${n} ESCAPE '\\' OR definition ILIKE $${n} ESCAPE '\\' ` +
         `OR description ILIKE $${n} ESCAPE '\\' OR process ILIKE $${n} ESCAPE '\\' ` +
         `OR indication ILIKE $${n} ESCAPE '\\' OR contraindications ILIKE $${n} ESCAPE '\\' ` +
-        `OR things_to_look_out_for ILIKE $${n} ESCAPE '\\')`,
+        `OR things_to_look_out_for ILIKE $${n} ESCAPE '\\' ` +
+        `OR array_to_string(tags, ' ') ILIKE $${n} ESCAPE '\\')`,
     );
   }
 
@@ -57,7 +67,7 @@ export async function GET(req: Request) {
     query<FirstAidEntry>(
       `SELECT id, category, title, definition, description, process, dos, donts,
               things_to_look_out_for, implications, indication, contraindications,
-              images, created_by_dev_id, created_at, updated_at
+              images, tags, created_by_dev_id, created_at, updated_at
        FROM first_aid_entries ${where}
        ORDER BY title ASC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,

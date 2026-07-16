@@ -3,6 +3,7 @@ import { apiError, apiOk, readJson } from '@/lib/api';
 import { getDevUser } from '@/lib/dev-auth';
 import { checkRateLimit } from '@/lib/auth';
 import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
+import { normalizeTags } from '@/lib/first-aid-tags';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { FirstAidCategory } from '@/types';
 
@@ -48,13 +49,14 @@ export async function POST(req: Request) {
   const images = Array.isArray(body.images)
     ? body.images.map((u) => safeHttpUrl(u)).filter((u): u is string => Boolean(u)).slice(0, 10)
     : [];
+  const tags = normalizeTags(body.tags);
 
   const { rows } = await query<{ id: string }>(
     `INSERT INTO first_aid_entries
        (category, title, definition, description, process, dos, donts,
         things_to_look_out_for, implications, indication, contraindications,
-        images, created_by_dev_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13)
+        images, tags, created_by_dev_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14)
      RETURNING id`,
     [
       category,
@@ -69,6 +71,7 @@ export async function POST(req: Request) {
       values.indication,
       values.contraindications,
       JSON.stringify(images),
+      tags,
       dev.id,
     ],
   );
