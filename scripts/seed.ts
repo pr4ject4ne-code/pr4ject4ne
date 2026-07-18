@@ -211,6 +211,7 @@ type FirstAid = {
   implications: string;
   indication: string;
   contraindications: string;
+  tags: string[];
 };
 
 const FIRST_AID: FirstAid[] = [
@@ -233,6 +234,7 @@ const FIRST_AID: FirstAid[] = [
     indication: 'Unresponsive person who is not breathing normally.',
     contraindications:
       'A conscious, breathing person. Obvious signs of irreversible death. A valid Do-Not-Resuscitate order.',
+    tags: ['CPR & breathing'],
   },
   {
     id: '44444444-4444-4444-4444-444444444402',
@@ -251,6 +253,7 @@ const FIRST_AID: FirstAid[] = [
     indication: 'Heavy, continuous, or spurting external bleeding.',
     contraindications:
       'Do not apply direct pressure onto an embedded object — press around it instead.',
+    tags: ['Bleeding', 'Wounds & cuts'],
   },
   {
     id: '44444444-4444-4444-4444-444444444403',
@@ -268,6 +271,9 @@ const FIRST_AID: FirstAid[] = [
     implications: 'Reduces the risk of choking and aspiration in an unconscious person.',
     indication: 'Unconscious person who is breathing normally.',
     contraindications: 'Suspected serious spinal injury (weigh against airway risk).',
+    // No exact fit in the whitelist (it's a general response technique, not an
+    // injury/scenario type) — left untagged rather than forcing a poor match.
+    tags: [],
   },
 ];
 
@@ -348,8 +354,8 @@ async function main() {
       await pool.query(
         `INSERT INTO first_aid_entries
            (id, category, title, definition, description, process, dos, donts,
-            things_to_look_out_for, implications, indication, contraindications)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+            things_to_look_out_for, implications, indication, contraindications, tags)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
          ON CONFLICT (id) DO UPDATE SET
            category = EXCLUDED.category,
            title = EXCLUDED.title,
@@ -362,6 +368,7 @@ async function main() {
            implications = EXCLUDED.implications,
            indication = EXCLUDED.indication,
            contraindications = EXCLUDED.contraindications,
+           tags = EXCLUDED.tags,
            updated_at = now()`,
         [
           f.id,
@@ -376,6 +383,7 @@ async function main() {
           f.implications,
           f.indication,
           f.contraindications,
+          f.tags,
         ],
       );
     }

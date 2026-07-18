@@ -30,9 +30,17 @@ A **read-only, developer-managed catalog** of first aid and safety scenario proc
   - Implications (consequences if not treated, potential outcomes)
   - Indication (when this procedure/technique is appropriate)
   - Contraindications (when this procedure/technique should NOT be used)
-- **Content categories:** entries are split into two types:
+- **Content categories:** entries are split into two types (primary axis):
   - **Procedures** (medical/first-aid procedures)
   - **Techniques** (methods, approaches, or specialized techniques)
+  - **Second axis (built 2026-07-16):** a closed 13-tag topic/scenario whitelist
+    (Bleeding, Burns, Choking, CPR & breathing, Fractures & sprains, Head &
+    spine, Poisoning, Shock, Wounds & cuts, Bites & stings, Seizures, Heat &
+    cold, Allergic reaction) — see `src/lib/first-aid-tags.ts`. Entries can carry
+    zero or more tags; used for both the dev upload form (chip picker) and the
+    public filter. This resolves the "exact catalog structure" open item below
+    for the general case, though the whitelist is closed (extending it is a code
+    change) and not every entry will fit an existing tag cleanly.
 - **Security requirements:**
   - Developer credentials must be stored securely (hashed passwords, no plaintext storage).
   - All developer actions (uploads, edits, deletions) must be logged with timestamp, developer ID, change type, and description (audit trail for compliance/review).
@@ -43,7 +51,7 @@ A **read-only, developer-managed catalog** of first aid and safety scenario proc
 ## Open items / not yet decided
 
 - Site's support/feedback email address: what email should the "suggestion tab" send to? (Currently it's unclear — confirm a dedicated support email, or use pr4ject4ne@gmail.com if that's preferred.)
-- Exact catalog structure: how should procedures be grouped/categorized (by injury type, body part, severity, scenario, etc.)?
+- ~~Exact catalog structure~~ — resolved 2026-07-16 via the topic/scenario tags described above.
 - Developer login delivery mechanism: how and where will developer credentials be safely shared with authorized developers once infrastructure is ready?
 - Whether this first-aid catalog page is truly separate from the homepage's symptom-search mode (if that exists), or if they feed the same data source — to be clarified with the homepage design.
 - Liability/clinical disclaimer language specific to a reference catalog (vs. the not-a-diagnosis rule that applies to triage guidance).

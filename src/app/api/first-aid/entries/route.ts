@@ -48,6 +48,8 @@ export async function GET(req: Request) {
     conditions.push(
       `(title ILIKE $${n} ESCAPE '\\' OR definition ILIKE $${n} ESCAPE '\\' ` +
         `OR description ILIKE $${n} ESCAPE '\\' OR process ILIKE $${n} ESCAPE '\\' ` +
+        `OR dos ILIKE $${n} ESCAPE '\\' OR donts ILIKE $${n} ESCAPE '\\' ` +
+        `OR implications ILIKE $${n} ESCAPE '\\' ` +
         `OR indication ILIKE $${n} ESCAPE '\\' OR contraindications ILIKE $${n} ESCAPE '\\' ` +
         `OR things_to_look_out_for ILIKE $${n} ESCAPE '\\' ` +
         `OR array_to_string(tags, ' ') ILIKE $${n} ESCAPE '\\')`,

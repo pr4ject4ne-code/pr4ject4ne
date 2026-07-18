@@ -44,8 +44,9 @@ export async function POST(req: Request) {
   const values: Record<string, string | null> = {};
   for (const f of TEXT_FIELDS) values[f] = sanitizeText(body[f]);
 
-  // TODO: image storage deferred — accept URLs the dev supplies (local FS in dev).
-  // Validate scheme so a javascript:/data: URL can't reach the <img src> sink.
+  // Images are uploaded via POST /api/uploads (Supabase Storage) and pasted here
+  // as URLs, or entered directly. Validate scheme so a javascript:/data: URL
+  // can't reach the <img src> sink.
   const images = Array.isArray(body.images)
     ? body.images.map((u) => safeHttpUrl(u)).filter((u): u is string => Boolean(u)).slice(0, 10)
     : [];

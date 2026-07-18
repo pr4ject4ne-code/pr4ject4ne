@@ -11,19 +11,39 @@ Read [README.md](README.md) first for auth/access levels. Design spec:
 - Access: **both developer levels** (primary + secondary) may create, edit, and
   delete **any** entry — the First Aid catalog is a shared operational surface.
   `created_by_dev_id` is retained for attribution only, not as an edit gate.
-- Every entry is a `procedure` or a `technique` (`category`).
+- Every entry is a `procedure` or a `technique` (`category`) — the primary axis.
+- A second axis, **topic/scenario tags**, layers on top: a closed 13-item
+  whitelist (`src/lib/first-aid-tags.ts` — Bleeding, Burns, Choking, CPR &
+  breathing, Fractures & sprains, Head & spine, Poisoning, Shock, Wounds & cuts,
+  Bites & stings, Seizures, Heat & cold, Allergic reaction). Entries can carry
+  zero or more tags; unknown/arbitrary strings are silently dropped
+  (`normalizeTags`), so the stored set is always a whitelist subset. The
+  whitelist is closed by design for catalog consistency — adding a new tag
+  requires a code change (edit the constant, migrate if needed), not a dev-portal
+  action. Some entries won't fit any existing tag well (e.g. a general technique
+  that isn't tied to one injury/scenario type) — leaving it untagged is valid;
+  don't force a poor-fit tag.
 - Content disclaimer ("Educational reference only, not legal medical advice…")
   is displayed on all public first-aid pages and in the Terms — the catalog is not
   clinical advice.
 
 ## Entry fields
 
-Title + category are required. The rest are optional free-text, each sanitized on
-write:
+Title + category are required. `tags` is an optional array (validated server-side
+against the whitelist). The rest are optional free-text, each sanitized on write:
 
 `definition`, `description`, `process`, `dos`, `donts`,
 `things_to_look_out_for`, `implications`, `indication`, `contraindications`,
 plus `images` (an array of URLs).
+
+## Search & filter (public `/first-aid`)
+
+Three independent narrowing controls, all combinable: category tabs (All /
+Procedures / Techniques), a topic-tag filter (13 chips, single-select), and a
+free-text search box. Search runs a multi-column `ILIKE` across title,
+definition, description, process, dos, donts, implications, indication,
+contraindications, and the tags array — a term appearing in any one of those
+fields matches, not just title/definition.
 
 ## Endpoints
 
