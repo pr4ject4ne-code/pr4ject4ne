@@ -235,3 +235,24 @@ export async function checkRateLimit(
     return true;
   });
 }
+
+/**
+ * Shared brute-force limit for ALL login surfaces. The unified `/api/auth/login`
+ * can authenticate any account type, and the segregated `/api/dev/login` +
+ * `/api/hospital/login` endpoints still exist for API clients — so every login
+ * path for a given email MUST share one bucket, or an attacker just spreads
+ * attempts across endpoints (disjoint buckets stack: 10+5+5 = 20/window against
+ * one account, and the unified endpoint would otherwise hand dev credentials the
+ * looser patient threshold). One key + the strictest threshold closes both gaps.
+ *
+ * NOTE: this keys on email only, so a known email can still be held at 429 by an
+ * attacker (targeted-lockout DoS). Adding a per-IP dimension is deferred to the
+ * deploy cutover, where a platform-trusted client IP becomes available (keying on
+ * the spoofable X-Forwarded-For today would be worse than useless). See memory M1/M2.
+ */
+export const LOGIN_MAX_ATTEMPTS = 5;
+export const LOGIN_WINDOW_SECONDS = 300;
+
+export function checkLoginRateLimit(email: string): Promise<boolean> {
+  return checkRateLimit(`login:${email.toLowerCase()}`, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_SECONDS);
+}

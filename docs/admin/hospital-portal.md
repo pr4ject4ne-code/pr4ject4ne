@@ -28,7 +28,7 @@ hospital B's data.
 
 ## Login — `POST /api/hospital/login`
 
-Body `{ email, password }`. Rate-limited `hospital_login:<email>` → 5 / 5 min.
+Body `{ email, password }`. Rate-limited `login:<email>` → 5 / 5 min (shared bucket across all login endpoints; see `checkLoginRateLimit`).
 Rejects non-`hospital_staff` accounts, inactive accounts, and staff with no
 `hospital_id`, before the password check. On success sets
 `racoon_hospital_session` and returns `{ hospital_id }`; emits `login`.

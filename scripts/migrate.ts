@@ -3,7 +3,14 @@
  *
  * Applies every `NNN_*.sql` file in `migrations/` (excluding `*.down.sql`) that
  * has not yet been recorded in the `schema_migrations` table, in filename order.
- * Each file is expected to manage its own transaction (BEGIN/COMMIT).
+ *
+ * The runner owns ONE transaction per migration that wraps both the migration
+ * body and the `schema_migrations` tracking insert, so they commit atomically. If
+ * the process dies mid-migration, the whole thing rolls back and re-runs cleanly —
+ * a migration can never be applied without its tracking row (which, for the
+ * non-idempotent DDL here, would otherwise wedge the next run on "already exists").
+ * Any `BEGIN;`/`COMMIT;` a migration file self-manages is stripped first so it
+ * nests inside the runner's transaction instead of committing early.
  *
  * Usage: npm run db:migrate
  */
@@ -14,6 +21,17 @@ import { Pool } from 'pg';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const migrationsDir = join(__dirname, '..', 'migrations');
+
+/**
+ * Remove a leading `BEGIN;`/`START TRANSACTION;` and a trailing `COMMIT;` so a
+ * self-transacting migration file nests inside the runner's transaction rather
+ * than committing (and thus de-atomizing) early. Only strips outermost lines.
+ */
+function stripOuterTransaction(sql: string): string {
+  return sql
+    .replace(/^\s*(BEGIN|START\s+TRANSACTION)\s*;/i, '')
+    .replace(/COMMIT\s*;\s*$/i, '');
+}
 
 async function main() {
   const connectionString = process.env.DATABASE_URL;
@@ -44,10 +62,21 @@ async function main() {
     let count = 0;
     for (const file of files) {
       if (applied.has(file)) continue;
-      const sql = readFileSync(join(migrationsDir, file), 'utf8');
+      const sql = stripOuterTransaction(readFileSync(join(migrationsDir, file), 'utf8'));
       console.warn(`Applying migration: ${file}`);
-      await pool.query(sql);
-      await pool.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file]);
+      // Body + tracking insert commit atomically inside a runner-owned transaction.
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(sql);
+        await client.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file]);
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw err;
+      } finally {
+        client.release();
+      }
       count += 1;
     }
 

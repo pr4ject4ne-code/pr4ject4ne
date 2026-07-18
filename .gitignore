@@ -33,6 +33,8 @@ Thumbs.db
 *.log
 tmp/
 .claude/scheduled_tasks.lock
+# Local settings can capture secrets in permission allow-list command strings — never track.
+.claude/settings.local.json
 
 # CI workflow file: kept on disk but not committed by the builder token (it lacks
 # the GitHub `workflow` scope). Apply it with a workflow-scoped push when ready.

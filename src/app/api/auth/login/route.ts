@@ -8,7 +8,7 @@ import {
   DEV_SESSION_COOKIE,
   HOSPITAL_SESSION_COOKIE,
   findUserByEmail,
-  checkRateLimit,
+  checkLoginRateLimit,
   DUMMY_PASSWORD_HASH,
 } from '@/lib/auth';
 import { query } from '@/lib/db';
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     return apiError('Email and password are required.', 'MISSING_CREDENTIALS', 400);
   }
 
-  const allowed = await checkRateLimit(`login:${email.toLowerCase()}`, 10, 300);
+  const allowed = await checkLoginRateLimit(email);
   if (!allowed) {
     await logAudit({ action: 'rate_limited', resourceType: 'login', details: { email }, ip });
     return apiError('Too many attempts. Try again later.', 'RATE_LIMITED', 429);

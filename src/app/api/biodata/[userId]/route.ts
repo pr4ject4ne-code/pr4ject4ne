@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { queryOne, query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { getPatientSession, checkRateLimit, constantTimeEquals } from '@/lib/auth';
-import { sanitizeLayer } from '@/lib/sanitize';
+import { sanitizeLayer, sanitizeClinicalConditions } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import { isValidIhnCode } from '@/lib/ihn-code';
 import type { Biodata, BiodataLayer, ProfileLayer } from '@/types';
@@ -120,6 +120,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ userId
   const biodataPatch = body.biodata_layer === undefined ? {} : sanitizeLayer(body.biodata_layer);
   if (profilePatch === null || biodataPatch === null) {
     return apiError('profile_layer and biodata_layer must be objects.', 'BAD_REQUEST', 400);
+  }
+
+  // clinical_conditions is a whitelisted nested array; sanitizeLayer drops arrays,
+  // so validate + re-attach it explicitly when supplied (mirrors /api/biodata/me).
+  if (body.biodata_layer && 'clinical_conditions' in body.biodata_layer) {
+    (biodataPatch as Record<string, unknown>).clinical_conditions = sanitizeClinicalConditions(
+      body.biodata_layer.clinical_conditions,
+    );
   }
 
   // Merge onto existing layers so partial updates don't wipe fields.

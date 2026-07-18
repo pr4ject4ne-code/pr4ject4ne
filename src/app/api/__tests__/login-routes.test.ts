@@ -8,7 +8,7 @@
  * correct per-type routing from the unified entry, cross-portal rejection on the
  * legacy portals, inactive/misconfigured accounts, the rate-limit branch, and that
  * a login_failed audit event fires on every failure. We mock the @/lib/auth
- * boundary (findUserByEmail / verifyPassword / createSession / checkRateLimit) and
+ * boundary (findUserByEmail / verifyPassword / createSession / checkLoginRateLimit) and
  * the audit boundary; cookies() is stubbed to a plain settable object.
  */
 import { POST as patientLogin } from '@/app/api/auth/login/route';
@@ -32,7 +32,10 @@ jest.mock('@/lib/auth', () => {
     findUserByEmail: (...a: unknown[]) => mockFindUserByEmail(...a),
     verifyPassword: (...a: unknown[]) => mockVerifyPassword(...a),
     createSession: (...a: unknown[]) => mockCreateSession(...a),
-    checkRateLimit: (...a: unknown[]) => mockCheckRateLimit(...a),
+    // All three login routes gate on the shared checkLoginRateLimit (one bucket per
+    // email across every login endpoint); mock it directly since its internal call
+    // to checkRateLimit doesn't go through the module export.
+    checkLoginRateLimit: (...a: unknown[]) => mockCheckRateLimit(...a),
   };
 });
 

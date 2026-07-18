@@ -111,7 +111,6 @@ DB-backed sliding-window limiter (`checkRateLimit`, self-pruning):
 
 | Bucket | Limit |
 | --- | --- |
-| `dev_login:<email>` | 5 / 5 min |
-| `hospital_login:<email>` | 5 / 5 min |
+| `login:<email>` | 5 / 5 min — shared across `/api/auth/login`, `/api/dev/login`, `/api/hospital/login` (one bucket per email so attempts can't be spread across endpoints; see `checkLoginRateLimit`) |
 | `first_aid_upload:<devId>` | 10 / hour |
 | `hospital_register:<ip>` | 5 / hour (public registration) |
