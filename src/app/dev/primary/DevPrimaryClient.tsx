@@ -38,6 +38,10 @@ export default function DevPrimaryClient() {
   const [newLevel, setNewLevel] = useState<'primary' | 'secondary'>('secondary');
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   const loadAccounts = useCallback(async () => {
     const res = await fetch('/api/dev/accounts');
@@ -75,6 +79,25 @@ export default function DevPrimaryClient() {
     loadAccounts();
   }
 
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError(null);
+    setPwSuccess(false);
+    const res = await fetch('/api/account/password', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setPwError(data.error ?? 'Could not change password.');
+      return;
+    }
+    setPwSuccess(true);
+    setCurrentPassword('');
+    setNewPassword('');
+  }
+
   async function accountAction(id: string, action: AccountAction, level?: 'primary' | 'secondary') {
     if (action === 'revoke' && !window.confirm('Permanently delete this developer account? This cannot be undone.')) {
       return;
@@ -107,6 +130,36 @@ export default function DevPrimaryClient() {
 
   return (
     <DevShell title="Primary Dev Admin">
+      <section className={styles.section}>
+        <h2>My account</h2>
+        <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>
+          Change your own sign-in password. Email ({dev.email}) cannot be changed here.
+        </p>
+        <Card style={{ marginBottom: '1rem' }}>
+          <form onSubmit={changePassword} className={styles.createForm}>
+            <Input
+              label="Current password"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
+            <Input
+              label="New password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+            />
+            <Button type="submit">Change password</Button>
+          </form>
+          {pwError && <p className={styles.error}>{pwError}</p>}
+          {pwSuccess && <p className={styles.temp}>Password changed. Your other sessions were signed out.</p>}
+        </Card>
+      </section>
+
       <section className={styles.section}>
         <h2>Developer accounts</h2>
         <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>

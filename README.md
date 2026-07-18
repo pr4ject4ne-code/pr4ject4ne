@@ -13,7 +13,9 @@ A responsive web app (mobile-first) that lets Nigerian clinics and patients:
 ## Prerequisites
 
 - Node.js `>=20`
-- Docker (for local PostgreSQL) or a reachable PostgreSQL 16 instance
+- A reachable PostgreSQL 16 instance. Recommended: a free [Neon](https://neon.tech)
+  project (serverless, no server management, no Docker required). Docker Compose
+  is also available for a local instance if you have Docker installed.
 
 ## Setup
 
@@ -23,17 +25,22 @@ npm install
 
 # 2. Configure environment
 cp .env.example .env.local
-# Edit .env.local — set DATABASE_URL and other required variables
+# Edit .env.local — set DATABASE_URL (e.g. your Neon connection string) and
+# other required variables
 
-# 3. Start PostgreSQL (Docker)
+# 3a. Neon (recommended): no extra step, just point DATABASE_URL at your project
+# 3b. OR local PostgreSQL via Docker:
 docker compose up -d
 # Postgres listens on localhost:5432 (db: racoon_eye, user: racoon)
 
-# 4. Run migrations (applied automatically on first `docker compose up` via
-#    docker-entrypoint-initdb.d; run manually against an existing DB with:)
+# 4. Run migrations
 npm run db:migrate
 
-# 5. Start the dev server
+# 5. (Optional) seed demo data + create the first admin account
+npm run db:seed
+npm run db:bootstrap-admin
+
+# 6. Start the dev server
 npm run dev
 # App runs at http://localhost:3000
 ```
