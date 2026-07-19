@@ -27,12 +27,17 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 0.4rem 1.1rem 1.4rem;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  /* Liquid glass over the live map: more transparent than the base glass, and
+     the map is refracted (bent) through it via the #lg-refract displacement.
+     A wet specular rim (inset highlight) gives the edge real glass thickness. */
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: url(#lg-refract) saturate(200%) blur(18px);
+  -webkit-backdrop-filter: saturate(200%) blur(18px);
   border-top: 1px solid var(--glass-border);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  box-shadow: var(--shadow-lg);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 1px rgba(255, 255, 255, 0.85);
 }
 
 /* Drag-handle affordance for the bottom sheet (mobile only). */

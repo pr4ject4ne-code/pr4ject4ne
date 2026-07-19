@@ -15,11 +15,32 @@
     box-shadow 0.15s ease,
     background 0.15s ease,
     border-color 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  opacity: 0.5;
 }
 
 .btn:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: var(--shadow);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97) translateY(-1px);
+  transition: transform var(--spring) 0s;
 }
 
 .btn:disabled {

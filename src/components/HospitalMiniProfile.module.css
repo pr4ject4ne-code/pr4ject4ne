@@ -1,6 +1,7 @@
 .card {
   padding: 0;
   overflow: hidden;
+  position: relative;
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease;
@@ -8,6 +9,26 @@
 .card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow);
+}
+
+/* Pointer-tracked specular light on the glass surface. The `--mx`/`--my` CSS
+   variables are set via onPointerMove handler; the sheen follows the cursor
+   across the card, giving the illusion of a wet highlight on the glass. */
+.sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at calc(var(--mx, 50%) - 20px) calc(var(--my, 50%) - 20px),
+    rgba(255, 255, 255, 0.8),
+    rgba(255, 255, 255, 0.4) 15%,
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+.card:hover .sheen {
+  opacity: 1;
 }
 .link {
   display: flex;

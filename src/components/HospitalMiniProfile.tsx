@@ -19,7 +19,18 @@ interface Props {
 export default function HospitalMiniProfile({ hospital, etaSec }: Props) {
   const photo = hospital.photos?.[0]?.url;
   return (
-    <Card as="article" className={styles.card}>
+    <Card
+      as="article"
+      className={styles.card}
+      onPointerMove={(e) => {
+        // Pointer-tracked specular light: the highlight follows the cursor
+        // across the glass. currentTarget is the card element itself.
+        const r = e.currentTarget.getBoundingClientRect();
+        e.currentTarget.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+        e.currentTarget.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+      }}
+    >
+      <span className={styles.sheen} aria-hidden="true" />
       <Link href={`/hospitals/${hospital.id}`} className={styles.link}>
         <div className={styles.thumb}>
           {photo ? (
