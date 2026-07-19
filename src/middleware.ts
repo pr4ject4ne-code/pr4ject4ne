@@ -26,15 +26,38 @@ import { NextResponse, type NextRequest } from 'next/server';
  * This is the backstop for any URL sink that slips a bad value through (see
  * safeHttpUrl in lib/sanitize). 'unsafe-eval' is dev-only — Next's dev tooling
  * needs it; it must NEVER ship in production.
+ *
+ * The Supabase Storage host (where hospital/first-aid uploads live, see
+ * lib/storage.ts) is derived from SUPABASE_URL rather than hardcoded — every
+ * environment points at a different Supabase project ref, and a hardcoded ref
+ * would silently block image rendering anywhere else (that's exactly what
+ * happened here: uploads worked, but img-src had no Supabase host at all).
  */
+function supabaseImgHost(): string | null {
+  const url = process.env.SUPABASE_URL;
+  if (!url) return null;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
 function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV !== 'production';
+  const supabaseHost = supabaseImgHost();
+  const imgSrc = [
+    "img-src 'self' data: blob: https://api.maptiler.com https://*.tile.openstreetmap.org https://unpkg.com",
+    supabaseHost,
+  ]
+    .filter(Boolean)
+    .join(' ');
   return [
     "default-src 'self'",
     `script-src 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
     "worker-src 'self' blob:",
-    "img-src 'self' data: blob: https://api.maptiler.com https://*.tile.openstreetmap.org https://unpkg.com",
+    imgSrc,
     "connect-src 'self' https://api.maptiler.com https://router.project-osrm.org https://*.tile.openstreetmap.org",
     "font-src 'self'",
     "object-src 'none'",

@@ -35,6 +35,5 @@ export async function GET(req: Request) {
     offset,
     dev_id: dev.id,
     is_primary: isPrimary(dev),
-    can_edit_all: true,
   });
 }

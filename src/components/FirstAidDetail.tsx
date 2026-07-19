@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { safeHttpUrl } from '@/lib/sanitize';
 import type { FirstAidEntry } from '@/types';
 import styles from './FirstAidDetail.module.css';
 
@@ -18,7 +19,11 @@ const SECTIONS: Array<[keyof FirstAidEntry, string]> = [
 
 export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
   const [active, setActive] = useState(0);
-  const hasImages = entry.images && entry.images.length > 0;
+  // Defense in depth: even though URLs are scheme-validated on write, guard the
+  // src sink at render so a stale bad value can never produce a javascript: URL.
+  const images = (entry.images ?? []).map((src) => safeHttpUrl(src)).filter((src): src is string => Boolean(src));
+  const hasImages = images.length > 0;
+  const activeIndex = Math.min(active, images.length - 1);
 
   return (
     <article className={styles.detail}>
@@ -37,14 +42,14 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
       {hasImages && (
         <div className={styles.gallery}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={entry.images[active]} alt={entry.title} className={styles.hero} />
-          {entry.images.length > 1 && (
+          <img src={images[activeIndex]} alt={entry.title} className={styles.hero} />
+          {images.length > 1 && (
             <div className={styles.thumbs}>
-              {entry.images.map((src, i) => (
+              {images.map((src, i) => (
                 <button
                   key={src + i}
                   type="button"
-                  className={i === active ? styles.activeThumb : ''}
+                  className={i === activeIndex ? styles.activeThumb : ''}
                   onClick={() => setActive(i)}
                   aria-label={`Photo ${i + 1}`}
                 >

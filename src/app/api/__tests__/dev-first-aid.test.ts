@@ -11,7 +11,6 @@ const mockQueryOne = jest.fn();
 
 jest.mock('@/lib/dev-auth', () => ({
   getDevUser: (...a: unknown[]) => mockGetDevUser(...a),
-  isAdmin: (u: { access_level?: string }) => u.access_level === 'admin',
 }));
 
 jest.mock('@/lib/auth', () => ({
@@ -70,6 +69,14 @@ describe('POST /api/first-aid/entries/create', () => {
     const insertArgs = mockQuery.mock.calls[0][1] as string[];
     expect(insertArgs).toContain('&lt;b&gt;x&lt;/b&gt;');
   });
+
+  it('429 when the upload rate limit is exceeded', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1' });
+    mockCheckRateLimit.mockResolvedValueOnce(false);
+    const res = await POST(createReq({ title: 'CPR', category: 'procedure' }));
+    expect(res.status).toBe(429);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
 });
 
 describe('DELETE /api/first-aid/entries/[id]', () => {
@@ -89,6 +96,15 @@ describe('DELETE /api/first-aid/entries/[id]', () => {
     mockQueryOne.mockResolvedValue(null);
     const res = await DELETE(new Request('http://localhost'), { params: Promise.resolve({ id: ENTRY_ID }) });
     expect(res.status).toBe(404);
+  });
+
+  it('429 when the edit rate limit is exceeded', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'secondary' });
+    mockCheckRateLimit.mockResolvedValueOnce(false);
+    const res = await DELETE(new Request('http://localhost'), { params: Promise.resolve({ id: ENTRY_ID }) });
+    expect(res.status).toBe(429);
+    expect(mockQueryOne).not.toHaveBeenCalled();
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 });
 
@@ -133,5 +149,14 @@ describe('PATCH /api/first-aid/entries/[id]', () => {
     mockQueryOne.mockResolvedValue(null);
     const res = await PATCH(patchReq({ title: 'x' }), { params: Promise.resolve({ id: ENTRY_ID }) });
     expect(res.status).toBe(404);
+  });
+
+  it('429 when the edit rate limit is exceeded', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'secondary' });
+    mockCheckRateLimit.mockResolvedValueOnce(false);
+    const res = await PATCH(patchReq({ title: 'x' }), { params: Promise.resolve({ id: ENTRY_ID }) });
+    expect(res.status).toBe(429);
+    expect(mockQueryOne).not.toHaveBeenCalled();
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 });

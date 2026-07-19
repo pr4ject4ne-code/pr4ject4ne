@@ -12,8 +12,6 @@ import styles from './DevFirstAid.module.css';
 export default function DevFirstAidClient() {
   const { loading: guardLoading, dev } = useDevGuard();
   const [entries, setEntries] = useState<FirstAidEntry[]>([]);
-  const [devId, setDevId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [editing, setEditing] = useState<FirstAidEntry | 'new' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,9 +22,6 @@ export default function DevFirstAidClient() {
     if (!res.ok) return;
     const data = await res.json();
     setEntries(data.entries ?? []);
-    setDevId(data.dev_id ?? null);
-    // Both developer levels manage the whole catalog now.
-    setIsAdmin(data.can_edit_all ?? false);
   }, []);
 
   useEffect(() => {
@@ -101,31 +96,22 @@ export default function DevFirstAidClient() {
         <p style={{ color: 'var(--color-muted)' }}>No entries yet.</p>
       ) : (
         <ul className={styles.list}>
-          {entries.map((e) => {
-            const canEdit = isAdmin || e.created_by_dev_id === devId;
-            return (
-              <li key={e.id} className={styles.row}>
-                <div>
-                  <span className={styles.category}>{e.category}</span>
-                  <strong>{e.title}</strong>
-                </div>
-                <div className={styles.actions}>
-                  {canEdit ? (
-                    <>
-                      <Button variant="ghost" onClick={() => setEditing(e)}>
-                        Edit
-                      </Button>
-                      <Button variant="danger" onClick={() => setConfirmDelete(e)}>
-                        Delete
-                      </Button>
-                    </>
-                  ) : (
-                    <span className={styles.readonly}>Read only</span>
-                  )}
-                </div>
-              </li>
-            );
-          })}
+          {entries.map((e) => (
+            <li key={e.id} className={styles.row}>
+              <div>
+                <span className={styles.category}>{e.category}</span>
+                <strong>{e.title}</strong>
+              </div>
+              <div className={styles.actions}>
+                <Button variant="ghost" onClick={() => setEditing(e)}>
+                  Edit
+                </Button>
+                <Button variant="danger" onClick={() => setConfirmDelete(e)}>
+                  Delete
+                </Button>
+              </div>
+            </li>
+          ))}
         </ul>
       )}
 

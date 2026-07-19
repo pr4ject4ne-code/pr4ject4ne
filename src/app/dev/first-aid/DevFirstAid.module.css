@@ -33,7 +33,3 @@
   display: flex;
   gap: 0.5rem;
 }
-.readonly {
-  color: var(--color-muted);
-  font-size: 0.85rem;
-}

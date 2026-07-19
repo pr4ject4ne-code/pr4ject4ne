@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Card from './Card';
 import { FIRST_AID_TAGS } from '@/lib/first-aid-tags';
+import { safeHttpUrl } from '@/lib/sanitize';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
 import styles from './FirstAidList.module.css';
 
@@ -87,32 +88,38 @@ export default function FirstAidList({
         <p className={styles.empty}>No entries found.</p>
       ) : (
         <ul className={styles.grid}>
-          {entries.map((e) => (
-            <li key={e.id}>
-              <Link href={`/first-aid/${e.id}`} className={styles.cardLink}>
-                <Card as="article" className={styles.card}>
-                  {e.images?.[0] && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={e.images[0]} alt="" className={styles.thumb} />
-                  )}
-                  <div className={styles.cardBody}>
-                    <span className={styles.category}>{e.category}</span>
-                    <h3 className={styles.title}>{e.title}</h3>
-                    {e.definition && <p className={styles.definition}>{e.definition}</p>}
-                    {e.tags?.length > 0 && (
-                      <div className={styles.cardTags}>
-                        {e.tags.map((t) => (
-                          <span key={t} className={styles.cardTag}>
-                            {t}
-                          </span>
-                        ))}
-                      </div>
+          {entries.map((e) => {
+            // Defense in depth: even though URLs are scheme-validated on write,
+            // guard the src sink at render so a stale bad value can never
+            // produce a javascript: URL.
+            const thumb = safeHttpUrl(e.images?.[0]);
+            return (
+              <li key={e.id}>
+                <Link href={`/first-aid/${e.id}`} className={styles.cardLink}>
+                  <Card as="article" className={styles.card}>
+                    {thumb && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={thumb} alt="" className={styles.thumb} />
                     )}
-                  </div>
-                </Card>
-              </Link>
-            </li>
-          ))}
+                    <div className={styles.cardBody}>
+                      <span className={styles.category}>{e.category}</span>
+                      <h3 className={styles.title}>{e.title}</h3>
+                      {e.definition && <p className={styles.definition}>{e.definition}</p>}
+                      {e.tags?.length > 0 && (
+                        <div className={styles.cardTags}>
+                          {e.tags.map((t) => (
+                            <span key={t} className={styles.cardTag}>
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

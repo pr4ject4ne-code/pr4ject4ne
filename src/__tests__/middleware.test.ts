@@ -82,6 +82,40 @@ describe('middleware CSP (hydration regression guard)', () => {
     expect(csp).toContain("frame-ancestors 'none'");
   });
 
+  describe('Supabase Storage host in img-src', () => {
+    const ORIGINAL_SUPABASE_URL = process.env.SUPABASE_URL;
+
+    afterEach(() => {
+      if (ORIGINAL_SUPABASE_URL === undefined) delete process.env.SUPABASE_URL;
+      else process.env.SUPABASE_URL = ORIGINAL_SUPABASE_URL;
+    });
+
+    it('adds the Supabase project origin to img-src when SUPABASE_URL is set', () => {
+      process.env.SUPABASE_URL = 'https://abcdefghijklmno.supabase.co';
+      const csp = middleware(pageRequest()).headers.get('content-security-policy') as string;
+      const directive = csp
+        .split(';')
+        .map((d) => d.trim())
+        .find((d) => d.startsWith('img-src')) as string;
+      expect(directive).toContain('https://abcdefghijklmno.supabase.co');
+    });
+
+    it('does not hardcode a specific project ref — a different SUPABASE_URL yields a different host', () => {
+      process.env.SUPABASE_URL = 'https://some-other-project.supabase.co';
+      const csp = middleware(pageRequest()).headers.get('content-security-policy') as string;
+      expect(csp).toContain('https://some-other-project.supabase.co');
+      expect(csp).not.toContain('abcdefghijklmno');
+    });
+
+    it('omits any Supabase host when SUPABASE_URL is unset (storage not configured)', () => {
+      delete process.env.SUPABASE_URL;
+      const csp = middleware(pageRequest()).headers.get('content-security-policy') as string;
+      expect(csp).toContain(
+        "img-src 'self' data: blob: https://api.maptiler.com https://*.tile.openstreetmap.org https://unpkg.com"
+      );
+    });
+  });
+
   it("includes 'unsafe-eval' outside production (Next dev tooling needs it)", () => {
     // Jest runs with NODE_ENV=test, which takes the non-production branch.
     const csp = middleware(pageRequest()).headers.get('content-security-policy') as string;
