@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
+import Input from '@/components/Input';
 import Calendar from '@/components/Calendar';
 import BioDataForm from '@/components/BioDataForm';
 import IHNCodeDisplay from '@/components/IHNCodeDisplay';
@@ -26,6 +27,10 @@ export default function DashboardClient() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -81,6 +86,25 @@ export default function DashboardClient() {
     router.push('/');
   }
 
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError(null);
+    setPwSuccess(false);
+    const res = await fetch('/api/account/password', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setPwError(data.error ?? 'Could not change password.');
+      return;
+    }
+    setPwSuccess(true);
+    setCurrentPassword('');
+    setNewPassword('');
+  }
+
   if (loading) {
     return (
       <Layout page="dashboard">
@@ -100,6 +124,33 @@ export default function DashboardClient() {
             Log out
           </Button>
         </div>
+
+        <section className={styles.account}>
+          <h2 className={styles.sectionTitle}>My account</h2>
+          <Card>
+            <form onSubmit={changePassword}>
+              <Input
+                label="Current password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+              <Input
+                label="New password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+              />
+              <Button type="submit">Change password</Button>
+            </form>
+            {pwError && <p style={{ color: 'var(--color-red)', fontSize: '0.85rem', marginTop: '0.75rem' }}>{pwError}</p>}
+            {pwSuccess && <p style={{ color: 'var(--color-green)', fontSize: '0.85rem', marginTop: '0.75rem' }}>Password changed. Your other sessions were signed out.</p>}
+          </Card>
+        </section>
 
         <section className={styles.mainGrid}>
           <Card as="section">

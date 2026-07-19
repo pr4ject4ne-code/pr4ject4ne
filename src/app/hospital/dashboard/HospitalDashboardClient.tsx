@@ -38,6 +38,10 @@ export default function HospitalDashboardClient() {
   const [tab, setTab] = useState<Tab>('info');
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/hospital/session');
@@ -56,6 +60,25 @@ export default function HospitalDashboardClient() {
   function flash(msg: string) {
     setNotice(msg);
     setTimeout(() => setNotice(null), 2500);
+  }
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError(null);
+    setPwSuccess(false);
+    const res = await fetch('/api/account/password', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+    const respData = await res.json();
+    if (!res.ok) {
+      setPwError(respData.error ?? 'Could not change password.');
+      return;
+    }
+    setPwSuccess(true);
+    setCurrentPassword('');
+    setNewPassword('');
   }
 
   if (loading || !data) {
@@ -91,6 +114,33 @@ export default function HospitalDashboardClient() {
           </button>
         ))}
       </nav>
+
+      <section className={styles.account} style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>My account password</h3>
+        <Card>
+          <form onSubmit={changePassword}>
+            <Input
+              label="Current password"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
+            <Input
+              label="New password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+            />
+            <Button type="submit">Change password</Button>
+          </form>
+          {pwError && <p style={{ color: 'var(--color-red)', fontSize: '0.85rem', marginTop: '0.75rem' }}>{pwError}</p>}
+          {pwSuccess && <p style={{ color: 'var(--color-green)', fontSize: '0.85rem', marginTop: '0.75rem' }}>Password changed. Your other sessions were signed out.</p>}
+        </Card>
+      </section>
 
       {notice && (
         <p className={styles.notice} role="status">
