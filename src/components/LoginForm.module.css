@@ -14,7 +14,7 @@
   font-size: 0.92rem;
 }
 
-/* iOS-style segmented control on a tinted track. */
+/* iOS-style segmented control on a tinted track with liquid sliding pill. */
 .tabs {
   display: flex;
   gap: 0.25rem;
@@ -22,6 +22,7 @@
   background: var(--color-blue-light);
   border-radius: 999px;
   margin-bottom: 1.5rem;
+  position: relative;
 }
 .tabs button {
   flex: 1;
@@ -34,14 +35,28 @@
   color: var(--color-blue-dark);
   border-radius: 999px;
   transition:
-    background 0.15s ease,
-    color 0.15s ease,
+    color var(--spring) ease,
     box-shadow 0.15s ease;
+  position: relative;
+  z-index: 1;
 }
 .activeTab {
-  background: var(--color-white) !important;
   color: var(--color-ink) !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.6);
+}
+.tabs button::before {
+  content: '';
+  position: absolute;
+  inset: 0.28rem;
+  background: var(--color-white);
+  border-radius: 999px;
   box-shadow: var(--shadow-sm);
+  z-index: -1;
+  transition: all var(--spring) ease;
+  opacity: 0;
+}
+.activeTab::before {
+  opacity: 1;
 }
 .agree {
   display: flex;
