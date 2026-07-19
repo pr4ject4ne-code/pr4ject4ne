@@ -80,6 +80,21 @@ interface PatchBody {
 }
 
 /**
+ * Count active primary developers OTHER than `excludeId`. Used to enforce the
+ * last-primary invariant: the system must never be left with zero active
+ * primaries (admin lockout). If this returns 0, `excludeId` is the last one.
+ */
+async function otherActivePrimaries(excludeId: string): Promise<number> {
+  const { rows } = await query<{ n: number }>(
+    `SELECT COUNT(*)::int AS n FROM users
+     WHERE account_type = 'developer' AND access_level = 'primary'
+       AND is_active = true AND id <> $1`,
+    [excludeId],
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
+/**
  * PATCH — level-1 (primary) developer lifecycle actions over other devs, all
  * gated to primary only:
  *   suspend      — temporarily deactivate (is_active=false), kills sessions
@@ -101,6 +116,31 @@ export async function PATCH(req: Request) {
   const selfChanging = body.id === dev.id;
   if (selfChanging && (body.action === 'revoke' || body.action === 'suspend' || body.action === 'promote')) {
     return apiError('You cannot change your own account here.', 'SELF_CHANGE', 400);
+  }
+
+  // Last-primary invariant: reject any op that would drop active primaries to
+  // zero. Revoke (delete), suspend (deactivate), and demote (promote→secondary)
+  // all shrink the active-primary pool; guard them when the target is itself an
+  // active primary and no other active primary remains.
+  const demoting = body.action === 'promote' && body.level === 'secondary';
+  if (body.action === 'revoke' || body.action === 'suspend' || demoting) {
+    const { rows } = await query<{ access_level: string; is_active: boolean }>(
+      `SELECT access_level, is_active FROM users
+       WHERE id = $1 AND account_type = 'developer'`,
+      [body.id],
+    );
+    const target = rows[0];
+    if (target && target.access_level === 'primary') {
+      // Suspending an already-inactive primary changes no active count.
+      const reducesActive = body.action !== 'suspend' || target.is_active;
+      if (reducesActive && (await otherActivePrimaries(body.id)) === 0) {
+        return apiError(
+          'Cannot remove the last active primary. Promote another developer to primary first.',
+          'LAST_PRIMARY',
+          409,
+        );
+      }
+    }
   }
 
   if (body.action === 'suspend' || body.action === 'reactivate') {
