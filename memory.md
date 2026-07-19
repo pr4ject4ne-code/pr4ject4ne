@@ -251,3 +251,10 @@ Running log of project-level context that should persist across sessions and age
   - **Type-check + lint clean, 250/250 tests passing** (dev-tertiary flake resolved this run).
 - **Still flat/not-revisited**: hospital-profile, first-aid, filter pages have the glass Card styling (inherited), but haven't been reviewed for additional interactive enhancements or micro-interaction polish. Per the design nuance, ultra-transparent glass is map-only; these plain pages correctly use the more-filled `--glass-bg` for legibility.
 - **Browser pane rendering still hung this session** — couldn't visually verify the refraction and interactions in the preview. Founder can view live at localhost:3000 in their own browser (unaffected by the pane flake). Recommended visual pass: (1) hover hospital cards to see sheen follow cursor, (2) click button to see jelly squash, (3) switch login tabs to see pill slide smoothly, (4) view homepage results panel overlaying the map to confirm refraction/saturation effect.
+
+## 2026-07-19 (continued) — password-change parity + all tests green
+- **Account password self-service gap closed (commit e12a83c, pushed).** Patient and hospital-staff accounts can now change their own password via the dashboard, matching the capability added to developer accounts in memory 2026-07-18. Both use the existing `PATCH /api/account/password` endpoint (backend was already working for all types; this was UI-only). Changes:
+  - DashboardClient: "My account" section with current+new password form, error/success messages
+  - HospitalDashboardClient: account password section below the tabs nav, same form/messaging
+  - Both pages now reach feature parity with the developer primary page (/dev/primary)
+- **State: 250/250 tests passing (all 31 suites green), type-check + lint clean, 4 commits ahead of origin.** Remaining items (unchanged from earlier): visual verification of the glass interactions (browser hung, founder eyes live at localhost:3000), R2 storage revisit (deferred on card friction). Backend and API surface are feature-complete + review-clean; all account types now have password self-service.
