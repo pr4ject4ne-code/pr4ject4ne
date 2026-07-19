@@ -5,17 +5,17 @@
   row-gap: 0.55rem;
   flex-wrap: wrap;
   padding: 0.7rem 1.25rem;
-  /* Frosted glass: translucent brand blue + blur so scrolled content (and the
-     map on the homepage) reads faintly through the chrome. */
-  background: rgba(63, 109, 199, 0.82);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  /* Liquid glass: translucent brand violet + blur so scrolled content (and the
+     map on the homepage) reads faintly through the chrome. Purple leads. */
+  background: rgba(101, 70, 235, 0.82);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
   color: var(--color-white);
   position: sticky;
   top: 0;
   z-index: 500;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 6px 24px rgba(20, 40, 90, 0.18);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 6px 24px rgba(60, 40, 130, 0.2);
 }
 
 /* Homepage: float over the full-bleed map. Lighter tint so the map shows
@@ -25,8 +25,8 @@
   top: 0;
   left: 0;
   right: 0;
-  background: rgba(52, 92, 173, 0.55);
-  box-shadow: 0 6px 30px rgba(15, 30, 70, 0.22);
+  background: rgba(109, 74, 255, 0.5);
+  box-shadow: 0 6px 30px rgba(50, 30, 120, 0.24);
 }
 
 .left {

@@ -1,5 +1,7 @@
 /*
- * Racoon Eye theme — light blue / white / amethyst, Apple-"liquid" finish.
+ * Racoon Eye theme — purple-forward, white, Apple liquid-glass finish.
+ * Purple (amethyst tokens) LEADS: brand, primary actions, active states.
+ * Blue is a demoted secondary + the map's "you are here" / by-name accent.
  * Rules (site-wide):
  *  - Open, airy feel: depth comes from soft layered shadows, not hard borders.
  *    Borders are hairline-faint (near-unnoticeable); surfaces float on the page.
@@ -17,10 +19,12 @@
   --color-blue-light: #eef3fc;
   --color-blue-tint: #f5f8fd;
 
-  /* Amethyst (specifically, not generic purple) */
-  --color-amethyst: #7b5aa6;
-  --color-amethyst-dark: #5c4084;
-  --color-amethyst-light: #f2ecfa;
+  /* Amethyst = the LEAD purple (vibrant lavender-violet). Purple leads the
+     brand now; blue is demoted to a quiet secondary + map role. White text
+     on --color-amethyst / -dark clears AA. */
+  --color-amethyst: #6d4aff;
+  --color-amethyst-dark: #5a34f0;
+  --color-amethyst-light: #f2eeff;
 
   /* Highlight / accent — luminous teal, used on the map (route + nearest pin)
      and for active/live accents. The "pop" color against muted map tiles. */
@@ -36,10 +40,12 @@
   --color-border: #ecf0f6; /* hairline-faint; depth lives in the shadows */
   --color-hairline: rgba(26, 29, 36, 0.06);
 
-  /* Frosted glass (floating chrome) */
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.55);
-  --glass-blur: saturate(180%) blur(20px);
+  /* Liquid glass (floating chrome). More transparent + saturated than before so
+     it reads as glass, not milk. Panels over the MAP push transparency further
+     (see .glass-liquid); on plain pages this filled value keeps text legible. */
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-blur: saturate(200%) blur(18px);
 
   /* Announcement severity codes (hospital calendar) */
   --color-green: #2e7d4f;
@@ -56,6 +62,10 @@
   --shadow-sm: 0 1px 2px rgba(20, 30, 60, 0.05);
   --shadow: 0 2px 6px rgba(20, 30, 60, 0.05), 0 12px 28px rgba(20, 30, 60, 0.07);
   --shadow-lg: 0 8px 40px rgba(20, 30, 60, 0.12);
+
+  /* Spring / gel easing — the shared curve for the liquid-glass interactions
+     (segmented control slide, card lift, jelly tap). Overshoots, then settles. */
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 * {
