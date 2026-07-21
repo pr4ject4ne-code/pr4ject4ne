@@ -44,4 +44,7 @@ Raw list as given by founder, verbatim (numbering preserved for cross-referencin
 - **#15** — need the new logo asset.
 
 ## Direct question to answer now
-- **#16** — panda eye vs raccoon eye (see chat response).
+- **#16** — panda eye vs raccoon eye (see chat response): raccoon eye, no contest — stronger/more distinctive brand hook, already built.
+
+## Phased execution plan
+See [PLAN-worklist.md](PLAN-worklist.md) for the full phased plan (planner pass, 2026-07-21) — recon findings, phase groupings, parallelization, and open decisions. Update this file's Status column as items land; keep the raw list above unedited.
