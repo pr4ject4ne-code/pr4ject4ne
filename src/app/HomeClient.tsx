@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import Layout from '@/components/Layout';
@@ -31,6 +31,7 @@ export default function HomeClient() {
   const [manualQuery, setManualQuery] = useState('');
   const [locating, setLocating] = useState(false);
   const [manualError, setManualError] = useState<string | null>(null);
+  const darkenRef = useRef<HTMLDivElement>(null);
 
   const nameQuery = searchParams.get('q') ?? '';
   const symptomQuery = searchParams.get('symptom') ?? '';
@@ -107,6 +108,28 @@ export default function HomeClient() {
     loadHospitals(0, false);
   }, [loadHospitals]);
 
+  // Progressively darken the fixed map backdrop as the page scrolls, so it
+  // reads as "receding into the background" rather than scrolling away.
+  // Imperative DOM writes (not React state) keep this off the render path.
+  useEffect(() => {
+    const MAX_DARKEN = 0.55;
+    let ticking = false;
+    const applyDarken = () => {
+      ticking = false;
+      const distance = window.innerHeight || 1;
+      const progress = Math.min(1, Math.max(0, window.scrollY / distance));
+      darkenRef.current?.style.setProperty('--map-darken', String(progress * MAX_DARKEN));
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(applyDarken);
+    };
+    applyDarken();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   // Sort by proximity when we have the user's location.
   const orderedHospitals = useMemo(() => {
     if (!userLocation) return hospitals;
@@ -151,6 +174,7 @@ export default function HomeClient() {
             routeGeometry={route}
           />
         </div>
+        <div ref={darkenRef} className={styles.darkenOverlay} aria-hidden="true" />
 
         <section className={styles.panel} aria-label="Hospital results">
           <span className={styles.grabber} aria-hidden="true" />

@@ -30,7 +30,8 @@ Left to right:
 
 ## Main area — map
 
-- Full-bleed background: `100vw` x `100vh`.
+- Full-bleed background, `100vw` wide, but **`80vh` tall, not `100vh`** (changed 2026-07-21 — founder found 100vh gave no visual cue that content continued below; 80vh leaves the footer's top edge peeking into view as a scroll hint).
+- The map is a **fixed viewport backdrop** — it does not scroll away with the page. As the user scrolls past the initial 80vh view, foreground content (footer, and anything added later) scrolls up over it while the map stays put and progressively **darkens** (a scroll-linked dark overlay), rather than sliding out of frame. This applies specifically to the map; it is not a general "everything is fixed" rule.
 - Digitized/interactive map, not a static image.
 - **Map stack decision:** Leaflet.js + OpenStreetMap tiles + OSRM routing.
   - Reason: fully open-source, no API key/account/billing tier required anywhere in the stack — avoids any cost inquiry. Mapbox and OpenRouteService were considered but both require signup even at free tier, which risks a billing conversation later if usage caps are hit.

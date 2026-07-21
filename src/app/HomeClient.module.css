@@ -4,15 +4,30 @@
 .stage {
   position: relative;
   width: 100%;
-  height: 100dvh;
+  height: 80vh;
   min-height: 480px;
 }
 
+/* Fixed viewport backdrop (not confined to .stage): fills the screen and
+   stays put as the page scrolls, rather than scrolling away with the
+   80vh stage that contains it. */
 .mapLayer {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 0;
   background: var(--color-blue-light);
+}
+
+/* Sits above the fixed map, below the floating results panel (z-index 400).
+   Darkness is scroll-linked via the --map-darken custom property, set
+   imperatively from HomeClient.tsx (no React re-render per scroll tick). */
+.darkenOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: rgba(26, 29, 36, var(--map-darken, 0));
+  transition: background-color 0.08s linear;
 }
 
 /* Floating results panel. Mobile: a bottom sheet rising over the map.
