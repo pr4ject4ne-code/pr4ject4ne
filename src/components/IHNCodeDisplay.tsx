@@ -23,7 +23,7 @@ export default function IHNCodeDisplay({ code }: { code: string }) {
             <li>Faster triage — doctors see relevant history before you can explain it yourself.</li>
             <li>Safer treatment — known conditions, disabilities, and preferences reduce guesswork.</li>
             <li>Works even if you can&apos;t speak for yourself — a relative or friend with your code can share it on your behalf.</li>
-            <li>You stay in control — the code is yours, changeable, and only unlocks what you choose to fill in.</li>
+            <li>You stay in control — the code is yours to share only with who you choose, and it only unlocks what you choose to fill in.</li>
           </ul>
         </div>
       </details>

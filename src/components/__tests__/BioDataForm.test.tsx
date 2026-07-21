@@ -22,6 +22,8 @@ describe('BioDataForm', () => {
     expect(screen.getByLabelText('BMI (calculated)')).toBeInTheDocument();
     expect(screen.getByLabelText('Genotype')).toBeInTheDocument();
     expect(screen.getByLabelText('Blood group')).toBeInTheDocument();
+    expect(screen.getByLabelText('Tribe')).toBeInTheDocument();
+    expect(screen.getByLabelText('Ethnicity')).toBeInTheDocument();
   });
 
   it('blocks save and shows errors when required fields are empty', async () => {
@@ -62,5 +64,29 @@ describe('BioDataForm', () => {
     );
     fireEvent.click(screen.getByText('Save biodata'));
     await waitFor(() => expect(onSave).toHaveBeenCalled());
+  });
+
+  it('includes tribe and ethnicity in the saved biodata payload', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    render(
+      <BioDataForm
+        initialProfile={{
+          full_name: 'Ada Obi',
+          gender: 'female',
+          phone: '0800',
+          email: 'a@b.co',
+          dob: '1990-01-01',
+          next_of_kin: 'Kin 0800',
+        }}
+        initialBiodata={{}}
+        onSave={onSave}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Tribe'), { target: { value: 'Igbo' } });
+    fireEvent.change(screen.getByLabelText('Ethnicity'), { target: { value: 'Igbo' } });
+    fireEvent.click(screen.getByText('Save biodata'));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    const [, savedBiodata] = onSave.mock.calls[0];
+    expect(savedBiodata).toMatchObject({ tribe: 'Igbo', ethnicity: 'Igbo' });
   });
 });

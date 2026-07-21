@@ -11,11 +11,12 @@
   backdrop-filter: blur(18px) saturate(180%);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
   --header-fg: var(--color-white);
+  --header-border: rgba(255, 255, 255, 0.18);
   color: var(--header-fg);
   position: sticky;
   top: 0;
   z-index: 500;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom: 1px solid var(--header-border);
   box-shadow: 0 6px 24px rgba(60, 40, 130, 0.2);
 }
 
@@ -30,6 +31,7 @@
   backdrop-filter: blur(6px) saturate(140%);
   -webkit-backdrop-filter: blur(6px) saturate(140%);
   --header-fg: var(--color-ink);
+  --header-border: rgba(15, 30, 70, 0.12);
   box-shadow: 0 4px 16px rgba(60, 40, 130, 0.06);
   transition:
     background 0.2s ease,
@@ -44,6 +46,7 @@
   backdrop-filter: blur(18px) saturate(180%);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
   --header-fg: var(--color-white);
+  --header-border: rgba(255, 255, 255, 0.18);
   box-shadow: 0 6px 24px rgba(60, 40, 130, 0.2);
 }
 
@@ -99,7 +102,7 @@
   align-items: center;
   gap: 0.4rem;
   padding-left: 0.75rem;
-  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  border-left: 1px solid var(--header-border);
 }
 
 .hospitalLogo {
