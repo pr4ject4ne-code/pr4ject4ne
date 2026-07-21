@@ -22,3 +22,51 @@
   color: var(--color-muted);
   margin: 0;
 }
+
+/* "Why does this matter?" — a small frosted-glass collapsible, same register
+   as Card.module.css (glass tokens, soft shadow, no hard border). */
+.why {
+  margin-top: 0.75rem;
+}
+.whySummary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-amethyst-dark);
+  padding: 0.1rem 0;
+}
+.whySummary::-webkit-details-marker {
+  display: none;
+}
+.whySummary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 0.4rem;
+  transition: transform 0.15s ease;
+}
+.why[open] .whySummary::before {
+  transform: rotate(90deg);
+}
+.whyBody {
+  margin-top: 0.6rem;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 0.85rem 1rem;
+  font-size: 0.85rem;
+  color: var(--color-ink);
+}
+.whyBody p {
+  margin: 0 0 0.5rem;
+}
+.whyList {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}

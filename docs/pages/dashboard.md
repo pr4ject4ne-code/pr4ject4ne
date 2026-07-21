@@ -14,7 +14,7 @@ For now, a simple layout:
 
 ## Profile section (second section of the dashboard)
 
-This is the **Biodata Farm** — per the founder, one of the key trust/value drivers of the whole product: "the greatest source of trust for immediate healthcare measures and insight into health choices." The data model here must be precise and reliable; visual layout is left to planner/builder discretion within the site-wide theme rules, but the fields and access rules below are exact and not to be altered without founder sign-off.
+This is the **Biodata** section — per the founder, one of the key trust/value drivers of the whole product: "the greatest source of trust for immediate healthcare measures and insight into health choices." The data model here must be precise and reliable; visual layout is left to planner/builder discretion within the site-wide theme rules, but the fields and access rules below are exact and not to be altered without founder sign-off.
 
 ### Access code
 

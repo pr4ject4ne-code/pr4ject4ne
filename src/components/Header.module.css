@@ -1,20 +1,49 @@
 .bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: 'left search right';
   align-items: center;
   gap: 1rem;
   row-gap: 0.55rem;
-  flex-wrap: wrap;
   padding: 0.7rem 1.25rem;
-  /* Liquid glass: translucent brand violet + blur so scrolled content (and the
-     map on the homepage) reads faintly through the chrome. Purple leads. */
+  /* Liquid glass, non-floating (plain-page) variant only. Purple leads. */
   background: rgba(101, 70, 235, 0.82);
   backdrop-filter: blur(18px) saturate(180%);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
-  color: var(--color-white);
+  --header-fg: var(--color-white);
+  color: var(--header-fg);
   position: sticky;
   top: 0;
   z-index: 500;
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 6px 24px rgba(60, 40, 130, 0.2);
+}
+
+/* Resting state on plain (non-floating) pages: ~86% transparent (the founder's
+   "sick and pale" complaint) with dark ink text/icons so contents stay legible
+   against typically-light page content sitting behind the sticky bar. Raises
+   back to the filled, blurred, white-on-violet glass on hover/focus-within so
+   contents are unmistakably readable whenever someone is actually using the
+   bar. Scoped away from `.floating` (map header), which stays as designed. */
+.bar:not(.floating) {
+  background: rgba(101, 70, 235, 0.14);
+  backdrop-filter: blur(6px) saturate(140%);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
+  --header-fg: var(--color-ink);
+  box-shadow: 0 4px 16px rgba(60, 40, 130, 0.06);
+  transition:
+    background 0.2s ease,
+    backdrop-filter 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+}
+
+.bar:not(.floating):hover,
+.bar:not(.floating):focus-within {
+  background: rgba(101, 70, 235, 0.82);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  --header-fg: var(--color-white);
   box-shadow: 0 6px 24px rgba(60, 40, 130, 0.2);
 }
 
@@ -26,14 +55,17 @@
   left: 0;
   right: 0;
   background: rgba(109, 74, 255, 0.5);
+  --header-fg: var(--color-white);
   box-shadow: 0 6px 30px rgba(50, 30, 120, 0.24);
 }
 
 .left {
+  grid-area: left;
+  justify-self: start;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  flex-shrink: 0;
+  min-width: 0;
 }
 
 .brand {
@@ -41,7 +73,7 @@
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
-  color: var(--color-white);
+  color: var(--header-fg);
 }
 
 .logoBadge {
@@ -81,13 +113,15 @@
 .hospitalName {
   font-size: 0.95rem;
   font-weight: 600;
+  color: var(--header-fg);
 }
 
 .search {
+  grid-area: search;
+  justify-self: center;
   display: flex;
   align-items: stretch;
-  flex: 1;
-  max-width: 600px;
+  width: min(600px, 100%);
   background: var(--color-white);
   border-radius: 999px;
   overflow: hidden;
@@ -130,7 +164,8 @@
 }
 
 .right {
-  margin-left: auto;
+  grid-area: right;
+  justify-self: end;
   position: relative;
   flex-shrink: 0;
 }
@@ -150,7 +185,7 @@
 .hamburger span {
   display: block;
   height: 2px;
-  background: var(--color-white);
+  background: var(--header-fg);
   border-radius: 2px;
 }
 
@@ -179,18 +214,16 @@
 
 /* Below this width the brand + search + menu stop fitting on one row without
    the search input clipping its own placeholder. Drop the search onto its own
-   full-width row so it always has room. */
+   full-width row (still centered within that row) so it always has room. */
 @media (max-width: 900px) {
-  .left {
-    order: 1;
-  }
-  .right {
-    order: 2;
+  .bar {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'left right'
+      'search search';
   }
   .search {
-    order: 3;
-    flex-basis: 100%;
-    max-width: none;
+    width: 100%;
   }
 }
 

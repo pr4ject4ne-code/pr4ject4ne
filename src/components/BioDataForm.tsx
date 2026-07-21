@@ -231,6 +231,16 @@ export default function BioDataForm({
             value={biodata.religious_status ?? ''}
             onChange={(e) => setB('religious_status', e.target.value)}
           />
+          <Input
+            label="Tribe"
+            value={biodata.tribe ?? ''}
+            onChange={(e) => setB('tribe', e.target.value)}
+          />
+          <Input
+            label="Ethnicity"
+            value={biodata.ethnicity ?? ''}
+            onChange={(e) => setB('ethnicity', e.target.value)}
+          />
         </div>
 
         <h3 className={styles.subheading}>Anthropometric measurements</h3>

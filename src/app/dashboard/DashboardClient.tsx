@@ -172,7 +172,7 @@ export default function DashboardClient() {
           </Card>
         </section>
 
-        <h2 className={styles.sectionTitle}>Biodata Farm</h2>
+        <h2 className={styles.sectionTitle}>Biodata</h2>
         {data && <IHNCodeDisplay code={data.ihn_code} />}
         {savedAt && (
           <p className={styles.saved} role="status">

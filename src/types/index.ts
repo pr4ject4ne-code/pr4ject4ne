@@ -112,6 +112,8 @@ export interface BiodataLayer {
   occupation?: string;
   marital_status?: string;
   religious_status?: string;
+  tribe?: string;
+  ethnicity?: string;
   height_cm?: number;
   weight_kg?: number;
   waist_cm?: number;
