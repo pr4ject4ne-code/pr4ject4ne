@@ -5,6 +5,12 @@
   display: grid;
   gap: 1.25rem;
 }
+.heroRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -48,6 +54,9 @@
 }
 
 @media (max-width: 800px) {
+  .heroRow {
+    grid-template-columns: 1fr;
+  }
   .grid {
     grid-template-columns: 1fr;
   }

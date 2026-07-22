@@ -52,6 +52,12 @@ function mockFetchWith(hospital: Hospital, doctors: Doctor[]) {
     if (url.includes('/api/auth/session')) {
       return Promise.resolve({ ok: false } as Response);
     }
+    if (url.includes('/ranking')) {
+      // Not under test in this file — resolve as "unavailable" so the ranking
+      // panel simply stays hidden (covered separately in HospitalRankingPanel's
+      // own tests + a dedicated ranking-integration case below).
+      return Promise.resolve({ ok: false } as Response);
+    }
     return Promise.resolve({
       ok: true,
       json: async () => ({ hospital, doctors, announcements: [] }),
@@ -79,5 +85,59 @@ describe('HospitalProfileClient — doctors section visibility (worklist #10)', 
     render(<HospitalProfileClient id="h1" />);
     await waitFor(() => expect(screen.getAllByText('Test Facility').length).toBeGreaterThan(0));
     expect(screen.queryByText(/Doctors \(/)).not.toBeInTheDocument();
+  });
+});
+
+describe('HospitalProfileClient — ratings/ranking panel (worklist #2)', () => {
+  it('renders the region + national rank once the ranking endpoint resolves', async () => {
+    global.fetch = jest.fn((url: string) => {
+      if (url.includes('/api/auth/session')) return Promise.resolve({ ok: false } as Response);
+      if (url.includes('/ranking')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            rating_avg: 4.5,
+            rating_count: 12,
+            region: { rank: 2, total: 6 },
+            national: { rank: 5, total: 20 },
+          }),
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ hospital: { ...BASE_HOSPITAL, city: 'Enugu' }, doctors: [], announcements: [] }),
+      } as Response);
+    }) as unknown as typeof fetch;
+
+    render(<HospitalProfileClient id="h1" />);
+    await waitFor(() => expect(screen.getByText(/of 6/)).toBeInTheDocument());
+    expect(screen.getByText('In Enugu')).toBeInTheDocument();
+    expect(screen.getByText(/#2 of 6/)).toBeInTheDocument();
+    expect(screen.getByText(/#5 of 20/)).toBeInTheDocument();
+  });
+
+  it('shows "Not yet rated" instead of a nonsensical rank for a zero-review hospital', async () => {
+    global.fetch = jest.fn((url: string) => {
+      if (url.includes('/api/auth/session')) return Promise.resolve({ ok: false } as Response);
+      if (url.includes('/ranking')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            rating_avg: 0,
+            rating_count: 0,
+            region: { rank: 1, total: 1 },
+            national: { rank: 1, total: 1 },
+          }),
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ hospital: BASE_HOSPITAL, doctors: [], announcements: [] }),
+      } as Response);
+    }) as unknown as typeof fetch;
+
+    render(<HospitalProfileClient id="h1" />);
+    await waitFor(() => expect(screen.getByText('Not yet rated')).toBeInTheDocument());
+    expect(screen.queryByText(/#1 of 1/)).not.toBeInTheDocument();
   });
 });

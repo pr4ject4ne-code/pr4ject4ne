@@ -1,0 +1,35 @@
+.panel {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  height: 100%;
+}
+.title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.ranks {
+  margin: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+.rankRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.rankRow dt {
+  color: var(--color-muted);
+  font-weight: 600;
+}
+.rankRow dd {
+  margin: 0;
+  font-weight: 700;
+}
+.unrated {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}

@@ -7,8 +7,10 @@ import HospitalInfo from '@/components/HospitalInfo';
 import HospitalHours from '@/components/HospitalHours';
 import AnnouncementCalendar from '@/components/AnnouncementCalendar';
 import DoctorRoster from '@/components/DoctorRoster';
+import HospitalRankingPanel from '@/components/HospitalRankingPanel';
 import Card from '@/components/Card';
 import { searchWithinHospital, type HospitalSearchMatch } from '@/lib/hospital-search';
+import type { HospitalRanking } from '@/lib/hospital-ranking';
 import type { Hospital, Doctor, Announcement } from '@/types';
 import styles from './HospitalProfile.module.css';
 
@@ -22,6 +24,7 @@ export default function HospitalProfileClient({ id }: { id: string }) {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [ranking, setRanking] = useState<HospitalRanking | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -32,6 +35,21 @@ export default function HospitalProfileClient({ id }: { id: string }) {
       })
       .then((d: Data) => active && setData(d))
       .catch(() => active && setError('Hospital not found.'));
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    // Fetched separately from the base profile — the ranking query is a
+    // heavier window-function scan, not something every profile load should
+    // pay for by default (see the ranking route's own comment). Best-effort:
+    // a failure here just leaves the panel hidden, it never blocks the page.
+    let active = true;
+    fetch(`/api/hospitals/${id}/ranking`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d: HospitalRanking | null) => active && setRanking(d))
+      .catch(() => active && setRanking(null));
     return () => {
       active = false;
     };
@@ -94,7 +112,10 @@ export default function HospitalProfileClient({ id }: { id: string }) {
           </Card>
         )}
 
-        <HospitalGallery photos={hospital.photos} />
+        <div className={styles.heroRow}>
+          <HospitalGallery photos={hospital.photos} />
+          <HospitalRankingPanel city={hospital.city} ranking={ranking} />
+        </div>
 
         <div className={styles.grid}>
           <div className={styles.col}>
