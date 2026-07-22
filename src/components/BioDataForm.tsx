@@ -103,6 +103,10 @@ export default function BioDataForm({
   }
 
   function removePhoto() {
+    // Deliberately `undefined`, not `null`: this only hides the photo from
+    // this form's display, it does not delete the stored value server-side.
+    // `undefined` is dropped by JSON.stringify, so the outgoing PATCH omits
+    // the key entirely and the server-side value is left untouched.
     setP('profile_photo_url', undefined);
   }
 

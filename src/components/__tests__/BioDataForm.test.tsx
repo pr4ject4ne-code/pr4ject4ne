@@ -146,6 +146,35 @@ describe('BioDataForm', () => {
     expect(screen.queryByAltText('Profile')).not.toBeInTheDocument();
   });
 
+  it('removing the photo only hides it on this form — it does not clear the stored value server-side', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    render(
+      <BioDataForm
+        initialProfile={{
+          full_name: 'Ada Obi',
+          gender: 'female',
+          phone: '0800',
+          email: 'a@b.co',
+          dob: '1990-01-01',
+          next_of_kin: 'Kin 0800',
+          profile_photo_url: 'https://storage.test/existing.png',
+        }}
+        initialBiodata={{}}
+        onSave={onSave}
+      />,
+    );
+    fireEvent.click(screen.getByText('Remove photo'));
+    fireEvent.click(screen.getByText('Save biodata'));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    const [savedProfile] = onSave.mock.calls[0];
+    // `onSave` receives the raw object pre-serialization, so the key can
+    // still be present here with an `undefined` value — the actual "leave
+    // server data untouched" behavior comes from JSON.stringify dropping an
+    // `undefined`-valued key once DashboardClient builds the PATCH body.
+    // Asserting `undefined` (not `null`) here is what guarantees that drop.
+    expect(savedProfile.profile_photo_url).toBeUndefined();
+  });
+
   it('adds a clinical condition with the chronic-disease sub-fields in the saved payload', async () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     render(
