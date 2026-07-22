@@ -38,9 +38,18 @@
   right: 0;
   bottom: 0;
   z-index: 400;
-  max-height: 58%;
+  /* Fixed viewport-relative height (not a % of .stage) so a drag-to-resize
+     collapsed/expanded pair stays stable if .stage's own height changes
+     again later (it already has once: 100vh -> 80vh, which silently shrank
+     the old `max-height: 58%` results window from 58vh to ~46.4vh). 46vh
+     keeps the same visual footprint that shrink left behind; 88vh is the
+     expanded state, deliberately short of 100vh so a sliver of map stays
+     visible and the "there's more below" cue from item #4 isn't undone. */
+  height: 46vh;
+  max-height: 90vh;
   overflow-y: auto;
   overscroll-behavior: contain;
+  transition: height 0.4s var(--spring);
   padding: 0.4rem 1.1rem 1.4rem;
   /* Liquid glass over the live map: more transparent than the base glass, and
      the map is refracted (bent) through it via the #lg-refract displacement.
@@ -55,7 +64,22 @@
     inset 0 1px 1px rgba(255, 255, 255, 0.85);
 }
 
-/* Drag-handle affordance for the bottom sheet (mobile only). */
+/* Expanded state (drag-to-resize / keyboard-toggled), mobile only. */
+.panel.expanded {
+  height: 88vh;
+}
+
+/* While actively dragging, height is written imperatively per pointermove —
+   suppress the transition so it tracks the pointer 1:1, then re-enable it
+   (base .panel rule) for the snap-to-nearest-state animation on release. */
+.panel.dragging {
+  transition: none;
+}
+
+/* Drag-handle affordance for the bottom sheet (mobile only). Now a real
+   interactive control (Pointer Events drag + keyboard toggle), not
+   decoration — touch-action: none stops the browser's own scroll/refresh
+   gesture from fighting the drag. */
 .grabber {
   display: block;
   width: 42px;
@@ -63,6 +87,15 @@
   margin: 0.4rem auto 0.7rem;
   border-radius: 999px;
   background: rgba(26, 29, 36, 0.18);
+  cursor: grab;
+  touch-action: none;
+}
+.grabber:active {
+  cursor: grabbing;
+}
+.grabber:focus-visible {
+  outline: 2px solid var(--color-amethyst);
+  outline-offset: 2px;
 }
 
 .heading {
@@ -138,7 +171,9 @@
     right: auto;
     bottom: 1.25rem;
     width: 392px;
+    height: auto;
     max-height: none;
+    transition: none;
     padding: 1.1rem 1.25rem 1.5rem;
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);

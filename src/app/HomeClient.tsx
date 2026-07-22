@@ -8,8 +8,14 @@ import HospitalMiniProfile from '@/components/HospitalMiniProfile';
 import Button from '@/components/Button';
 import { getCurrentPosition, DEFAULT_CENTER, type Coords } from '@/lib/geolocation';
 import { fetchRoute, distanceKm, geocode } from '@/lib/map';
+import { clampSheetHeightPx, resolveSheetSnap } from '@/lib/sheetDrag';
 import type { Hospital } from '@/types';
 import styles from './HomeClient.module.css';
+
+// Below this width the results panel is a docked side panel (see
+// HomeClient.module.css), not a draggable bottom sheet — matches the
+// existing `@media (min-width: 900px)` breakpoint there.
+const MOBILE_SHEET_BREAKPOINT = 900;
 
 // Map is client-only (Leaflet touches window); load without SSR.
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
@@ -32,6 +38,12 @@ export default function HomeClient() {
   const [locating, setLocating] = useState(false);
   const [manualError, setManualError] = useState<string | null>(null);
   const darkenRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const dragRef = useRef<{ pointerId: number; startY: number; startHeightPx: number } | null>(
+    null,
+  );
+  const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [isDraggingSheet, setIsDraggingSheet] = useState(false);
 
   const nameQuery = searchParams.get('q') ?? '';
   const symptomQuery = searchParams.get('symptom') ?? '';
@@ -130,6 +142,55 @@ export default function HomeClient() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Mobile bottom-sheet drag-to-resize. The grabber previously did nothing —
+  // the sheet was stuck at its collapsed max-height with no way to see more
+  // results without the panel's own internal scroll. Pointer Events (not
+  // legacy touch events) give consistent mouse+touch+pen support in one
+  // handler set. Height is written imperatively to the DOM while dragging
+  // (same pattern as the scroll-darken effect above) so every pointermove
+  // doesn't trigger a React re-render; only the settled snap state
+  // (`sheetExpanded`) is React state, since that's what drives the CSS
+  // transition + aria-expanded on release.
+  const onGrabberPointerDown = useCallback((e: React.PointerEvent<HTMLSpanElement>) => {
+    if (window.innerWidth >= MOBILE_SHEET_BREAKPOINT) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = {
+      pointerId: e.pointerId,
+      startY: e.clientY,
+      startHeightPx: panel.getBoundingClientRect().height,
+    };
+    setIsDraggingSheet(true);
+  }, []);
+
+  const onGrabberPointerMove = useCallback((e: React.PointerEvent<HTMLSpanElement>) => {
+    const drag = dragRef.current;
+    const panel = panelRef.current;
+    if (!drag || !panel || drag.pointerId !== e.pointerId) return;
+    const deltaUp = drag.startY - e.clientY;
+    const nextHeightPx = clampSheetHeightPx(drag.startHeightPx + deltaUp, window.innerHeight);
+    panel.style.height = `${nextHeightPx}px`;
+  }, []);
+
+  const endGrabberDrag = useCallback((e: React.PointerEvent<HTMLSpanElement>) => {
+    const drag = dragRef.current;
+    const panel = panelRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    dragRef.current = null;
+    setIsDraggingSheet(false);
+    if (!panel) return;
+    const currentHeightPx = panel.getBoundingClientRect().height;
+    panel.style.height = ''; // hand back to the CSS class + transition for the snap animation
+    setSheetExpanded(resolveSheetSnap(currentHeightPx, window.innerHeight));
+  }, []);
+
+  const onGrabberKeyDown = useCallback((e: React.KeyboardEvent<HTMLSpanElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    setSheetExpanded((prev) => !prev);
+  }, []);
+
   // Sort by proximity when we have the user's location.
   const orderedHospitals = useMemo(() => {
     if (!userLocation) return hospitals;
@@ -176,8 +237,29 @@ export default function HomeClient() {
         </div>
         <div ref={darkenRef} className={styles.darkenOverlay} aria-hidden="true" />
 
-        <section className={styles.panel} aria-label="Hospital results">
-          <span className={styles.grabber} aria-hidden="true" />
+        <section
+          ref={panelRef}
+          className={[
+            styles.panel,
+            sheetExpanded && styles.expanded,
+            isDraggingSheet && styles.dragging,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          aria-label="Hospital results"
+        >
+          <span
+            className={styles.grabber}
+            role="button"
+            tabIndex={0}
+            aria-expanded={sheetExpanded}
+            aria-label={sheetExpanded ? 'Collapse results' : 'Expand results'}
+            onPointerDown={onGrabberPointerDown}
+            onPointerMove={onGrabberPointerMove}
+            onPointerUp={endGrabberDrag}
+            onPointerCancel={endGrabberDrag}
+            onKeyDown={onGrabberKeyDown}
+          />
         {geoError && (
           <div className={styles.notice} role="status">
             <p className={styles.noticeText}>{geoError}</p>
