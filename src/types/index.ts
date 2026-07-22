@@ -98,11 +98,16 @@ export interface ProfileLayer {
   dob_visible?: boolean;
   next_of_kin?: string;
   address?: string;
+  profile_photo_url?: string;
 }
 
 export interface ClinicalCondition {
   condition: string;
   cause?: string;
+  duration?: string;
+  progression?: string;
+  complication?: string;
+  care?: string;
   timestamp?: string;
 }
 

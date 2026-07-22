@@ -140,4 +140,31 @@ describe('sanitizeClinicalConditions', () => {
     const out = sanitizeClinicalConditions([{ condition: 'Asthma', cause: '   ' }]);
     expect(out[0]!.cause).toBeUndefined();
   });
+
+  it('keeps duration/progression/complication/care and escapes them', () => {
+    const out = sanitizeClinicalConditions([
+      {
+        condition: 'Diabetes',
+        duration: '5 years',
+        progression: '<b>Worsening</b>',
+        complication: 'Neuropathy',
+        care: 'Insulin therapy',
+      },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      duration: '5 years',
+      progression: '&lt;b&gt;Worsening&lt;/b&gt;',
+      complication: 'Neuropathy',
+      care: 'Insulin therapy',
+    });
+  });
+
+  it('omits duration/progression/complication/care when empty or absent', () => {
+    const out = sanitizeClinicalConditions([{ condition: 'Asthma', duration: '   ' }]);
+    expect(out[0]!.duration).toBeUndefined();
+    expect(out[0]!.progression).toBeUndefined();
+    expect(out[0]!.complication).toBeUndefined();
+    expect(out[0]!.care).toBeUndefined();
+  });
 });

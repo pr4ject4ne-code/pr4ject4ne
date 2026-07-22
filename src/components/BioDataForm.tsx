@@ -5,6 +5,7 @@ import Input from './Input';
 import Dropdown from './Dropdown';
 import Button from './Button';
 import Card from './Card';
+import { uploadFile } from '@/lib/upload-client';
 import type { ProfileLayer, BiodataLayer } from '@/types';
 import styles from './BioDataForm.module.css';
 
@@ -70,25 +71,60 @@ export default function BioDataForm({
   const [profile, setProfile] = useState<ProfileLayer>(initialProfile);
   const [biodata, setBiodata] = useState<BiodataLayer>(initialBiodata);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  // Add-a-clinical-condition sub-form (selectable condition + free-text cause).
+  // Profile photo upload (reuses the shared /api/uploads plumbing via uploadFile).
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  // Add-a-clinical-condition sub-form (selectable condition + free-text detail fields).
   const [ccCondition, setCcCondition] = useState('');
   const [ccOther, setCcOther] = useState('');
   const [ccCause, setCcCause] = useState('');
+  const [ccDuration, setCcDuration] = useState('');
+  const [ccProgression, setCcProgression] = useState('');
+  const [ccComplication, setCcComplication] = useState('');
+  const [ccCare, setCcCare] = useState('');
 
   const conditions = biodata.clinical_conditions ?? [];
   const ccName = (ccCondition === 'Other' ? ccOther : ccCondition).trim();
+
+  async function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file) return;
+    setPhotoError(null);
+    setPhotoUploading(true);
+    try {
+      const url = await uploadFile(file);
+      setP('profile_photo_url', url);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
+  function removePhoto() {
+    setP('profile_photo_url', undefined);
+  }
 
   function addCondition() {
     if (!ccName) return;
     const entry = {
       condition: ccName,
       ...(ccCause.trim() ? { cause: ccCause.trim() } : {}),
+      ...(ccDuration.trim() ? { duration: ccDuration.trim() } : {}),
+      ...(ccProgression.trim() ? { progression: ccProgression.trim() } : {}),
+      ...(ccComplication.trim() ? { complication: ccComplication.trim() } : {}),
+      ...(ccCare.trim() ? { care: ccCare.trim() } : {}),
       timestamp: new Date().toISOString(),
     };
     setB('clinical_conditions', [...conditions, entry]);
     setCcCondition('');
     setCcOther('');
     setCcCause('');
+    setCcDuration('');
+    setCcProgression('');
+    setCcComplication('');
+    setCcCare('');
   }
 
   function removeCondition(index: number) {
@@ -136,6 +172,44 @@ export default function BioDataForm({
       <Card as="section" className={styles.section}>
         <h2 className={styles.heading}>Profile</h2>
         <p className={styles.sub}>Freely visible. Required fields are marked.</p>
+
+        <div className={styles.photoRow}>
+          <div className={styles.photoPreview}>
+            {profile.profile_photo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.profile_photo_url} alt="Profile" />
+            ) : (
+              <span className={styles.photoPlaceholder} aria-hidden="true">
+                {profile.full_name?.trim()?.[0]?.toUpperCase() ?? '?'}
+              </span>
+            )}
+          </div>
+          <div className={styles.photoControls}>
+            <label className={styles.photoLabel} htmlFor="profile-photo-input">
+              Profile photo
+            </label>
+            <input
+              id="profile-photo-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={onPickPhoto}
+              disabled={photoUploading}
+              aria-label="Upload profile photo"
+            />
+            {profile.profile_photo_url && (
+              <Button type="button" variant="ghost" onClick={removePhoto} disabled={photoUploading}>
+                Remove photo
+              </Button>
+            )}
+            {photoUploading && <span className={styles.sub}>Uploading…</span>}
+            {photoError && (
+              <p role="alert" className={styles.error}>
+                {photoError}
+              </p>
+            )}
+          </div>
+        </div>
+
         <div className={styles.grid}>
           <Input
             label="Full name *"
@@ -306,9 +380,14 @@ export default function BioDataForm({
           />
         </div>
 
-        <h3 className={styles.subheading}>Clinical conditions</h3>
+        <h3 className={styles.subheading}>Clinical / chronic disease conditions</h3>
         <p className={styles.sub}>
-          Select a condition and note its cause. Each entry is timestamped when added.
+          Select a condition and note its duration, progression, complications, care, and cause.
+          Each entry is timestamped when added.
+        </p>
+        <p className={styles.doctorAid}>
+          Recommended: get these details from a doctor or official medical record where possible —
+          duration, progression, and complications are most reliable with clinical input.
         </p>
         {conditions.length > 0 && (
           <ul className={styles.conditionList}>
@@ -316,7 +395,15 @@ export default function BioDataForm({
               <li key={`${c.condition}-${c.timestamp ?? i}`} className={styles.conditionItem}>
                 <div>
                   <strong>{c.condition}</strong>
-                  {c.cause ? <span className={styles.conditionCause}> — {c.cause}</span> : null}
+                  {c.cause ? <span className={styles.conditionCause}> — cause: {c.cause}</span> : null}
+                  {c.duration ? <span className={styles.conditionCause}> — duration: {c.duration}</span> : null}
+                  {c.progression ? (
+                    <span className={styles.conditionCause}> — progression: {c.progression}</span>
+                  ) : null}
+                  {c.complication ? (
+                    <span className={styles.conditionCause}> — complication: {c.complication}</span>
+                  ) : null}
+                  {c.care ? <span className={styles.conditionCause}> — care: {c.care}</span> : null}
                   {c.timestamp ? (
                     <span className={styles.conditionTime}>
                       {new Date(c.timestamp).toLocaleDateString()}
@@ -337,7 +424,7 @@ export default function BioDataForm({
         )}
         <div className={styles.conditionAdd}>
           <Dropdown
-            label="Condition"
+            label="Condition (disease)"
             options={CLINICAL_CONDITION_OPTIONS}
             placeholder="Select…"
             value={ccCondition}
@@ -350,6 +437,29 @@ export default function BioDataForm({
               onChange={(e) => setCcOther(e.target.value)}
             />
           )}
+          <Input
+            label="Duration"
+            placeholder="e.g. 3 years"
+            value={ccDuration}
+            onChange={(e) => setCcDuration(e.target.value)}
+          />
+          <Input
+            label="Progression"
+            placeholder="e.g. stable, worsening"
+            value={ccProgression}
+            onChange={(e) => setCcProgression(e.target.value)}
+          />
+          <Input
+            label="Complication"
+            value={ccComplication}
+            onChange={(e) => setCcComplication(e.target.value)}
+          />
+          <Input
+            label="Care"
+            placeholder="e.g. current management"
+            value={ccCare}
+            onChange={(e) => setCcCare(e.target.value)}
+          />
           <Input
             label="Cause / notes"
             value={ccCause}

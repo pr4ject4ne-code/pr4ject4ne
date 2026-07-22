@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { queryOne, query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { getPatientSession, checkRateLimit, constantTimeEquals } from '@/lib/auth';
-import { sanitizeLayer, sanitizeClinicalConditions } from '@/lib/sanitize';
+import { sanitizeLayer, sanitizeClinicalConditions, safeHttpUrl } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import { isValidIhnCode } from '@/lib/ihn-code';
 import type { Biodata, BiodataLayer, ProfileLayer } from '@/types';
@@ -120,6 +120,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ userId
   const biodataPatch = body.biodata_layer === undefined ? {} : sanitizeLayer(body.biodata_layer);
   if (profilePatch === null || biodataPatch === null) {
     return apiError('profile_layer and biodata_layer must be objects.', 'BAD_REQUEST', 400);
+  }
+
+  // profile_photo_url flows into an <img src> — sanitizeLayer only escapes HTML,
+  // it does not validate URL scheme, so re-validate with safeHttpUrl (blocks
+  // javascript:/data: URLs). An empty/invalid value clears the field.
+  if (body.profile_layer && 'profile_photo_url' in body.profile_layer) {
+    const raw = body.profile_layer.profile_photo_url;
+    (profilePatch as Record<string, unknown>).profile_photo_url = raw
+      ? (safeHttpUrl(raw) ?? undefined)
+      : undefined;
   }
 
   // clinical_conditions is a whitelisted nested array; sanitizeLayer drops arrays,

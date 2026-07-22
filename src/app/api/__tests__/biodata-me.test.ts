@@ -98,6 +98,73 @@ describe('PATCH /api/biodata/me', () => {
     expect((await res.json()).code).toBe('BAD_REQUEST');
   });
 
+  it('accepts a valid profile_photo_url and round-trips it', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: USER, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({ profile_layer: {}, biodata_layer: {} });
+    const res = await PATCH(
+      new Request('http://localhost/api/biodata/me', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          profile_layer: { profile_photo_url: 'https://storage.test/photo.png' },
+        }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).profile_layer.profile_photo_url).toBe(
+      'https://storage.test/photo.png',
+    );
+  });
+
+  it('drops a profile_photo_url with a dangerous scheme instead of storing it', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: USER, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({ profile_layer: {}, biodata_layer: {} });
+    const res = await PATCH(
+      new Request('http://localhost/api/biodata/me', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          profile_layer: { profile_photo_url: 'javascript:alert(1)' },
+        }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).profile_layer.profile_photo_url).toBeUndefined();
+  });
+
+  it('persists the four new chronic-disease sub-fields', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: USER, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({ profile_layer: {}, biodata_layer: {} });
+    const res = await PATCH(
+      new Request('http://localhost/api/biodata/me', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          biodata_layer: {
+            clinical_conditions: [
+              {
+                condition: 'Diabetes',
+                duration: '5 years',
+                progression: 'Stable',
+                complication: 'None',
+                care: 'Insulin',
+              },
+            ],
+          },
+        }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.biodata_layer.clinical_conditions[0]).toMatchObject({
+      condition: 'Diabetes',
+      duration: '5 years',
+      progression: 'Stable',
+      complication: 'None',
+      care: 'Insulin',
+    });
+  });
+
   it('escapes HTML in string field values on write', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: USER, account_type: 'patient' });
     mockQueryOne.mockResolvedValue({ profile_layer: {}, biodata_layer: {} });

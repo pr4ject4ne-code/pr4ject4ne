@@ -66,16 +66,23 @@ export function sanitizeLayer(
 export interface SanitizedClinicalCondition {
   condition: string;
   cause?: string;
+  duration?: string;
+  progression?: string;
+  complication?: string;
+  care?: string;
   timestamp: string;
 }
 
 /**
  * Sanitize the biodata layer's `clinical_conditions` array. sanitizeLayer drops
  * nested arrays, so this whitelisted structure is validated separately: each
- * entry keeps a required (escaped) condition, an optional (escaped) cause, and a
- * server-fixed ISO timestamp — a client-supplied timestamp is honoured only if it
- * parses, otherwise "now". Non-objects and entries without a condition are
- * dropped, and the list is capped.
+ * entry keeps a required (escaped) condition, optional (escaped) cause/duration/
+ * progression/complication/care detail fields, and a server-fixed ISO timestamp —
+ * a client-supplied timestamp is honoured only if it parses, otherwise "now".
+ * Non-objects and entries without a condition are dropped, and the list is
+ * capped. IMPORTANT: any new optional field on this struct must be added to the
+ * whitelist below or it will silently vanish on save (this bit the project once
+ * already with `cause`/`timestamp`).
  */
 export function sanitizeClinicalConditions(
   input: unknown,
@@ -89,12 +96,24 @@ export function sanitizeClinicalConditions(
     const condition = sanitizeText(rec.condition, 200);
     if (!condition || !condition.trim()) continue;
     const cause = sanitizeText(rec.cause, 2000);
+    const duration = sanitizeText(rec.duration, 200);
+    const progression = sanitizeText(rec.progression, 2000);
+    const complication = sanitizeText(rec.complication, 2000);
+    const care = sanitizeText(rec.care, 2000);
     const rawTs = rec.timestamp;
     const timestamp =
       typeof rawTs === 'string' && !Number.isNaN(Date.parse(rawTs))
         ? new Date(rawTs).toISOString()
         : new Date().toISOString();
-    out.push({ condition, ...(cause && cause.trim() ? { cause } : {}), timestamp });
+    out.push({
+      condition,
+      ...(cause && cause.trim() ? { cause } : {}),
+      ...(duration && duration.trim() ? { duration } : {}),
+      ...(progression && progression.trim() ? { progression } : {}),
+      ...(complication && complication.trim() ? { complication } : {}),
+      ...(care && care.trim() ? { care } : {}),
+      timestamp,
+    });
   }
   return out;
 }

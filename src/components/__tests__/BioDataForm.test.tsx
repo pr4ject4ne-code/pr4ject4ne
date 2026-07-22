@@ -4,6 +4,12 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import BioDataForm from '@/components/BioDataForm';
 
+jest.mock('@/lib/upload-client', () => ({
+  uploadFile: jest.fn(),
+}));
+
+import { uploadFile } from '@/lib/upload-client';
+
 describe('BioDataForm', () => {
   it('renders all Profile and Biodata layer fields', () => {
     render(<BioDataForm initialProfile={{}} initialBiodata={{}} onSave={jest.fn()} />);
@@ -24,6 +30,15 @@ describe('BioDataForm', () => {
     expect(screen.getByLabelText('Blood group')).toBeInTheDocument();
     expect(screen.getByLabelText('Tribe')).toBeInTheDocument();
     expect(screen.getByLabelText('Ethnicity')).toBeInTheDocument();
+    // Profile photo
+    expect(screen.getByLabelText('Upload profile photo')).toBeInTheDocument();
+    // Chronic disease sub-fields
+    expect(screen.getByLabelText('Condition (disease)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Duration')).toBeInTheDocument();
+    expect(screen.getByLabelText('Progression')).toBeInTheDocument();
+    expect(screen.getByLabelText('Complication')).toBeInTheDocument();
+    expect(screen.getByLabelText('Care')).toBeInTheDocument();
+    expect(screen.getByLabelText('Cause / notes')).toBeInTheDocument();
   });
 
   it('blocks save and shows errors when required fields are empty', async () => {
@@ -88,5 +103,86 @@ describe('BioDataForm', () => {
     await waitFor(() => expect(onSave).toHaveBeenCalled());
     const [, savedBiodata] = onSave.mock.calls[0];
     expect(savedBiodata).toMatchObject({ tribe: 'Igbo', ethnicity: 'Igbo' });
+  });
+
+  it('uploads a profile photo and includes profile_photo_url in the saved payload', async () => {
+    (uploadFile as jest.Mock).mockResolvedValue('https://storage.test/profile.png');
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    render(
+      <BioDataForm
+        initialProfile={{
+          full_name: 'Ada Obi',
+          gender: 'female',
+          phone: '0800',
+          email: 'a@b.co',
+          dob: '1990-01-01',
+          next_of_kin: 'Kin 0800',
+        }}
+        initialBiodata={{}}
+        onSave={onSave}
+      />,
+    );
+    const file = new File(['x'], 'photo.png', { type: 'image/png' });
+    fireEvent.change(screen.getByLabelText('Upload profile photo'), { target: { files: [file] } });
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledWith(file));
+    await screen.findByAltText('Profile');
+
+    fireEvent.click(screen.getByText('Save biodata'));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    const [savedProfile] = onSave.mock.calls[0];
+    expect(savedProfile).toMatchObject({ profile_photo_url: 'https://storage.test/profile.png' });
+  });
+
+  it('pre-fills the profile photo from initialProfile and allows removing it', () => {
+    render(
+      <BioDataForm
+        initialProfile={{ profile_photo_url: 'https://storage.test/existing.png' }}
+        initialBiodata={{}}
+        onSave={jest.fn()}
+      />,
+    );
+    expect(screen.getByAltText('Profile')).toHaveAttribute('src', 'https://storage.test/existing.png');
+    fireEvent.click(screen.getByText('Remove photo'));
+    expect(screen.queryByAltText('Profile')).not.toBeInTheDocument();
+  });
+
+  it('adds a clinical condition with the chronic-disease sub-fields in the saved payload', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    render(
+      <BioDataForm
+        initialProfile={{
+          full_name: 'Ada Obi',
+          gender: 'female',
+          phone: '0800',
+          email: 'a@b.co',
+          dob: '1990-01-01',
+          next_of_kin: 'Kin 0800',
+        }}
+        initialBiodata={{}}
+        onSave={onSave}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Condition (disease)'), {
+      target: { value: 'Hypertension' },
+    });
+    fireEvent.change(screen.getByLabelText('Duration'), { target: { value: '3 years' } });
+    fireEvent.change(screen.getByLabelText('Progression'), { target: { value: 'Stable' } });
+    fireEvent.change(screen.getByLabelText('Complication'), { target: { value: 'None' } });
+    fireEvent.change(screen.getByLabelText('Care'), { target: { value: 'Daily medication' } });
+    fireEvent.change(screen.getByLabelText('Cause / notes'), { target: { value: 'Family history' } });
+    fireEvent.click(screen.getByText('Add condition'));
+
+    fireEvent.click(screen.getByText('Save biodata'));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    const [, savedBiodata] = onSave.mock.calls[0];
+    expect(savedBiodata.clinical_conditions).toHaveLength(1);
+    expect(savedBiodata.clinical_conditions[0]).toMatchObject({
+      condition: 'Hypertension',
+      duration: '3 years',
+      progression: 'Stable',
+      complication: 'None',
+      care: 'Daily medication',
+      cause: 'Family history',
+    });
   });
 });
