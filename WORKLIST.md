@@ -14,7 +14,7 @@ Raw list as given by founder, verbatim (numbering preserved for cross-referencin
 | 8 | Symptom search should actually work and link to hospitals ranked by price, location, availability (closest date/time), and general rank | Open — significant feature, ranking algorithm needed |
 | 9 | Footer links → Linktree (URL to come later) | **Blocked on founder** — keep reminding |
 | 10 | Remove doctors section for pharmacies/non-doctor institutions; verified accounts can add one if applicable | Open |
-| 11 | Fix the routing system (map) | Bug — needs repro (may overlap with prior routing fixes) |
+| 11 | Fix the routing system (map) | **Blocked — no repro found.** Debugger pass (2026-07-21) checked `Map.tsx`'s route `fitBounds`, `lib/map.ts`'s OSRM fetch/response handling, the manual-location fallback, and CSP allowlisting — all read correctly, and the public OSRM demo server responds fine. A live check on the deployed site was attempted but blocked by this session's browser being unreliable (unrelated instability, not app evidence). Founder told to proceed without it for now; needs a concrete symptom description (no route drawn? wrong route? error shown? blank map?) before this can be scoped further. |
 | 12 | Custom scrollbars (default ones look tacky) | Done — site-wide thin, pill-shaped, glassy-gradient scrollbar (`globals.css`, `--color-amethyst`/`--color-blue-light` tokens), hover-darken; Firefox `scrollbar-width`/`scrollbar-color` fallback |
 | 13 | Homepage hospital side panel: filters by distance (km radius), private vs public, rating, day of week | Open — new feature |
 | 14 | Verified accounts can add/organize services by department, sub-classifiable as they see fit | Open — new feature |
