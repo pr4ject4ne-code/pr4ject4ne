@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Logo from './Logo';
+import HelpBar from './HelpBar';
 import styles from './Footer.module.css';
 
 /** Shared footer: links left, logo right. Reused unchanged across all pages. */
@@ -10,6 +11,7 @@ export default function Footer() {
         <Link href="/privacy-policy">Privacy Policy</Link>
         <Link href="/terms-and-conditions">Terms &amp; Conditions</Link>
         <Link href="/links">Links</Link>
+        <HelpBar />
       </nav>
       <div className={styles.brand}>
         <Logo size={28} color="var(--color-white)" />
