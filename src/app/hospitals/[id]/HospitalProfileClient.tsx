@@ -103,7 +103,7 @@ export default function HospitalProfileClient({ id }: { id: string }) {
           </div>
           <div className={styles.col}>
             <AnnouncementCalendar announcements={announcements} />
-            <DoctorRoster doctors={doctors} />
+            {hospital.show_doctors && doctors.length > 0 && <DoctorRoster doctors={doctors} />}
           </div>
         </div>
       </div>

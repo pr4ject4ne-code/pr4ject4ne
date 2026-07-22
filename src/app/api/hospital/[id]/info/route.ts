@@ -15,6 +15,7 @@ interface Body {
   contact_email?: string;
   specialties?: string[];
   is_24_hour?: boolean;
+  show_doctors?: boolean;
 }
 
 /** PATCH — edit hospital info (own hospital only). */
@@ -49,6 +50,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     push('specialties', specs);
   }
   if (typeof body.is_24_hour === 'boolean') push('is_24_hour', body.is_24_hour);
+  if (typeof body.show_doctors === 'boolean') push('show_doctors', body.show_doctors);
 
   if (sets.length === 0) return apiError('Nothing to update.', 'BAD_REQUEST', 400);
 

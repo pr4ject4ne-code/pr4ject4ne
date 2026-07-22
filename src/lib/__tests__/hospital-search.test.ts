@@ -19,6 +19,7 @@ const hospital = {
   rating_avg: 0,
   rating_count: 0,
   is_24_hour: false,
+  show_doctors: true,
   verified: true,
   account_id: null,
   status: 'approved',

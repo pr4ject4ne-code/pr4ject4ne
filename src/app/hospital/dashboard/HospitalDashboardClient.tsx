@@ -236,6 +236,7 @@ function InfoTab({
   const [website, setWebsite] = useState(hospital.website ?? '');
   const [phone, setPhone] = useState(hospital.contact_phone ?? '');
   const [email, setEmail] = useState(hospital.contact_email ?? '');
+  const [showDoctors, setShowDoctors] = useState(hospital.show_doctors);
 
   return (
     <Card as="section">
@@ -249,6 +250,7 @@ function InfoTab({
             website,
             contact_phone: phone,
             contact_email: email,
+            show_doctors: showDoctors,
           });
         }}
       >
@@ -258,6 +260,14 @@ function InfoTab({
         <Input label="Website" value={website} onChange={(e) => setWebsite(e.target.value)} />
         <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
         <Input label="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <label className={styles.checkboxRow}>
+          <input
+            type="checkbox"
+            checked={showDoctors}
+            onChange={(e) => setShowDoctors(e.target.checked)}
+          />
+          <span>Show a doctors section on your public profile</span>
+        </label>
         <Button type="submit" disabled={saving}>
           {saving ? 'Saving…' : 'Save info'}
         </Button>

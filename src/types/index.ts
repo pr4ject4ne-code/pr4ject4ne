@@ -56,6 +56,7 @@ export interface Hospital {
   rating_avg: number;
   rating_count: number;
   is_24_hour: boolean;
+  show_doctors: boolean;
   verified: boolean;
   account_id: string | null;
   status: 'pending' | 'approved' | 'rejected';

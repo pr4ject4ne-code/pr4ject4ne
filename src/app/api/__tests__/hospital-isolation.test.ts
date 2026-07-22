@@ -88,6 +88,22 @@ describe('hospital data isolation', () => {
     expect(mockQuery).toHaveBeenCalled();
   });
 
+  it('lets a hospital toggle its own show_doctors flag', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const res = await patchInfo(infoReq({ show_doctors: false }, HOSP_A), { params: Promise.resolve({ id: HOSP_A }) });
+    expect(res.status).toBe(200);
+    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('show_doctors');
+    expect(values).toContain(false);
+  });
+
+  it('403 when staff of hospital A toggles hospital B show_doctors', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const res = await patchInfo(infoReq({ show_doctors: true }, HOSP_B), { params: Promise.resolve({ id: HOSP_B }) });
+    expect(res.status).toBe(403);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
   it('401/403 when there is no hospital session', async () => {
     setStaff(null);
     const res = await patchInfo(infoReq({ name: 'x' }, HOSP_A), { params: Promise.resolve({ id: HOSP_A }) });
