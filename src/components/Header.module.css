@@ -171,6 +171,29 @@
   justify-self: end;
   position: relative;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* Inline nav: hidden by default (narrow/medium viewports keep the hamburger).
+   Revealed at the wide breakpoint below in place of the hamburger + dropdown. */
+.inlineNav {
+  display: none;
+  align-items: center;
+  gap: 1.5rem;
+}
+.inlineNav a {
+  text-decoration: none;
+  color: var(--header-fg);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.4rem 0.2rem;
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+.inlineNav a:hover {
+  transform: translateY(-2px);
 }
 
 .hamburger {
@@ -213,6 +236,25 @@
 }
 .menu a:hover {
   background: var(--color-blue-light);
+}
+
+/* Wide viewports: show the three menu links inline in `.right` instead of
+   gating them behind the hamburger, so new visitors see the full site
+   offering (Profile/First Aid/Directory) without a click. 1180px (not the
+   900px search-wrap breakpoint below) because inline nav adds three more
+   link-width elements plus gaps to the same row as the brand+logo (left)
+   and, on search pages, the centered 600px-max search pill — at 900–1100px
+   that combination collides with or crowds the search bar. 1180px clears
+   that on common laptop/desktop widths (1280px, 1366px, 1440px+) while
+   still collapsing to the hamburger below it, same as before. */
+@media (min-width: 1180px) {
+  .inlineNav {
+    display: flex;
+  }
+  .hamburger,
+  .menu {
+    display: none;
+  }
 }
 
 /* Below this width the brand + search + menu stop fitting on one row without

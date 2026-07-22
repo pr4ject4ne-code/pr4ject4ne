@@ -105,6 +105,11 @@ export default function Header({
       )}
 
       <div className={styles.right}>
+        <nav className={styles.inlineNav} aria-label="Main menu">
+          <Link href={profileHref}>Profile</Link>
+          <Link href="/first-aid">First Aid</Link>
+          <Link href="/filter">Directory</Link>
+        </nav>
         <button
           type="button"
           className={styles.hamburger}
