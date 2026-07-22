@@ -97,6 +97,44 @@ describe('hospital data isolation', () => {
     expect(values).toContain(false);
   });
 
+  it('lets a hospital save well-formed departments, sanitized', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const res = await patchInfo(
+      infoReq(
+        { departments: [{ name: '<b>Surgery</b>', services: ['General Surgery', '  '] }] },
+        HOSP_A,
+      ),
+      { params: Promise.resolve({ id: HOSP_A }) },
+    );
+    expect(res.status).toBe(200);
+    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('departments');
+    const stored = JSON.parse(values.find((v) => typeof v === 'string' && v.includes('Surgery')) as string);
+    expect(stored).toEqual([{ name: '&lt;b&gt;Surgery&lt;/b&gt;', services: ['General Surgery'] }]);
+  });
+
+  it('drops malformed department entries instead of erroring', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const res = await patchInfo(
+      infoReq({ departments: [{ services: ['Orphan service'] }, 'not-an-object', 42] }, HOSP_A),
+      { params: Promise.resolve({ id: HOSP_A }) },
+    );
+    expect(res.status).toBe(200);
+    const [, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    const stored = JSON.parse(values.find((v) => typeof v === 'string' && v.startsWith('[')) as string);
+    expect(stored).toEqual([]);
+  });
+
+  it('403 when staff of hospital A sets hospital B departments', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const res = await patchInfo(
+      infoReq({ departments: [{ name: 'Sneaky', services: [] }] }, HOSP_B),
+      { params: Promise.resolve({ id: HOSP_B }) },
+    );
+    expect(res.status).toBe(403);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
   it('403 when staff of hospital A toggles hospital B show_doctors', async () => {
     setStaff({ userId: 'staffA', hospitalId: HOSP_A });
     const res = await patchInfo(infoReq({ show_doctors: true }, HOSP_B), { params: Promise.resolve({ id: HOSP_B }) });

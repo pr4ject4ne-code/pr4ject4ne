@@ -11,10 +11,10 @@ import Stars from '@/components/Stars';
 import PhotoUpload from '@/components/PhotoUpload';
 import DoctorForm, { type DoctorFormValues } from '@/components/DoctorForm';
 import AnnouncementForm, { type AnnouncementFormValues } from '@/components/AnnouncementForm';
-import type { Hospital, Doctor, Announcement, HospitalPhoto } from '@/types';
+import type { Hospital, Doctor, Announcement, HospitalPhoto, HospitalDepartment } from '@/types';
 import styles from './HospitalDashboard.module.css';
 
-type Tab = 'info' | 'media' | 'hours' | 'announcements' | 'personnel';
+type Tab = 'info' | 'media' | 'hours' | 'departments' | 'announcements' | 'personnel';
 const DAYS: Array<[string, string]> = [
   ['mon', 'Monday'],
   ['tue', 'Tuesday'],
@@ -100,6 +100,7 @@ export default function HospitalDashboardClient() {
             ['info', 'Info'],
             ['media', 'Media'],
             ['hours', 'Hours'],
+            ['departments', 'Departments'],
             ['announcements', 'Announcements'],
             ['personnel', 'Personnel'],
           ] as Array<[Tab, string]>
@@ -208,6 +209,26 @@ export default function HospitalDashboardClient() {
         />
       )}
 
+      {tab === 'departments' && (
+        <DepartmentsTab
+          departments={hospital.departments}
+          saving={saving}
+          onSave={async (departments) => {
+            setSaving(true);
+            const res = await fetch(`/api/hospital/${hid}/info`, {
+              method: 'PATCH',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ departments }),
+            });
+            setSaving(false);
+            if (res.ok) {
+              flash('Departments saved.');
+              load();
+            }
+          }}
+        />
+      )}
+
       {tab === 'announcements' && (
         <AnnouncementsTab hid={hid} announcements={data.announcements} onChanged={load} flash={flash} />
       )}
@@ -307,6 +328,125 @@ function HoursTab({
           {saving ? 'Saving…' : 'Save hours'}
         </Button>
       </form>
+    </Card>
+  );
+}
+
+function DepartmentsTab({
+  departments,
+  onSave,
+  saving,
+}: {
+  departments: HospitalDepartment[];
+  onSave: (departments: HospitalDepartment[]) => Promise<void>;
+  saving: boolean;
+}) {
+  const [state, setState] = useState<HospitalDepartment[]>(departments);
+  const [newDeptName, setNewDeptName] = useState('');
+  const [newServiceText, setNewServiceText] = useState<Record<number, string>>({});
+
+  function addDepartment() {
+    const name = newDeptName.trim();
+    if (!name) return;
+    setState((s) => [...s, { name, services: [] }]);
+    setNewDeptName('');
+  }
+
+  function removeDepartment(index: number) {
+    setState((s) => s.filter((_, i) => i !== index));
+  }
+
+  function renameDepartment(index: number, name: string) {
+    setState((s) => s.map((d, i) => (i === index ? { ...d, name } : d)));
+  }
+
+  function addService(index: number) {
+    const service = (newServiceText[index] ?? '').trim();
+    if (!service) return;
+    setState((s) =>
+      s.map((d, i) => (i === index ? { ...d, services: [...d.services, service] } : d)),
+    );
+    setNewServiceText((m) => ({ ...m, [index]: '' }));
+  }
+
+  function removeService(deptIndex: number, serviceIndex: number) {
+    setState((s) =>
+      s.map((d, i) =>
+        i === deptIndex ? { ...d, services: d.services.filter((_, j) => j !== serviceIndex) } : d,
+      ),
+    );
+  }
+
+  return (
+    <Card as="section">
+      <h2 className={styles.subheading}>Departments &amp; services</h2>
+      <p className={styles.meta} style={{ marginBottom: '1rem' }}>
+        Organize your services under departments (e.g. “Surgery” → General Surgery,
+        Orthopaedics). Departments can be subclassed however you see fit.
+      </p>
+
+      {state.length === 0 && <p className={styles.meta}>No departments added yet.</p>}
+
+      <ul className={styles.list}>
+        {state.map((dept, i) => (
+          <li key={i} className={styles.row} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.6rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <Input
+                label={`Department ${i + 1} name`}
+                value={dept.name}
+                onChange={(e) => renameDepartment(i, e.target.value)}
+              />
+              <Button variant="danger" onClick={() => removeDepartment(i)}>
+                Remove department
+              </Button>
+            </div>
+
+            <ul className={styles.list}>
+              {dept.services.map((service, j) => (
+                <li key={j} className={styles.row}>
+                  <span>{service}</span>
+                  <Button variant="ghost" onClick={() => removeService(i, j)}>
+                    Remove
+                  </Button>
+                </li>
+              ))}
+            </ul>
+
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+              <Input
+                label="Add service"
+                placeholder="e.g. General Surgery"
+                value={newServiceText[i] ?? ''}
+                onChange={(e) => setNewServiceText((m) => ({ ...m, [i]: e.target.value }))}
+              />
+              <Button variant="secondary" onClick={() => addService(i)}>
+                Add service
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', marginTop: '1rem' }}>
+        <Input
+          label="New department name"
+          placeholder="e.g. Diagnostics"
+          value={newDeptName}
+          onChange={(e) => setNewDeptName(e.target.value)}
+        />
+        <Button variant="secondary" onClick={addDepartment}>
+          Add department
+        </Button>
+      </div>
+
+      <Button
+        type="button"
+        disabled={saving}
+        onClick={() => onSave(state)}
+        style={{ marginTop: '1rem' }}
+      >
+        {saving ? 'Saving…' : 'Save departments'}
+      </Button>
     </Card>
   );
 }

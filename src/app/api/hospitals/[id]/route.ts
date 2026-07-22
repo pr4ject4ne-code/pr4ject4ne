@@ -14,7 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   // Hospital first so a 404 short-circuits without touching the child tables.
   const hospital = await queryOne<Hospital>(
     `SELECT id, name, service_type, address, city, latitude, longitude, website,
-            contact_phone, contact_email, logo_url, photos, hours, specialties,
+            contact_phone, contact_email, logo_url, photos, hours, specialties, departments,
             rating_avg, rating_count, is_24_hour, show_doctors, verified, account_id, status,
             created_at, updated_at
      FROM hospitals WHERE id = $1 AND status = 'approved'`,

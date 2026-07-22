@@ -4,6 +4,7 @@ import {
   escapeLikePattern,
   sanitizeLayer,
   sanitizeClinicalConditions,
+  sanitizeDepartments,
 } from '@/lib/sanitize';
 
 describe('sanitizeText', () => {
@@ -166,5 +167,51 @@ describe('sanitizeClinicalConditions', () => {
     expect(out[0]!.progression).toBeUndefined();
     expect(out[0]!.complication).toBeUndefined();
     expect(out[0]!.care).toBeUndefined();
+  });
+});
+
+describe('sanitizeDepartments', () => {
+  it('returns [] for non-arrays', () => {
+    expect(sanitizeDepartments(undefined)).toEqual([]);
+    expect(sanitizeDepartments('x')).toEqual([]);
+    expect(sanitizeDepartments({ name: 'Surgery' })).toEqual([]);
+  });
+
+  it('keeps valid entries, escapes name/services, and trims blanks', () => {
+    const out = sanitizeDepartments([
+      { name: '<b>Surgery</b>', services: ['General Surgery', '  ', 'Orthopaedics'] },
+    ]);
+    expect(out).toEqual([
+      { name: '&lt;b&gt;Surgery&lt;/b&gt;', services: ['General Surgery', 'Orthopaedics'] },
+    ]);
+  });
+
+  it('drops entries with no name', () => {
+    const out = sanitizeDepartments([{ services: ['X'] }, { name: '   ', services: ['Y'] }]);
+    expect(out).toEqual([]);
+  });
+
+  it('defaults services to [] when missing or not an array', () => {
+    expect(sanitizeDepartments([{ name: 'Diagnostics' }])).toEqual([
+      { name: 'Diagnostics', services: [] },
+    ]);
+    expect(sanitizeDepartments([{ name: 'Diagnostics', services: 'not-an-array' }])).toEqual([
+      { name: 'Diagnostics', services: [] },
+    ]);
+  });
+
+  it('caps the number of departments', () => {
+    const many = Array.from({ length: 60 }, (_, i) => ({ name: `Dept${i}`, services: [] }));
+    expect(sanitizeDepartments(many, 40)).toHaveLength(40);
+  });
+
+  it('caps the number of services per department', () => {
+    const services = Array.from({ length: 60 }, (_, i) => `Service${i}`);
+    const out = sanitizeDepartments([{ name: 'Big', services }], 40, 40);
+    expect(out[0]!.services).toHaveLength(40);
+  });
+
+  it('drops non-object items', () => {
+    expect(sanitizeDepartments(['not-an-object', 42, null])).toEqual([]);
   });
 });

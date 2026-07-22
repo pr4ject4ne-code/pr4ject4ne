@@ -16,6 +16,7 @@ const hospital = {
   photos: [],
   hours: {},
   specialties: ['Cardiology', 'Pediatrics'],
+  departments: [],
   rating_avg: 0,
   rating_count: 0,
   is_24_hour: false,

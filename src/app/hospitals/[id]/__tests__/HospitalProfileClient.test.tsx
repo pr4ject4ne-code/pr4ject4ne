@@ -24,6 +24,7 @@ const BASE_HOSPITAL: Hospital = {
   photos: [],
   hours: {},
   specialties: [],
+  departments: [],
   rating_avg: 0,
   rating_count: 0,
   is_24_hour: false,
@@ -85,6 +86,35 @@ describe('HospitalProfileClient — doctors section visibility (worklist #10)', 
     render(<HospitalProfileClient id="h1" />);
     await waitFor(() => expect(screen.getAllByText('Test Facility').length).toBeGreaterThan(0));
     expect(screen.queryByText(/Doctors \(/)).not.toBeInTheDocument();
+  });
+});
+
+describe('HospitalProfileClient — departments (worklist #14)', () => {
+  it('renders departments and their services when present', async () => {
+    mockFetchWith(
+      {
+        ...BASE_HOSPITAL,
+        departments: [
+          { name: 'Surgery', services: ['General Surgery', 'Orthopaedics'] },
+          { name: 'Diagnostics', services: [] },
+        ],
+      },
+      [],
+    );
+    render(<HospitalProfileClient id="h1" />);
+    await waitFor(() => expect(screen.getByText(/Departments \(2\)/)).toBeInTheDocument());
+    expect(screen.getByText('Surgery')).toBeInTheDocument();
+    expect(screen.getByText('General Surgery')).toBeInTheDocument();
+    expect(screen.getByText('Orthopaedics')).toBeInTheDocument();
+    expect(screen.getByText('Diagnostics')).toBeInTheDocument();
+    expect(screen.getByText('No services listed under this department.')).toBeInTheDocument();
+  });
+
+  it('renders nothing when there are no departments', async () => {
+    mockFetchWith(BASE_HOSPITAL, []);
+    render(<HospitalProfileClient id="h1" />);
+    await waitFor(() => expect(screen.getAllByText('Test Facility').length).toBeGreaterThan(0));
+    expect(screen.queryByText(/Departments \(/)).not.toBeInTheDocument();
   });
 });
 

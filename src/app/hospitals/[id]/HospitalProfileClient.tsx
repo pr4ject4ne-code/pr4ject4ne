@@ -7,6 +7,7 @@ import HospitalInfo from '@/components/HospitalInfo';
 import HospitalHours from '@/components/HospitalHours';
 import AnnouncementCalendar from '@/components/AnnouncementCalendar';
 import DoctorRoster from '@/components/DoctorRoster';
+import HospitalDepartments from '@/components/HospitalDepartments';
 import HospitalRankingPanel from '@/components/HospitalRankingPanel';
 import Card from '@/components/Card';
 import { searchWithinHospital, type HospitalSearchMatch } from '@/lib/hospital-search';
@@ -121,6 +122,7 @@ export default function HospitalProfileClient({ id }: { id: string }) {
           <div className={styles.col}>
             <HospitalInfo hospital={hospital} />
             <HospitalHours hours={hospital.hours} is24Hour={hospital.is_24_hour} />
+            <HospitalDepartments departments={hospital.departments} />
           </div>
           <div className={styles.col}>
             <AnnouncementCalendar announcements={announcements} />

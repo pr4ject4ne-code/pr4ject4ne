@@ -118,6 +118,50 @@ export function sanitizeClinicalConditions(
   return out;
 }
 
+export interface SanitizedDepartment {
+  name: string;
+  services: string[];
+}
+
+/**
+ * Sanitize a client-supplied `departments` array (worklist #14) before it is
+ * stored as the hospital's JSONB `departments` column.
+ *
+ * Shape: `[{ name, services: string[] }]`. Each entry is dropped unless it
+ * has a non-empty (escaped) `name`; `services` is a flat string list, escaped
+ * per-entry, blanks dropped. Caps mirror `sanitizeClinicalConditions`'s scale
+ * (a hospital's real department count/service count is small, tens not
+ * hundreds) while still comfortably covering a large institution:
+ *  - up to 40 departments per hospital
+ *  - up to 40 services per department
+ *  - department name up to 200 chars, each service up to 200 chars
+ * (same per-string cap `specialties` already uses on this same table).
+ */
+export function sanitizeDepartments(
+  input: unknown,
+  maxDepartments = 40,
+  maxServicesPerDept = 40,
+): SanitizedDepartment[] {
+  if (!Array.isArray(input)) return [];
+  const out: SanitizedDepartment[] = [];
+  for (const item of input.slice(0, maxDepartments)) {
+    if (typeof item !== 'object' || item === null) continue;
+    const rec = item as Record<string, unknown>;
+    const name = sanitizeText(rec.name, 200);
+    if (!name || !name.trim()) continue;
+    const services = Array.isArray(rec.services)
+      ? rec.services
+          .filter((s): s is string => typeof s === 'string')
+          .map((s) => sanitizeText(s, 200) ?? '')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .slice(0, maxServicesPerDept)
+      : [];
+    out.push({ name, services });
+  }
+  return out;
+}
+
 /**
  * Escape LIKE/ILIKE metacharacters (`\`, `%`, `_`) in user input so a search
  * term is matched literally, not as a wildcard pattern. Without this, a term of

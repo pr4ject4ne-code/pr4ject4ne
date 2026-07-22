@@ -38,6 +38,17 @@ export interface HospitalPhoto {
   slot?: 'outside_far' | 'outside_close' | 'reception' | 'other';
 }
 
+/**
+ * A department groups related services under a name the institution chooses
+ * itself (e.g. "Surgery" -> ["General Surgery", "Orthopaedics"]). `services`
+ * is deliberately free-form/flat — "subclassed as they see fit" without a
+ * fixed taxonomy (worklist #14).
+ */
+export interface HospitalDepartment {
+  name: string;
+  services: string[];
+}
+
 export interface Hospital {
   id: string;
   name: string;
@@ -53,6 +64,7 @@ export interface Hospital {
   photos: HospitalPhoto[];
   hours: Record<string, string>;
   specialties: string[];
+  departments: HospitalDepartment[];
   rating_avg: number;
   rating_count: number;
   is_24_hour: boolean;

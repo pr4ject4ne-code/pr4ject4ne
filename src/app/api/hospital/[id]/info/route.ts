@@ -1,7 +1,8 @@
 import { query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { requireHospitalOwnership } from '@/lib/hospital-auth';
-import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
+import { sanitizeText, safeHttpUrl, sanitizeDepartments } from '@/lib/sanitize';
+import type { HospitalDepartment } from '@/types';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -14,6 +15,7 @@ interface Body {
   contact_phone?: string;
   contact_email?: string;
   specialties?: string[];
+  departments?: HospitalDepartment[];
   is_24_hour?: boolean;
   show_doctors?: boolean;
 }
@@ -48,6 +50,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (Array.isArray(body.specialties)) {
     const specs = body.specialties.filter((s): s is string => typeof s === 'string').slice(0, 50);
     push('specialties', specs);
+  }
+  if (Array.isArray(body.departments)) {
+    push('departments', JSON.stringify(sanitizeDepartments(body.departments)));
   }
   if (typeof body.is_24_hour === 'boolean') push('is_24_hour', body.is_24_hour);
   if (typeof body.show_doctors === 'boolean') push('show_doctors', body.show_doctors);

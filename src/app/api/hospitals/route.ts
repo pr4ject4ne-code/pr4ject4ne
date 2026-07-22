@@ -78,7 +78,7 @@ export async function GET(req: Request) {
     ),
     query<Hospital>(
       `SELECT id, name, service_type, address, city, latitude, longitude, website,
-              contact_phone, contact_email, logo_url, photos, hours, specialties,
+              contact_phone, contact_email, logo_url, photos, hours, specialties, departments,
               rating_avg, rating_count, is_24_hour, show_doctors, verified, account_id, status,
               created_at, updated_at
        FROM hospitals ${where}
