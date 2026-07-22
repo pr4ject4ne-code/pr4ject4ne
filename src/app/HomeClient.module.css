@@ -64,9 +64,16 @@
     inset 0 1px 1px rgba(255, 255, 255, 0.85);
 }
 
-/* Expanded state (drag-to-resize / keyboard-toggled), mobile only. */
-.panel.expanded {
-  height: 88vh;
+/* Expanded state (drag-to-resize / keyboard-toggled), mobile only. Scoped
+   inside the same <900px range the drag/grabber behavior applies at —
+   otherwise `.panel.expanded`'s specificity (0,2,0) would outrank the
+   desktop media query's `.panel` rule (0,1,0) below and pin the docked
+   side panel to 88vh if `sheetExpanded` state ever carries across a
+   resize/breakpoint crossing (nothing resets it on resize). */
+@media (max-width: 899px) {
+  .panel.expanded {
+    height: 88vh;
+  }
 }
 
 /* While actively dragging, height is written imperatively per pointermove —

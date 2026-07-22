@@ -153,6 +153,12 @@ export default function HomeClient() {
   // transition + aria-expanded on release.
   const onGrabberPointerDown = useCallback((e: React.PointerEvent<HTMLSpanElement>) => {
     if (window.innerWidth >= MOBILE_SHEET_BREAKPOINT) return;
+    // Ignore a second pointer landing on the grabber while one is already
+    // driving the drag — otherwise it would overwrite dragRef with a pointer
+    // id whose eventual release never matches, orphaning the first pointer's
+    // drag state (isDraggingSheet stuck true, .dragging transition-suppress
+    // stuck applied).
+    if (dragRef.current) return;
     const panel = panelRef.current;
     if (!panel) return;
     e.currentTarget.setPointerCapture(e.pointerId);
