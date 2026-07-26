@@ -21,6 +21,13 @@ export async function GET(req: Request) {
 
   const allowed = await checkRateLimit(`verify_email:${ip ?? 'unknown'}`, 20, 3600);
   if (!allowed) {
+    await logAudit({
+      userId: null,
+      action: 'rate_limited',
+      resourceType: 'user',
+      details: { endpoint: 'verify_email' },
+      ip,
+    });
     return NextResponse.redirect(new URL('/verify-email?status=rate_limited', req.url));
   }
 

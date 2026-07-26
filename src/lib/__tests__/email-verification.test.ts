@@ -66,16 +66,17 @@ describe('consumeEmailVerificationToken', () => {
 
   it('rejects an already-used token', async () => {
     mockTxRows([
-      { id: 't1', user_id: 'u1', expires_at: new Date(Date.now() + 1000).toISOString(), used_at: new Date().toISOString() },
+      { id: 't1', user_id: 'u1', is_expired: false, used_at: new Date().toISOString() },
     ]);
     const result = await consumeEmailVerificationToken('sometoken');
     expect(result).toEqual({ ok: false, reason: 'used' });
   });
 
   it('rejects an expired token', async () => {
-    mockTxRows([
-      { id: 't1', user_id: 'u1', expires_at: new Date(Date.now() - 1000).toISOString(), used_at: null },
-    ]);
+    // is_expired is computed in SQL (expires_at < now()) so the DB clock is
+    // authoritative, mirroring auth.ts's getSession() expiry pattern — the
+    // mock returns the boolean a real Postgres row would, not a raw timestamp.
+    mockTxRows([{ id: 't1', user_id: 'u1', is_expired: true, used_at: null }]);
     const result = await consumeEmailVerificationToken('sometoken');
     expect(result).toEqual({ ok: false, reason: 'expired' });
   });
@@ -89,7 +90,7 @@ describe('consumeEmailVerificationToken', () => {
             {
               id: 't1',
               user_id: 'u1',
-              expires_at: new Date(Date.now() + 60_000).toISOString(),
+              is_expired: false,
               used_at: null,
             },
           ],

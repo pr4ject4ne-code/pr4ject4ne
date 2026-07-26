@@ -40,6 +40,14 @@ describe('GET /api/auth/verify-email', () => {
     expect(mockConsume).not.toHaveBeenCalled();
   });
 
+  it('audit-logs the rate-limited outcome too, not just consumed-token outcomes', async () => {
+    mockCheckRateLimit.mockResolvedValue(false);
+    await GET(makeReq('sometoken'));
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'rate_limited', details: { endpoint: 'verify_email' } }),
+    );
+  });
+
   it('redirects to status=success on a valid token and audit-logs success', async () => {
     mockConsume.mockResolvedValue({ ok: true, userId: 'user-1' });
     const res = await GET(makeReq('validtoken'));

@@ -39,6 +39,21 @@ function truncate(value: string, length: number): string {
   return value.length > length ? `${value.slice(0, length)}…` : value;
 }
 
+/**
+ * Dev-fallback log previews must never carry a live single-use token or full
+ * recipient PII, even incidentally — strip any URL (where a verification/
+ * reset token lives as a query param) before truncating, and log only the
+ * recipient's domain, not the full address.
+ */
+function redactPreview(value: string): string {
+  return truncate(value.replace(/https?:\/\/\S+/g, '[link omitted]'), TRUNCATED_PREVIEW_LENGTH);
+}
+
+function maskRecipient(email: string): string {
+  const at = email.indexOf('@');
+  return at === -1 ? '[redacted]' : `[redacted]@${email.slice(at + 1)}`;
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     promise,
@@ -56,13 +71,12 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
  */
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
-  const preview = truncate(input.text ?? input.html, TRUNCATED_PREVIEW_LENGTH);
 
   if (!apiKey) {
     logger.warn('email_not_sent_no_api_key', {
-      to: input.to,
+      to: maskRecipient(input.to),
       subject: input.subject,
-      preview,
+      preview: redactPreview(input.text ?? input.html),
     });
     return { sent: false };
   }
@@ -80,7 +94,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     );
     if (result.error) {
       logger.error('email_send_failed', {
-        to: input.to,
+        to: maskRecipient(input.to),
         subject: input.subject,
         error: result.error.message,
       });
@@ -91,7 +105,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     // A Resend outage/timeout/SDK error must degrade, not throw — the caller
     // (e.g. signup) must succeed regardless of email-provider health.
     logger.error('email_send_failed', {
-      to: input.to,
+      to: maskRecipient(input.to),
       subject: input.subject,
       error: errMessage(err),
     });

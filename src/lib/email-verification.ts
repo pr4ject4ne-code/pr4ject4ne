@@ -61,10 +61,10 @@ export async function consumeEmailVerificationToken(token: string): Promise<Veri
     const { rows } = await tx.query<{
       id: string;
       user_id: string;
-      expires_at: string;
       used_at: string | null;
+      is_expired: boolean;
     }>(
-      `SELECT id, user_id, expires_at, used_at
+      `SELECT id, user_id, used_at, (expires_at < now()) AS is_expired
        FROM email_verification_tokens
        WHERE token_hash = $1
        FOR UPDATE`,
@@ -73,7 +73,10 @@ export async function consumeEmailVerificationToken(token: string): Promise<Veri
     const row = rows[0];
     if (!row) return { ok: false, reason: 'invalid' };
     if (row.used_at) return { ok: false, reason: 'used' };
-    if (new Date(row.expires_at).getTime() < Date.now()) return { ok: false, reason: 'expired' };
+    // Compared in SQL (DB clock authoritative), matching the pattern
+    // getSession() uses for session-token expiry in auth.ts, rather than
+    // pulling the timestamp out and comparing against the app server's clock.
+    if (row.is_expired) return { ok: false, reason: 'expired' };
 
     await tx.query(`UPDATE email_verification_tokens SET used_at = now() WHERE id = $1`, [row.id]);
     await tx.query(`UPDATE users SET email_verified = true WHERE id = $1`, [row.user_id]);

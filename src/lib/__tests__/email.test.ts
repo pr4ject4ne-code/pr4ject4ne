@@ -31,6 +31,25 @@ describe('sendEmail', () => {
     expect(mockSend).not.toHaveBeenCalled();
   });
 
+  it('never logs the recipient address or a live link in the dev-fallback preview', async () => {
+    delete process.env.RESEND_API_KEY;
+    const { logger } = await import('@/lib/logger');
+    const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+    const { sendEmail } = await import('@/lib/email');
+    await sendEmail({
+      to: 'realuser@example.com',
+      subject: 'Confirm your account',
+      html: '<a href="https://app.test/verify?token=SUPER_SECRET_TOKEN">verify</a>',
+      text: 'Verify here: https://app.test/verify?token=SUPER_SECRET_TOKEN',
+    });
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const [, fields] = warnSpy.mock.calls[0] as [string, Record<string, unknown>];
+    expect(fields.to).toBe('[redacted]@example.com');
+    expect(JSON.stringify(fields)).not.toContain('SUPER_SECRET_TOKEN');
+    expect(JSON.stringify(fields)).not.toContain('realuser');
+    warnSpy.mockRestore();
+  });
+
   it('sends via the Resend SDK when a key is configured', async () => {
     process.env.RESEND_API_KEY = 'test-key';
     mockSend.mockResolvedValue({ data: { id: 'abc' }, error: null });
