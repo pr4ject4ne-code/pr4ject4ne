@@ -152,6 +152,45 @@ describe('GET /api/biodata/[userId] — cross-user IHN-authenticated read (workl
     expect(json.ihn_code).toBeUndefined(); // never leak the code back
   });
 
+  it('strips doctor_id from clinical_conditions on the cross-user response (security-audit fix — this route shares authorizeRead/buildReadResult with /api/biodata/lookup, which was fixed first)', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({
+      user_id: OWN_ID,
+      ihn_code: IHN,
+      profile_layer: {},
+      biodata_layer: {
+        clinical_conditions: [
+          { condition: 'Hypertension', timestamp: '2026-01-01T00:00:00Z', doctor_id: 'doc-1' },
+        ],
+      },
+      sharing_prefs: { clinical_conditions: true },
+      last_modified_at: '2026-07-05T00:00:00Z',
+    });
+    const res = await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
+    const json = await res.json();
+    expect(json.biodata_layer.clinical_conditions[0].doctor_id).toBeUndefined();
+    expect(json.biodata_layer.clinical_conditions[0].condition).toBe('Hypertension');
+  });
+
+  it("does NOT strip doctor_id from the owner's own read of their own data (not a leak — only the cross-user response needs stripping)", async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: OWN_ID, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({
+      user_id: OWN_ID,
+      ihn_code: IHN,
+      profile_layer: {},
+      biodata_layer: {
+        clinical_conditions: [
+          { condition: 'Hypertension', timestamp: '2026-01-01T00:00:00Z', doctor_id: 'doc-1' },
+        ],
+      },
+      sharing_prefs: {},
+      last_modified_at: '2026-07-05T00:00:00Z',
+    });
+    const res = await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
+    const json = await res.json();
+    expect(json.biodata_layer.clinical_conditions[0].doctor_id).toBe('doc-1');
+  });
+
   it('default-deny: nothing is returned when sharing_prefs is empty/absent', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
     mockQueryOne.mockResolvedValue({

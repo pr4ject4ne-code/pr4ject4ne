@@ -6,6 +6,7 @@ import { sanitizeLayer, sanitizeClinicalConditions, safeHttpUrl } from '@/lib/sa
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import { isValidIhnCode } from '@/lib/ihn-code';
 import { normalizeSharingPrefs, filterBiodataBySharingPrefs } from '@/lib/sharing-prefs';
+import { stripDoctorIdsFromClinicalConditions } from '@/lib/biodata-response';
 import type { Biodata, BiodataLayer, ProfileLayer } from '@/types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -273,6 +274,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
   if (!auth.ok) return auth.response;
 
   const result = await buildReadResult(auth.data, req.headers);
+
+  // Cross-user (non-owner) responses must never carry a raw doctor_id — see
+  // stripDoctorIdsFromClinicalConditions's doc comment. This route shares the
+  // exact authorizeRead/buildReadResult pipeline the /api/biodata/lookup
+  // route uses, so it needs the identical strip on its own response, not
+  // just on the lookup route's. The owner's own read is unaffected (their
+  // own doctor_id on their own data is not a leak).
+  if (!auth.data.isOwner) {
+    return apiOk({ ...result, biodata_layer: stripDoctorIdsFromClinicalConditions(result.biodata_layer) });
+  }
   return apiOk(result);
 }
 

@@ -7,6 +7,7 @@ import { isValidIhnCode } from '@/lib/ihn-code';
 import { authorizeRead, buildReadResult } from '@/app/api/biodata/[userId]/route';
 import { fetchDoctorAttributionLookup } from '@/lib/doctor-consent-db';
 import { buildDoctorReport } from '@/lib/doctor-report';
+import { stripDoctorIdsFromClinicalConditions } from '@/lib/biodata-response';
 
 /**
  * By-IHN-code lookup (worklist #24's "string tab"). `biodata.ihn_code` is
@@ -126,16 +127,7 @@ export async function GET(req: Request) {
   // even when consent is denied/pending/nonexistent — defeating the whole
   // point of the report's anonymization. This mutates only the RESPONSE
   // shape, never the stored record.
-  const sanitizedBiodataLayer = {
-    ...result.biodata_layer,
-    ...(result.biodata_layer.clinical_conditions
-      ? {
-          clinical_conditions: result.biodata_layer.clinical_conditions.map(
-            ({ doctor_id: _doctorId, ...rest }) => rest,
-          ),
-        }
-      : {}),
-  };
+  const sanitizedBiodataLayer = stripDoctorIdsFromClinicalConditions(result.biodata_layer);
 
   return apiOk({
     available: true,
