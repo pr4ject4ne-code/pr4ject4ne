@@ -11,6 +11,7 @@ export type AuditAction =
   | 'biodata_read'
   | 'biodata_write'
   | 'biodata_shared_read'
+  | 'biodata_lookup_no_match'
   | 'hospital_register'
   | 'hospital_update'
   | 'announcement_change'

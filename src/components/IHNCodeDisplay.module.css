@@ -23,6 +23,30 @@
   margin: 0;
 }
 
+.qrRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0 0 0.75rem;
+  flex-wrap: wrap;
+}
+
+.qrCanvas {
+  border-radius: var(--radius);
+  background: var(--color-white);
+  padding: 0.4rem;
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+}
+
+.qrCaption {
+  flex: 1;
+  min-width: 160px;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  margin: 0;
+}
+
 /* "Why does this matter?" — a small frosted-glass collapsible, same register
    as Card.module.css (glass tokens, soft shadow, no hard border). */
 .why {

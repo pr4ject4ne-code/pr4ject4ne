@@ -66,7 +66,13 @@ async function loadSession(headers: Headers) {
  *    the dual per-IP + per-email bucket design already used by
  *    forgot-password (see src/lib/auth.ts / memory 2026-07-26).
  */
-async function authorizeRead(
+/**
+ * Exported (not just used internally) so the by-IHN-code lookup path (worklist
+ * #24/#25's "string tab") can call the EXACT same session/rate-limit/IHN-match
+ * logic once it has resolved a code to a target user id — no parallel/weaker
+ * reimplementation of this authorization boundary.
+ */
+export async function authorizeRead(
   paramUserId: string,
   headers: Headers,
 ): Promise<{ ok: true; data: ReadAuthorized } | { ok: false; response: ReturnType<typeof apiError> }> {
@@ -197,12 +203,22 @@ async function authorizeWrite(
   return { ok: true, data: { userId: session.user_id, record } };
 }
 
-export async function GET(req: Request, { params }: { params: Promise<{ userId: string }> }) {
-  const paramUserId = (await params).userId;
-  const auth = await authorizeRead(paramUserId, req.headers);
-  if (!auth.ok) return auth.response;
+export interface BiodataReadResult {
+  user_id: string;
+  profile_layer: Partial<ProfileLayer>;
+  biodata_layer: Partial<BiodataLayer>;
+  ihn_code?: string;
+  last_modified_at: string;
+}
 
-  const { requesterId, targetUserId, isOwner, record } = auth.data;
+/**
+ * Builds the (already-filtered, audit-logged) read response for an authorized
+ * request. Extracted so the by-IHN-code lookup route (#24/#25) can produce the
+ * identical response shape/logging as this route's own GET, rather than
+ * duplicating the owner-vs-cross-user branching.
+ */
+export async function buildReadResult(data: ReadAuthorized, headers: Headers): Promise<BiodataReadResult> {
+  const { requesterId, targetUserId, isOwner, record } = data;
 
   if (isOwner) {
     await logAudit({
@@ -211,15 +227,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
       resourceType: 'biodata',
       resourceId: targetUserId,
       details: { via: 'ihn_code' },
-      ip: clientIpFrom(req.headers),
+      ip: clientIpFrom(headers),
     });
-    return apiOk({
+    return {
       user_id: record.user_id,
       profile_layer: record.profile_layer,
       biodata_layer: record.biodata_layer,
       ihn_code: record.ihn_code,
       last_modified_at: record.last_modified_at,
-    });
+    };
   }
 
   // Cross-user read: filter server-side through the OWNER's sharing_prefs.
@@ -238,17 +254,26 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
     resourceType: 'biodata',
     resourceId: targetUserId,
     details: { via: 'ihn_code', fields_returned: fieldsReturned },
-    ip: clientIpFrom(req.headers),
+    ip: clientIpFrom(headers),
   });
 
   // ihn_code is intentionally omitted here — the requester already supplied
   // it, and a cross-user response should carry the least possible privilege.
-  return apiOk({
+  return {
     user_id: record.user_id,
     profile_layer: filtered.profile_layer,
     biodata_layer: filtered.biodata_layer,
     last_modified_at: record.last_modified_at,
-  });
+  };
+}
+
+export async function GET(req: Request, { params }: { params: Promise<{ userId: string }> }) {
+  const paramUserId = (await params).userId;
+  const auth = await authorizeRead(paramUserId, req.headers);
+  if (!auth.ok) return auth.response;
+
+  const result = await buildReadResult(auth.data, req.headers);
+  return apiOk(result);
 }
 
 interface PatchBody {

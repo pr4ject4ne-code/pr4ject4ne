@@ -169,6 +169,7 @@ export default function Header({
           <Link href={profileHref}>Profile</Link>
           <Link href="/first-aid">First Aid</Link>
           <Link href="/filter">Directory</Link>
+          <Link href="/string-lookup">Find by IHN</Link>
         </nav>
         <button
           type="button"
@@ -191,6 +192,9 @@ export default function Header({
             </Link>
             <Link href="/filter" onClick={() => setMenuOpen(false)}>
               Directory
+            </Link>
+            <Link href="/string-lookup" onClick={() => setMenuOpen(false)}>
+              Find by IHN
             </Link>
           </nav>
         )}
