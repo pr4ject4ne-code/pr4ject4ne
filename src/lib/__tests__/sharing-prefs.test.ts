@@ -88,4 +88,23 @@ describe('filterBiodataBySharingPrefs — field-level isolation (default-deny)',
     const out = filterBiodataBySharingPrefs(profile, biodata, { ...DEFAULT_SHARING_PREFS, profile: true });
     expect(out.profile_layer).toEqual(profile);
   });
+
+  it('still respects dob_visible=false even when profile sharing is opted in', () => {
+    const profileWithHiddenDob: ProfileLayer = { ...profile, dob: '1990-01-01', dob_visible: false };
+    const out = filterBiodataBySharingPrefs(profileWithHiddenDob, biodata, {
+      ...DEFAULT_SHARING_PREFS,
+      profile: true,
+    });
+    expect(out.profile_layer.dob).toBeUndefined();
+    expect(out.profile_layer.full_name).toBe('Ada');
+  });
+
+  it('includes dob via profile sharing when dob_visible is explicitly true', () => {
+    const profileWithVisibleDob: ProfileLayer = { ...profile, dob: '1990-01-01', dob_visible: true };
+    const out = filterBiodataBySharingPrefs(profileWithVisibleDob, biodata, {
+      ...DEFAULT_SHARING_PREFS,
+      profile: true,
+    });
+    expect(out.profile_layer.dob).toBe('1990-01-01');
+  });
 });

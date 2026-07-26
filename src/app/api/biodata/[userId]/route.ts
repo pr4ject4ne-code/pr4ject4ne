@@ -99,6 +99,17 @@ async function authorizeRead(
       SHARED_READ_IP_WINDOW_SECONDS,
     );
     if (!targetAllowed || !ipAllowed) {
+      // A string of throttled cross-user attempts against one target is
+      // exactly the brute-force signal to watch for — same reasoning as
+      // logging IHN mismatches below, not just successful reads.
+      await logAudit({
+        userId: session.user_id,
+        action: 'rate_limited',
+        resourceType: 'biodata',
+        resourceId: paramUserId,
+        details: { endpoint: 'biodata_shared_read' },
+        ip,
+      });
       return { ok: false, response: apiError('Too many attempts.', 'RATE_LIMITED', 429) };
     }
   }

@@ -68,6 +68,14 @@ export function filterBiodataBySharingPrefs(
   prefs: SharingPrefs,
 ): { profile_layer: Partial<ProfileLayer>; biodata_layer: Partial<BiodataLayer> } {
   const profile_layer: Partial<ProfileLayer> = prefs.profile ? { ...profileLayer } : {};
+  // ProfileLayer's own doc comment: "freely visible (except DOB, gated by
+  // dob_visible)". The `profile` sharing toggle grants everything else in
+  // the layer, but must still respect that pre-existing per-field opt-out —
+  // otherwise turning on profile sharing would silently bypass a control the
+  // owner set for a different reason (e.g. general profile-page visibility).
+  if (profile_layer.dob !== undefined && profile_layer.dob_visible !== true) {
+    delete profile_layer.dob;
+  }
   const biodata_layer: Partial<BiodataLayer> = {};
 
   if (prefs.demographics) {

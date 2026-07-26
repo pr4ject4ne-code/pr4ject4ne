@@ -220,6 +220,19 @@ describe('GET /api/biodata/[userId] — cross-user IHN-authenticated read (workl
     const res = await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
     expect(res.status).toBe(429);
   });
+
+  it('audit-logs a throttled cross-user attempt, not just IHN mismatches', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
+    mockCheckRateLimit.mockResolvedValueOnce(false);
+    await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'rate_limited',
+        resourceId: OWN_ID,
+        details: { endpoint: 'biodata_shared_read' },
+      }),
+    );
+  });
 });
 
 describe('PATCH /api/biodata/[userId]', () => {
