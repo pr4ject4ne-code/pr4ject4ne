@@ -25,8 +25,22 @@ export interface User {
   is_active: boolean;
   created_by: string | null;
   last_login: string | null;
+  /** Whether this account's email address has been confirmed (worklist #18). Existing
+   * pre-feature accounts are backfilled true; new signups start false. Unverified
+   * accounts are NOT blocked from using the app — this is a nudge, not a gate. */
+  email_verified: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** A hashed, single-use, expiring token proving control of a signup email address. */
+export interface EmailVerificationToken {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  expires_at: string;
+  used_at: string | null;
+  created_at: string;
 }
 
 /** User shape safe to return to clients (no password hash). */
@@ -172,6 +186,12 @@ export interface FirstAidEntry {
   contraindications: string | null;
   images: string[];
   tags: string[];
+  /** Signs/symptoms indicating this entry applies — displayed BEFORE process
+   * (worklist #34). Same closed whitelist as `tags` (first-aid-tags.ts) but a
+   * distinct axis: `tags` is topic/scenario categorization for browsing the
+   * catalog, `signs_symptoms` is per-entry "does this apply to what I'm
+   * seeing" content. See migration 011 for the full reasoning. */
+  signs_symptoms: string[];
   created_by_dev_id: string | null;
   created_at: string;
   updated_at: string;

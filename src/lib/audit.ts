@@ -22,6 +22,7 @@ export type AuditAction =
   | 'suggestion_submit'
   | 'suggestion_review'
   | 'password_change'
+  | 'email_verified'
   | 'rate_limited'
   | 'login'
   | 'login_failed'

@@ -49,6 +49,14 @@
   font-weight: 600;
   margin: 0.75rem 0;
 }
+.verifyBanner {
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1.1rem;
+  font-size: 0.9rem;
+}
+.verifyBanner p {
+  margin: 0;
+}
 
 @media (max-width: 700px) {
   .mainGrid {

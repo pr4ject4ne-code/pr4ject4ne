@@ -13,7 +13,10 @@ import {
 import { generateIhnCode } from '@/lib/ihn-code';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { logAudit, clientIpFrom } from '@/lib/audit';
-import { logger } from '@/lib/logger';
+import { logger, errMessage } from '@/lib/logger';
+import { createEmailVerificationToken } from '@/lib/email-verification';
+import { sendEmail } from '@/lib/email';
+import { buildWelcomeVerificationEmail, buildVerifyEmailUrl } from '@/lib/email-templates';
 
 interface Body {
   email?: string;
@@ -82,6 +85,23 @@ export async function POST(req: Request) {
   }
 
   if (!userId) return apiError('Could not create account.', 'SIGNUP_FAILED', 500);
+
+  // Verification token + welcome/confirmation email. Deliberately outside the
+  // user-creation transaction (the account must exist regardless of whether
+  // the email send succeeds) and never allowed to fail the signup response —
+  // a Resend outage or a missing RESEND_API_KEY must not block account
+  // creation, only the confirmation email itself degrades (loudly logged).
+  try {
+    const verificationToken = await createEmailVerificationToken(userId);
+    const verifyUrl = buildVerifyEmailUrl(verificationToken);
+    const { subject, html, text } = buildWelcomeVerificationEmail(verifyUrl);
+    const result = await sendEmail({ to: email, subject, html, text });
+    if (!result.sent) {
+      logger.warn('signup_welcome_email_not_sent', { user_id: userId });
+    }
+  } catch (err) {
+    logger.error('signup_welcome_email_failed', { user_id: userId, error: errMessage(err) });
+  }
 
   const { token, expiresAt } = await createSession(userId, 'patient');
   (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));

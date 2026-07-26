@@ -17,6 +17,9 @@ interface BiodataResponse {
   profile_layer: ProfileLayer;
   biodata_layer: BiodataLayer;
   ihn_code: string;
+  /** Worklist #18: non-blocking nudge only — an unverified account can still
+   * use the full dashboard/biodata farm. */
+  email_verified?: boolean;
 }
 
 export default function DashboardClient() {
@@ -124,6 +127,15 @@ export default function DashboardClient() {
             Log out
           </Button>
         </div>
+
+        {data && data.email_verified === false && (
+          <Card className={styles.verifyBanner} role="status">
+            <p>
+              Please verify your email address — check your inbox for a confirmation link we sent
+              when you signed up.
+            </p>
+          </Card>
+        )}
 
         <section className={styles.account}>
           <h2 className={styles.sectionTitle}>My account</h2>

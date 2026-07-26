@@ -23,9 +23,14 @@ export async function GET(req: Request) {
   const userId = await requireOwner();
   if (!userId) return apiError('Not authenticated.', 'UNAUTHENTICATED', 401);
 
-  const record = await queryOne<Biodata>(
-    `SELECT user_id, profile_layer, biodata_layer, ihn_code, last_modified_at, created_at
-     FROM biodata WHERE user_id = $1`,
+  // Joins users.email_verified so the dashboard can show a non-blocking
+  // "please verify your email" nudge (worklist #18) without a second request.
+  const record = await queryOne<Biodata & { email_verified: boolean }>(
+    `SELECT b.user_id, b.profile_layer, b.biodata_layer, b.ihn_code, b.last_modified_at, b.created_at,
+            u.email_verified
+     FROM biodata b
+     JOIN users u ON u.id = b.user_id
+     WHERE b.user_id = $1`,
     [userId],
   );
   if (!record) return apiError('Biodata not found.', 'NOT_FOUND', 404);
@@ -45,6 +50,7 @@ export async function GET(req: Request) {
     biodata_layer: record.biodata_layer,
     ihn_code: record.ihn_code,
     last_modified_at: record.last_modified_at,
+    email_verified: record.email_verified,
   });
 }
 
