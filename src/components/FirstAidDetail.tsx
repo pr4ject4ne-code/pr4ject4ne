@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Card from './Card';
 import { safeHttpUrl } from '@/lib/sanitize';
 import type { FirstAidEntry } from '@/types';
 import styles from './FirstAidDetail.module.css';
@@ -84,7 +85,7 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
   const signsSymptoms = entry.signs_symptoms ?? [];
 
   return (
-    <article className={styles.detail}>
+    <Card as="article" className={styles.detail}>
       <span className={styles.category}>{entry.category}</span>
       <h1 className={styles.title}>{entry.title}</h1>
       {entry.tags?.length > 0 && (
@@ -141,6 +142,6 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
       <Group title="Process" entry={entry} fields={PROCESS_FIELDS} />
       <Group title="Do's & Don'ts" entry={entry} fields={DOS_DONTS_FIELDS} />
       <Group title="Additional guidance" entry={entry} fields={MORE_FIELDS} />
-    </article>
+    </Card>
   );
 }

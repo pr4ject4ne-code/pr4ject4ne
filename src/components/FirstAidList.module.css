@@ -8,17 +8,22 @@
 }
 .tabs {
   display: inline-flex;
-  border: 1px solid var(--color-border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 .tabs button {
   border: none;
-  background: var(--color-white);
+  background: transparent;
   padding: 0.5rem 0.9rem;
   cursor: pointer;
   font-weight: 600;
   color: var(--color-muted);
+  transition: background 0.15s ease, color 0.15s ease;
 }
 .activeTab {
   background: var(--color-blue) !important;
@@ -26,15 +31,20 @@
 }
 .search {
   display: flex;
-  background: var(--color-white);
-  border: 1px solid var(--color-border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 .search input {
   border: none;
   padding: 0.5rem 0.7rem;
   font-size: 0.9rem;
+  background: transparent;
+  color: var(--color-ink);
 }
 .search input:focus {
   outline: none;
@@ -116,13 +126,19 @@
   margin-bottom: 1.25rem;
 }
 .tagChip {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-hairline);
   background: var(--color-white);
   color: var(--color-ink);
   border-radius: 999px;
   padding: 0.28rem 0.7rem;
   font-size: 0.8rem;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.tagChip:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
 }
 .tagChipOn {
   background: var(--color-blue);
