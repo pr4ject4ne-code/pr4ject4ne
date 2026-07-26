@@ -74,16 +74,69 @@ describe('buildHospitalFilters', () => {
     expect(conditions.some((c) => c.includes('latitude IS NOT NULL'))).toBe(true);
   });
 
-  it('skips the radius filter when any of lat/lng/radius_km is missing', () => {
-    expect(buildHospitalFilters({ lat: '6.44', lng: '7.5' }).params).toEqual([]);
+  it('skips the radius filter (condition) when any of lat/lng/radius_km is missing', () => {
+    // A valid lat+lng alone still binds params (the distance expression is
+    // also reused for symptom-match ordering, independent of a radius) — but
+    // no `acos(...) <= $n` radius CONDITION is added without a positive
+    // radius_km. Missing lat or lng entirely means no distance expression at
+    // all, so params stay empty in those two cases.
+    const bothCoordsNoRadius = buildHospitalFilters({ lat: '6.44', lng: '7.5' });
+    expect(bothCoordsNoRadius.params).toEqual([6.44, 7.5]);
+    expect(bothCoordsNoRadius.conditions.some((c) => c.includes('<='))).toBe(false);
+
     expect(buildHospitalFilters({ lat: '6.44', radiusKm: '10' }).params).toEqual([]);
     expect(buildHospitalFilters({ lng: '7.5', radiusKm: '10' }).params).toEqual([]);
   });
 
-  it('skips the radius filter for out-of-range lat/lng or a non-positive radius', () => {
+  it('skips the radius filter (condition) for out-of-range lat/lng or a non-positive radius', () => {
     expect(buildHospitalFilters({ lat: '999', lng: '7.5', radiusKm: '10' }).params).toEqual([]);
-    expect(buildHospitalFilters({ lat: '6.44', lng: '7.5', radiusKm: '0' }).params).toEqual([]);
-    expect(buildHospitalFilters({ lat: '6.44', lng: '7.5', radiusKm: '-5' }).params).toEqual([]);
+
+    const zeroRadius = buildHospitalFilters({ lat: '6.44', lng: '7.5', radiusKm: '0' });
+    expect(zeroRadius.params).toEqual([6.44, 7.5]);
+    expect(zeroRadius.conditions.some((c) => c.includes('<='))).toBe(false);
+
+    const negativeRadius = buildHospitalFilters({ lat: '6.44', lng: '7.5', radiusKm: '-5' });
+    expect(negativeRadius.params).toEqual([6.44, 7.5]);
+    expect(negativeRadius.conditions.some((c) => c.includes('<='))).toBe(false);
+  });
+
+  describe('symptom search (worklist #8/#34)', () => {
+    it('adds a specialty-match condition and an orderBy for a recognised symptom', () => {
+      const { conditions, params, orderBy } = buildHospitalFilters({ symptoms: ['Bleeding'] });
+      expect(conditions.some((c) => c.includes('unnest(specialties)'))).toBe(true);
+      expect(conditions.some((c) => c.includes('> 0'))).toBe(true);
+      expect(orderBy).not.toBeNull();
+      expect(orderBy).toMatch(/DESC/);
+      expect(params[params.length - 1]).toEqual(
+        expect.arrayContaining(['%emergency medicine%']),
+      );
+    });
+
+    it('ignores unrecognised symptom tags (no condition, no orderBy)', () => {
+      const { conditions, orderBy } = buildHospitalFilters({ symptoms: ['NotARealSymptom'] });
+      expect(conditions).toEqual([`status = 'approved'`]);
+      expect(orderBy).toBeNull();
+    });
+
+    it('returns orderBy: null when no symptoms are given', () => {
+      expect(buildHospitalFilters({}).orderBy).toBeNull();
+    });
+
+    it('unions keyword patterns across multiple symptom tags into one ANY() param', () => {
+      const { params } = buildHospitalFilters({ symptoms: ['Bleeding', 'Seizures'] });
+      const patterns = params[params.length - 1] as string[];
+      expect(patterns).toEqual(expect.arrayContaining(['%emergency medicine%', '%neurology%']));
+    });
+
+    it('folds distance into the orderBy (ASC) when a location is also given', () => {
+      const { orderBy } = buildHospitalFilters({
+        symptoms: ['Bleeding'],
+        lat: '6.44',
+        lng: '7.5',
+      });
+      expect(orderBy).toMatch(/acos/);
+      expect(orderBy).toMatch(/ASC/);
+    });
   });
 
   it('composes all filters together (AND, not override)', () => {

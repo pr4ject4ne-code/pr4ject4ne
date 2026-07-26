@@ -5,7 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Logo from './Logo';
 import { useSession } from '@/lib/useSession';
+import { FIRST_AID_TAGS } from '@/lib/first-aid-tags';
 import styles from './Header.module.css';
+
+/** Symptom search requires at least 2 recognised symptoms to narrow down to
+ * an appropriate result (worklist #34) — a single symptom is too unspecific
+ * to rank hospitals by specialty match. */
+const MIN_SYMPTOMS = 2;
 
 export type SearchMode = 'nearest' | 'hospital' | 'symptom';
 
@@ -38,10 +44,20 @@ export default function Header({
   const [menuOpen, setMenuOpen] = useState(false);
   const [mode, setMode] = useState<SearchMode>('nearest');
   const [q, setQ] = useState('');
+  const [symptomTags, setSymptomTags] = useState<string[]>([]);
+  const [symptomPickerOpen, setSymptomPickerOpen] = useState(false);
   const { user } = useSession();
   const router = useRouter();
 
   const profileHref = user ? '/dashboard' : '/login';
+  const isSymptomMode = mode === 'symptom' && !onHospitalSearch;
+  const symptomsBelowMin = isSymptomMode && symptomTags.length < MIN_SYMPTOMS;
+
+  function toggleSymptom(tag: string) {
+    setSymptomTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
+  }
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,9 +65,12 @@ export default function Header({
       onHospitalSearch(q);
       return;
     }
+    if (isSymptomMode && symptomTags.length < MIN_SYMPTOMS) return;
     const params = new URLSearchParams();
     if (mode === 'hospital' && q) params.set('q', q);
-    if (mode === 'symptom' && q) params.set('symptom', q);
+    if (mode === 'symptom' && symptomTags.length >= MIN_SYMPTOMS) {
+      params.set('symptom', symptomTags.join(','));
+    }
     if (mode === 'nearest') params.set('nearest', '1');
     router.push(`/?${params.toString()}`);
   }
@@ -77,31 +96,72 @@ export default function Header({
       </div>
 
       {(onHospitalSearch || showSearch) && (
-        <form className={styles.search} onSubmit={onSubmit} role="search">
-          {!onHospitalSearch && (
-            <select
-              className={styles.mode}
-              value={mode}
-              onChange={(e) => setMode(e.target.value as SearchMode)}
-              aria-label="Search mode"
-            >
-              <option value="nearest">Nearest</option>
-              <option value="hospital">By name</option>
-              <option value="symptom">By symptom</option>
-            </select>
+        <div className={styles.searchWrap}>
+          <form className={styles.searchPill} onSubmit={onSubmit} role="search">
+            {!onHospitalSearch && (
+              <select
+                className={styles.mode}
+                value={mode}
+                onChange={(e) => {
+                  setMode(e.target.value as SearchMode);
+                  setSymptomPickerOpen(false);
+                }}
+                aria-label="Search mode"
+              >
+                <option value="nearest">Nearest</option>
+                <option value="hospital">By name</option>
+                <option value="symptom">By symptom</option>
+              </select>
+            )}
+            {isSymptomMode ? (
+              <button
+                type="button"
+                className={styles.symptomToggle}
+                aria-haspopup="true"
+                aria-expanded={symptomPickerOpen}
+                onClick={() => setSymptomPickerOpen((o) => !o)}
+              >
+                {symptomTags.length > 0
+                  ? `${symptomTags.length} symptom${symptomTags.length > 1 ? 's' : ''} selected`
+                  : 'Select symptoms…'}
+              </button>
+            ) : (
+              <input
+                className={styles.searchInput}
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={onHospitalSearch ? 'Search this hospital…' : MODE_PLACEHOLDER[mode]}
+                aria-label="Search"
+              />
+            )}
+            <button type="submit" className={styles.searchBtn} disabled={symptomsBelowMin}>
+              Search
+            </button>
+          </form>
+          {isSymptomMode && symptomPickerOpen && (
+            <div className={styles.symptomPanel} role="group" aria-label="Select at least 2 symptoms">
+              {FIRST_AID_TAGS.map((tag) => {
+                const on = symptomTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    aria-pressed={on}
+                    className={on ? styles.symptomChipOn : styles.symptomChip}
+                    onClick={() => toggleSymptom(tag)}
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+              <p className={styles.symptomHint} aria-live="polite">
+                {symptomTags.length}/{MIN_SYMPTOMS} minimum selected — guidance only, never a
+                diagnosis.
+              </p>
+            </div>
           )}
-          <input
-            className={styles.searchInput}
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={onHospitalSearch ? 'Search this hospital…' : MODE_PLACEHOLDER[mode]}
-            aria-label="Search"
-          />
-          <button type="submit" className={styles.searchBtn}>
-            Search
-          </button>
-        </form>
+        </div>
       )}
 
       <div className={styles.right}>

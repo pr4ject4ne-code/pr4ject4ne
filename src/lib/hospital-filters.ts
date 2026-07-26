@@ -1,4 +1,5 @@
 import { escapeLikePattern } from './sanitize';
+import { normalizeSymptomTags, specialtyKeywordsForSymptoms } from './symptom-specialty-map';
 import type { ServiceType } from '@/types';
 
 const SERVICE_TYPES: ServiceType[] = ['hospital', 'clinic', 'pharmacy', 'radiology', 'other'];
@@ -40,6 +41,10 @@ export interface HospitalFilterParams {
   lat?: string | null;
   lng?: string | null;
   radiusKm?: string | null;
+  /** Symptom tags (worklist #8/#34) — whitelisted values from FIRST_AID_TAGS,
+   * mapped to specialty keywords via symptom-specialty-map.ts. Unrecognised
+   * strings are dropped silently (same convention as an invalid service_type). */
+  symptoms?: string[] | null;
 }
 
 export interface BuiltHospitalFilters {
@@ -47,6 +52,13 @@ export interface BuiltHospitalFilters {
   conditions: string[];
   /** Positional params matching the `$1, $2, ...` placeholders in conditions. */
   params: unknown[];
+  /**
+   * SQL ORDER BY fragment when a symptom search matched (specialty-match
+   * strength, then distance if a location is known, then rating, then name).
+   * `null` when no symptom filter applies — the caller keeps its own default
+   * ordering (verified/rating/name) in that case.
+   */
+  orderBy: string | null;
 }
 
 /**
@@ -112,34 +124,62 @@ export function buildHospitalFilters(p: HospitalFilterParams): BuiltHospitalFilt
 
   const lat = p.lat != null ? Number(p.lat) : NaN;
   const lng = p.lng != null ? Number(p.lng) : NaN;
+  const hasValidCoords =
+    Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+
+  // Distance expression is built once (when a valid location is known) and
+  // reused both for the radius filter below AND for symptom-match ordering
+  // further down — a single source of truth for "how far is this hospital
+  // from the caller", not two divergent haversine expressions.
+  //
+  // No PostGIS extension is enabled on this project (only pg_trgm, per
+  // migration history) — plain haversine formula in SQL rather than
+  // assuming earthdistance/PostGIS availability. LEAST/GREATEST clamp the
+  // acos argument to [-1, 1]; floating-point error can push the raw
+  // expression slightly outside that range, and Postgres's acos() raises
+  // "input is out of range" (not NaN) when it does.
+  let distanceExpr: string | null = null;
+  if (hasValidCoords) {
+    params.push(lat, lng);
+    const latIdx = params.length - 1;
+    const lngIdx = params.length;
+    distanceExpr =
+      `(6371 * acos(LEAST(1, GREATEST(-1, ` +
+      `cos(radians($${latIdx})) * cos(radians(latitude)) * cos(radians(longitude) - radians($${lngIdx})) + ` +
+      `sin(radians($${latIdx})) * sin(radians(latitude))))))`;
+  }
+
   const radiusKm = p.radiusKm != null ? Number(p.radiusKm) : NaN;
-  if (
-    Number.isFinite(lat) &&
-    Number.isFinite(lng) &&
-    Number.isFinite(radiusKm) &&
-    radiusKm > 0 &&
-    lat >= -90 &&
-    lat <= 90 &&
-    lng >= -180 &&
-    lng <= 180
-  ) {
-    // No PostGIS extension is enabled on this project (only pg_trgm, per
-    // migration history) — plain haversine formula in SQL rather than
-    // assuming earthdistance/PostGIS availability. LEAST/GREATEST clamp the
-    // acos argument to [-1, 1]; floating-point error can push the raw
-    // expression slightly outside that range, and Postgres's acos() raises
-    // "input is out of range" (not NaN) when it does.
-    params.push(lat, lng, radiusKm);
-    const latIdx = params.length - 2;
-    const lngIdx = params.length - 1;
+  if (distanceExpr && Number.isFinite(radiusKm) && radiusKm > 0) {
+    params.push(radiusKm);
     const radiusIdx = params.length;
     conditions.push(
-      `latitude IS NOT NULL AND longitude IS NOT NULL AND ` +
-        `(6371 * acos(LEAST(1, GREATEST(-1, ` +
-        `cos(radians($${latIdx})) * cos(radians(latitude)) * cos(radians(longitude) - radians($${lngIdx})) + ` +
-        `sin(radians($${latIdx})) * sin(radians(latitude)))))) <= $${radiusIdx}`,
+      `latitude IS NOT NULL AND longitude IS NOT NULL AND ${distanceExpr} <= $${radiusIdx}`,
     );
   }
 
-  return { conditions, params };
+  // Symptom search (worklist #8/#34): whitelisted symptom tags map to
+  // specialty keywords (symptom-specialty-map.ts) and match against the
+  // hospital's free-text `specialties` array. A hospital matches if ANY
+  // specialty contains ANY keyword from ANY selected symptom; the per-row
+  // match count then drives ranking (specialty-match strength first).
+  const symptomTags = normalizeSymptomTags(p.symptoms);
+  let orderBy: string | null = null;
+  if (symptomTags.length > 0) {
+    const keywords = specialtyKeywordsForSymptoms(symptomTags);
+    if (keywords.length > 0) {
+      // Keywords are our own static, hardcoded strings (never user input),
+      // so no LIKE-escaping is needed here — unlike the `q`/`location`
+      // filters above, which escape untrusted caller text.
+      const patterns = keywords.map((kw) => `%${kw}%`);
+      params.push(patterns);
+      const kwIdx = params.length;
+      const matchExpr =
+        `(SELECT count(*) FROM unnest(specialties) AS sp WHERE sp ILIKE ANY ($${kwIdx}::text[]))`;
+      conditions.push(`${matchExpr} > 0`);
+      orderBy = `${matchExpr} DESC${distanceExpr ? `, ${distanceExpr} ASC` : ''}, rating_avg DESC, name ASC`;
+    }
+  }
+
+  return { conditions, params, orderBy };
 }

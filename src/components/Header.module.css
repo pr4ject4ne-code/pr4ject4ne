@@ -119,16 +119,84 @@
   color: var(--header-fg);
 }
 
-.search {
+/* Wrapper carries the grid placement + position:relative so the symptom
+   picker popover (below) can anchor under the pill without being clipped by
+   the pill's own overflow:hidden. */
+.searchWrap {
   grid-area: search;
   justify-self: center;
+  position: relative;
+  width: min(600px, 100%);
+}
+
+.searchPill {
   display: flex;
   align-items: stretch;
-  width: min(600px, 100%);
+  width: 100%;
   background: var(--color-white);
   border-radius: 999px;
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(15, 30, 70, 0.14);
+}
+
+.searchBtn:disabled {
+  background: var(--color-border);
+  cursor: not-allowed;
+}
+
+/* Symptom multi-select (worklist #34 — "requesting min 2 symptoms"). The
+   toggle sits where the plain text input would be; the panel is a popover
+   anchored to .searchWrap (not .searchPill, which clips overflow). */
+.symptomToggle {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.9rem;
+  color: var(--color-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.symptomPanel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  z-index: 600;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.symptomChip,
+.symptomChipOn {
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  color: var(--color-ink);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.symptomChipOn {
+  background: var(--color-amethyst);
+  color: var(--color-white);
+  border-color: var(--color-amethyst);
+}
+
+.symptomHint {
+  width: 100%;
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-muted);
 }
 
 .mode {
@@ -267,7 +335,7 @@
       'left right'
       'search search';
   }
-  .search {
+  .searchWrap {
     width: 100%;
   }
 }

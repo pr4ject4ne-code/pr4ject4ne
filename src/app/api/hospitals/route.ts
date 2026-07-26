@@ -21,6 +21,8 @@ const COUNT_CAP = 500;
  * Query params: location, specialty, service_type, min_rating, open_24, q,
  * ownership (private|public), open_day (day name, e.g. "monday"),
  * lat + lng + radius_km (distance filter, all three required together),
+ * symptom (comma-separated whitelisted symptom tags, worklist #8/#34 — ranks
+ * results by specialty-match strength, then distance, then rating),
  * limit, offset.
  */
 export async function GET(req: Request) {
@@ -28,7 +30,15 @@ export async function GET(req: Request) {
   const limit = parseLimit(url.searchParams.get('limit'));
   const offset = parseOffset(url.searchParams.get('offset'));
 
-  const { conditions, params } = buildHospitalFilters({
+  const symptomParam = url.searchParams.get('symptom');
+  const symptoms = symptomParam
+    ? symptomParam
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : null;
+
+  const { conditions, params, orderBy } = buildHospitalFilters({
     location: url.searchParams.get('location'),
     specialty: url.searchParams.get('specialty'),
     serviceType: url.searchParams.get('service_type'),
@@ -40,9 +50,15 @@ export async function GET(req: Request) {
     lat: url.searchParams.get('lat'),
     lng: url.searchParams.get('lng'),
     radiusKm: url.searchParams.get('radius_km'),
+    symptoms,
   });
 
   const where = `WHERE ${conditions.join(' AND ')}`;
+  // A symptom search ranks by specialty-match strength (then distance, then
+  // rating) instead of the default verified-first ordering — scoped to
+  // specialty+distance+rating for v1 (no price/booking-availability data
+  // exists in the schema; see WORKLIST.md #8).
+  const orderClause = orderBy ?? 'verified DESC, rating_avg DESC, name ASC';
 
   // Count and page fetch are independent — run them in parallel. The count is
   // bounded by COUNT_CAP (see above) via a LIMITed subquery.
@@ -58,7 +74,7 @@ export async function GET(req: Request) {
               rating_avg, rating_count, is_24_hour, show_doctors, is_private, verified, account_id,
               status, created_at, updated_at
        FROM hospitals ${where}
-       ORDER BY verified DESC, rating_avg DESC, name ASC
+       ORDER BY ${orderClause}
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       [...params, limit, offset],
     ),

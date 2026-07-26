@@ -54,6 +54,13 @@ export default function HomeClient() {
 
   const nameQuery = searchParams.get('q') ?? '';
   const symptomQuery = searchParams.get('symptom') ?? '';
+  // Whitelisted symptom tags, comma-separated in the URL (see Header.tsx's
+  // multi-select) — dropped here entirely before this fix (worklist #8), so a
+  // symptom search silently fell through to the unfiltered hospital list.
+  const symptomTags = useMemo(
+    () => symptomQuery.split(',').map((s) => s.trim()).filter(Boolean),
+    [symptomQuery],
+  );
   const wantNearest = searchParams.get('nearest') === '1';
 
   const loadHospitals = useCallback(
@@ -62,6 +69,7 @@ export default function HomeClient() {
       setLoadError(null);
       const qs = buildHospitalsQuery({
         q: nameQuery || undefined,
+        symptoms: symptomTags.length > 0 ? symptomTags : undefined,
         minRating: filters.minRating || undefined,
         ownership: filters.ownership || undefined,
         openDay: filters.openDay || undefined,
@@ -90,7 +98,7 @@ export default function HomeClient() {
         setLoading(false);
       }
     },
-    [nameQuery, filters, userLocation],
+    [nameQuery, symptomTags, filters, userLocation],
   );
 
   // Ask for geolocation when the user requests "nearest".
@@ -210,9 +218,12 @@ export default function HomeClient() {
     setSheetExpanded((prev) => !prev);
   }, []);
 
-  // Sort by proximity when we have the user's location.
+  // Sort by proximity when we have the user's location — EXCEPT for a symptom
+  // search, where the server already ranks results by specialty-match
+  // strength first (then distance, then rating; see hospital-filters.ts).
+  // Re-sorting by raw distance here would silently discard that ranking.
   const orderedHospitals = useMemo(() => {
-    if (!userLocation) return hospitals;
+    if (!userLocation || symptomTags.length > 0) return hospitals;
     return [...hospitals].sort((a, b) => {
       const da =
         typeof a.latitude === 'number' && typeof a.longitude === 'number'
@@ -224,7 +235,7 @@ export default function HomeClient() {
           : Infinity;
       return da - db;
     });
-  }, [hospitals, userLocation]);
+  }, [hospitals, userLocation, symptomTags]);
 
   // Route + ETA to the nearest hospital when we have a user location.
   useEffect(() => {
@@ -298,10 +309,10 @@ export default function HomeClient() {
             {manualError && <p className={styles.noticeText}>{manualError}</p>}
           </div>
         )}
-        {symptomQuery && (
+        {symptomTags.length > 0 && (
           <p className={styles.notice}>
-            Showing hospitals near you for “{symptomQuery}”. Symptom-based routing is guidance only
-            — it never diagnoses. For emergencies, call local services immediately.
+            Showing hospitals ranked for “{symptomTags.join(', ')}”. Symptom-based routing is
+            guidance only — it never diagnoses. For emergencies, call local services immediately.
           </p>
         )}
         <div className={styles.headingRow}>

@@ -15,6 +15,8 @@ export interface FilterParams {
   radiusKm?: number;
   lat?: number;
   lng?: number;
+  /** Whitelisted symptom tags (worklist #8/#34) — sent as a comma-joined list. */
+  symptoms?: string[];
   limit?: number;
   offset?: number;
 }
@@ -51,6 +53,9 @@ export function buildHospitalsQuery(params: FilterParams): string {
     sp.set('radius_km', String(params.radiusKm));
     sp.set('lat', String(params.lat));
     sp.set('lng', String(params.lng));
+  }
+  if (params.symptoms && params.symptoms.length > 0) {
+    sp.set('symptom', params.symptoms.join(','));
   }
   sp.set('limit', String(params.limit ?? 20));
   sp.set('offset', String(params.offset ?? 0));
