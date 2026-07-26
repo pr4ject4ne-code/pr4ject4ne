@@ -5,8 +5,15 @@ interface LogoProps {
 }
 
 /**
- * Racoon Eye mark: a minimal raccoon face — nose, eye, and eye-cutout (mask)
- * only, very round edges, rendered in a single color (amethyst by default).
+ * Racoon Eye mark (updated 2026-07-26, founder-supplied replacement): a
+ * binocular/mask silhouette — two rounded, outward-pointed lens shapes
+ * joined by a narrow bridge, a small highlight dot in each lens, and a
+ * small rounded nose beneath the bridge. Single-color silhouette, very
+ * round edges, no sharp corners — same brand language as the prior mark.
+ *
+ * Recreated from a founder-pasted image (no file was saved to disk this
+ * session, only the inline image) — a faithful redraw, not a pixel-exact
+ * trace. Flag if it needs adjusting against the original asset.
  */
 export default function Logo({
   size = 32,
@@ -17,25 +24,35 @@ export default function Logo({
     <svg
       width={size}
       height={size}
-      viewBox="0 0 48 48"
+      viewBox="0 0 200 120"
       role="img"
       aria-label={title}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
       <title>{title}</title>
-      {/* Eye mask cutout (rounded arc) */}
+      {/* Left lens + bridge + right lens, one continuous silhouette */}
       <path
-        d="M8 20c0-7 7-12 16-12s16 5 16 12c0 3-2 5-5 5-4 0-6-3-11-3s-7 3-11 3c-3 0-5-2-5-5z"
+        d="M18 60
+           C18 40 34 26 56 26
+           C74 26 84 34 92 42
+           C96 46 104 46 108 42
+           C116 34 126 26 144 26
+           C166 26 182 40 182 60
+           C182 72 174 80 162 80
+           C150 80 146 70 128 66
+           C120 64 112 63 100 63
+           C88 63 80 64 72 66
+           C54 70 50 80 38 80
+           C26 80 18 72 18 60 Z"
         fill={color}
-        opacity="0.85"
       />
-      {/* Eye */}
-      <circle cx="17" cy="19" r="3.4" fill="var(--color-white)" />
-      <circle cx="17" cy="19" r="1.6" fill={color} />
-      {/* Nose (rounded triangle-ish, very round) */}
+      {/* Highlight dot in each lens */}
+      <circle cx="52" cy="50" r="6" fill="var(--color-white)" />
+      <circle cx="148" cy="50" r="6" fill="var(--color-white)" />
+      {/* Nose, beneath the bridge */}
       <path
-        d="M24 30c-3.2 0-5.6 2-5.6 4.6 0 3 2.6 5.4 5.6 5.4s5.6-2.4 5.6-5.4C29.6 32 27.2 30 24 30z"
+        d="M100 74c-6 0-10.5 4-10.5 9s4.5 9 10.5 9 10.5-4 10.5-9-4.5-9-10.5-9z"
         fill={color}
       />
     </svg>

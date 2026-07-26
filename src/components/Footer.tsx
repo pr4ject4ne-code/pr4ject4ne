@@ -10,7 +10,9 @@ export default function Footer() {
       <nav className={styles.links} aria-label="Footer">
         <Link href="/privacy-policy">Privacy Policy</Link>
         <Link href="/terms-and-conditions">Terms &amp; Conditions</Link>
-        <Link href="/links">Links</Link>
+        <a href="https://linktr.ee/pr4ject4ne" target="_blank" rel="noopener noreferrer">
+          Links
+        </a>
         <HelpBar />
       </nav>
       <div className={styles.brand}>
