@@ -5,11 +5,13 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
   hint?: string;
+  /** Extra element id(s) to append to aria-describedby, e.g. a live strength checklist. */
+  describedBy?: string;
 }
 
 /** Labeled text input with accessible error wiring. */
 const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, hint, id, className = '', ...rest },
+  { label, error, hint, describedBy, id, className = '', ...rest },
   ref,
 ) {
   const generatedId = useId();
@@ -33,7 +35,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         className={`${styles.input} ${error ? styles.inputError : ''} ${className}`}
         aria-invalid={error ? true : undefined}
         aria-describedby={
-          [error ? errorId : null, hint ? hintId : null].filter(Boolean).join(' ') || undefined
+          [error ? errorId : null, hint ? hintId : null, describedBy ?? null]
+            .filter(Boolean)
+            .join(' ') || undefined
         }
         {...rest}
       />

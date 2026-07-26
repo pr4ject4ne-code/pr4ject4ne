@@ -31,8 +31,33 @@ describe('LoginForm', () => {
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'weak' } });
     fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'different' } });
     fireEvent.click(screen.getByText('Create account'));
-    expect(await screen.findByText(/at least 8 characters/i)).toBeInTheDocument();
+    expect(await screen.findByText(/password must be at least 8 characters/i)).toBeInTheDocument();
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not show a strength indicator until the user starts typing a password', () => {
+    render(<LoginForm />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Sign up' }));
+    expect(screen.queryByText(/password strength/i)).not.toBeInTheDocument();
+  });
+
+  it('live-updates the strength indicator from weak to strong as the password improves', () => {
+    render(<LoginForm />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Sign up' }));
+    const passwordInput = screen.getByLabelText('Password');
+
+    fireEvent.change(passwordInput, { target: { value: 'weak' } });
+    expect(screen.getByText(/password strength: weak/i)).toBeInTheDocument();
+    expect(screen.getByText('At least 8 characters').closest('li')).toHaveClass('checkUnmet');
+
+    fireEvent.change(passwordInput, { target: { value: 'weakerpass' } });
+    expect(screen.getByText(/password strength: fair/i)).toBeInTheDocument();
+    expect(screen.getByText('At least 8 characters').closest('li')).toHaveClass('checkMet');
+    expect(screen.getByText('One uppercase letter').closest('li')).toHaveClass('checkUnmet');
+
+    fireEvent.change(passwordInput, { target: { value: 'Str0ng!x' } });
+    expect(screen.getByText(/password strength: strong/i)).toBeInTheDocument();
+    expect(screen.getByText('One symbol').closest('li')).toHaveClass('checkMet');
   });
 
   it('shows the IHN code once after a successful signup', async () => {
