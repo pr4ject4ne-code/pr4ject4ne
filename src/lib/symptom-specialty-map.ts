@@ -23,7 +23,11 @@ import { FIRST_AID_TAGS, type FirstAidTag } from './first-aid-tags';
 export const SYMPTOM_SPECIALTY_MAP: Record<FirstAidTag, string[]> = {
   Bleeding: ['emergency medicine', 'trauma', 'general surgery', 'general medicine'],
   Burns: ['emergency medicine', 'plastic surgery', 'burns', 'trauma'],
-  Choking: ['emergency medicine', 'ent', 'otolaryngology', 'pediatrics'],
+  // 'ent' was deliberately dropped as a keyword here: matched via ILIKE
+  // substring against free-text specialties, it false-positives on any
+  // specialty containing "ent" (Mental Health, Dental, Adolescent Medicine,
+  // etc.) — 'otolaryngology' is the real term and already covers this.
+  Choking: ['emergency medicine', 'otolaryngology', 'pediatrics'],
   'CPR & breathing': ['cardiology', 'emergency medicine', 'pulmonology', 'critical care'],
   'Fractures & sprains': ['orthopaedics', 'orthopedics', 'trauma', 'physiotherapy'],
   'Head & spine': ['neurology', 'neurosurgery', 'orthopaedics', 'orthopedics', 'trauma'],

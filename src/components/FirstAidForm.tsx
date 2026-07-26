@@ -5,6 +5,7 @@ import Input from './Input';
 import Dropdown from './Dropdown';
 import Button from './Button';
 import { uploadFile } from '@/lib/upload-client';
+import { safeHttpUrl } from '@/lib/sanitize';
 import { FIRST_AID_TAGS } from '@/lib/first-aid-tags';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
 import styles from './FirstAidForm.module.css';
@@ -222,8 +223,17 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
           <ul className={styles.imageGrid}>
             {values.images.map((src, i) => (
               <li key={src + i} className={styles.imageItem}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="" />
+                {/* Re-validate scheme before rendering, matching the same
+                    render-time guard FirstAidDetail.tsx/FirstAidList.tsx use
+                    for saved entries — a pasted javascript:/data: URL here
+                    would otherwise render in this preview before the
+                    server-side check on submit ever runs. */}
+                {safeHttpUrl(src) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={safeHttpUrl(src)!} alt="" />
+                ) : (
+                  <span className={styles.imageInvalid}>Invalid image URL</span>
+                )}
                 <button
                   type="button"
                   onClick={() => removeImage(i)}

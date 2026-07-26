@@ -72,6 +72,18 @@
   display: block;
   background: var(--color-blue-light);
 }
+.imageInvalid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 90px;
+  padding: 0 0.4rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  background: var(--color-blue-light);
+}
 .imageItem button {
   position: absolute;
   top: 0.25rem;
