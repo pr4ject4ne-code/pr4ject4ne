@@ -127,4 +127,10 @@ describe('GET /api/first-aid/entries', () => {
     const sql = mockQuery.mock.calls[1][0] as string;
     expect(sql).not.toContain('WHERE');
   });
+
+  it('selects signs_symptoms so the public catalog can render it (worklist #34)', async () => {
+    await GET(req());
+    const sql = mockQuery.mock.calls[1][0] as string;
+    expect(sql).toContain('signs_symptoms');
+  });
 });

@@ -51,13 +51,16 @@ export async function POST(req: Request) {
     ? body.images.map((u) => safeHttpUrl(u)).filter((u): u is string => Boolean(u)).slice(0, 10)
     : [];
   const tags = normalizeTags(body.tags);
+  // Same whitelist/normalizer as `tags` — see migration 011 for why this is a
+  // distinct column rather than reusing `tags`.
+  const signsSymptoms = normalizeTags(body.signs_symptoms);
 
   const { rows } = await query<{ id: string }>(
     `INSERT INTO first_aid_entries
        (category, title, definition, description, process, dos, donts,
         things_to_look_out_for, implications, indication, contraindications,
-        images, tags, created_by_dev_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14)
+        images, tags, signs_symptoms, created_by_dev_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14,$15)
      RETURNING id`,
     [
       category,
@@ -73,6 +76,7 @@ export async function POST(req: Request) {
       values.contraindications,
       JSON.stringify(images),
       tags,
+      signsSymptoms,
       dev.id,
     ],
   );

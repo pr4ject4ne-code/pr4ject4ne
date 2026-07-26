@@ -73,6 +73,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (Array.isArray(body.tags)) {
     push('tags', normalizeTags(body.tags));
   }
+  if (Array.isArray(body.signs_symptoms)) {
+    push('signs_symptoms', normalizeTags(body.signs_symptoms));
+  }
 
   if (sets.length === 0) return apiError('Nothing to update.', 'BAD_REQUEST', 400);
 

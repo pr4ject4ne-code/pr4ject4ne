@@ -77,6 +77,24 @@ describe('POST /api/first-aid/entries/create', () => {
     expect(res.status).toBe(429);
     expect(mockQuery).not.toHaveBeenCalled();
   });
+
+  it('normalizes signs_symptoms against the whitelist and persists it (worklist #34)', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1' });
+    mockQuery.mockResolvedValue({ rows: [{ id: ENTRY_ID }] });
+    const res = await POST(
+      createReq({
+        title: 'Severe Bleeding',
+        category: 'procedure',
+        signs_symptoms: ['Bleeding', 'NotARealTag', 'Shock', 'Bleeding'],
+      }),
+    );
+    expect(res.status).toBe(201);
+    const insertSql = mockQuery.mock.calls[0][0] as string;
+    const insertArgs = mockQuery.mock.calls[0][1] as unknown[];
+    expect(insertSql).toContain('signs_symptoms');
+    // Whitelisted + de-duped, unknown value dropped, order-preserving.
+    expect(insertArgs).toContainEqual(['Bleeding', 'Shock']);
+  });
 });
 
 describe('DELETE /api/first-aid/entries/[id]', () => {
@@ -158,5 +176,20 @@ describe('PATCH /api/first-aid/entries/[id]', () => {
     expect(res.status).toBe(429);
     expect(mockQueryOne).not.toHaveBeenCalled();
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('normalizes signs_symptoms on edit (worklist #34 round-trip)', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'secondary' });
+    mockQueryOne.mockResolvedValue({ id: ENTRY_ID });
+    mockQuery.mockResolvedValue({ rows: [] });
+    const res = await PATCH(
+      patchReq({ signs_symptoms: ['Choking', 'NotReal'] }),
+      { params: Promise.resolve({ id: ENTRY_ID }) },
+    );
+    expect(res.status).toBe(200);
+    const updateSql = mockQuery.mock.calls[0][0] as string;
+    const updateArgs = mockQuery.mock.calls[0][1] as unknown[];
+    expect(updateSql).toContain('signs_symptoms = $');
+    expect(updateArgs).toContainEqual(['Choking']);
   });
 });
