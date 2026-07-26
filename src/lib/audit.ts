@@ -23,6 +23,8 @@ export type AuditAction =
   | 'suggestion_review'
   | 'password_change'
   | 'email_verified'
+  | 'password_reset_requested'
+  | 'password_reset_completed'
   | 'rate_limited'
   | 'login'
   | 'login_failed'

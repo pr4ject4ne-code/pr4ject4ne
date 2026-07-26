@@ -76,6 +76,22 @@
 .submit {
   width: 100%;
 }
+.forgot {
+  margin: -0.6rem 0 0.9rem;
+  text-align: right;
+  font-size: 0.85rem;
+}
+.forgot a {
+  color: var(--color-blue-dark);
+}
+.backLink {
+  margin: 1rem 0 0;
+  text-align: center;
+  font-size: 0.85rem;
+}
+.backLink a {
+  color: var(--color-blue-dark);
+}
 .strength {
   margin: -0.5rem 0 0.9rem;
 }

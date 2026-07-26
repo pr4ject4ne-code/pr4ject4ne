@@ -2,20 +2,15 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Input from './Input';
 import Button from './Button';
 import Card from './Card';
-import { validatePasswordStrength, isValidEmail, getPasswordChecks } from '@/lib/validation';
+import PasswordStrengthMeter from './PasswordStrengthMeter';
+import { validatePasswordStrength, isValidEmail } from '@/lib/validation';
 import styles from './LoginForm.module.css';
 
 type Mode = 'login' | 'signup';
-type StrengthLevel = 'weak' | 'medium' | 'strong';
-
-const STRENGTH_LABEL: Record<StrengthLevel, string> = {
-  weak: 'Weak',
-  medium: 'Fair',
-  strong: 'Strong',
-};
 
 const PASSWORD_STRENGTH_ID = 'signup-password-strength';
 
@@ -30,10 +25,6 @@ export default function LoginForm() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [ihn, setIhn] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const passwordChecks = mode === 'signup' ? getPasswordChecks(password) : [];
-  const metCount = passwordChecks.filter((check) => check.met).length;
-  const strengthLevel: StrengthLevel = metCount <= 1 ? 'weak' : metCount <= 3 ? 'medium' : 'strong';
 
   function validate(): boolean {
     const next: Record<string, string> = {};
@@ -151,32 +142,13 @@ export default function LoginForm() {
           autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
           required
         />
-        {mode === 'signup' && password.length > 0 && (
-          <div className={styles.strength} id={PASSWORD_STRENGTH_ID}>
-            <div className={styles.strengthBar} aria-hidden="true">
-              {passwordChecks.map((check, i) => (
-                <span
-                  key={check.key}
-                  className={`${styles.strengthPill} ${
-                    i < metCount ? styles[`strength-${strengthLevel}`] : ''
-                  }`}
-                />
-              ))}
-            </div>
-            <p className={styles.strengthLabel} aria-live="polite">
-              Password strength: {STRENGTH_LABEL[strengthLevel]}
-            </p>
-            <ul className={styles.strengthChecklist}>
-              {passwordChecks.map((check) => (
-                <li
-                  key={check.key}
-                  className={check.met ? styles.checkMet : styles.checkUnmet}
-                >
-                  <span aria-hidden="true">{check.met ? '✓' : '○'}</span> {check.label}
-                </li>
-              ))}
-            </ul>
-          </div>
+        {mode === 'signup' && (
+          <PasswordStrengthMeter password={password} id={PASSWORD_STRENGTH_ID} />
+        )}
+        {mode === 'login' && (
+          <p className={styles.forgot}>
+            <Link href="/forgot-password">Forgot password?</Link>
+          </p>
         )}
         {mode === 'signup' && (
           <>

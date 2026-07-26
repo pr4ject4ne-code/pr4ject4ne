@@ -34,6 +34,7 @@ export default function DashboardClient() {
   const [newPassword, setNewPassword] = useState('');
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState(false);
+  const [showIhnNotice, setShowIhnNotice] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -56,6 +57,26 @@ export default function DashboardClient() {
       active = false;
     };
   }, [router]);
+
+  // Worklist #19: warn the user about the IHN code "upon signing in" — shown
+  // as a one-time dashboard nudge (mirrors the #18 email-verification banner
+  // pattern) rather than an every-visit banner, since IHNCodeDisplay already
+  // shows a persistent explainer below. Tracked in localStorage per user id
+  // so it only ever appears once per browser (dismissible), not gated on a
+  // real "first login" server flag — a lightweight interpretation of "warn on
+  // signing in", not a hard requirement to add new schema for it.
+  useEffect(() => {
+    if (!data?.user_id || typeof window === 'undefined') return;
+    const seen = window.localStorage.getItem(`re_ihn_notice_seen_${data.user_id}`);
+    if (!seen) setShowIhnNotice(true);
+  }, [data?.user_id]);
+
+  function dismissIhnNotice() {
+    if (data?.user_id && typeof window !== 'undefined') {
+      window.localStorage.setItem(`re_ihn_notice_seen_${data.user_id}`, '1');
+    }
+    setShowIhnNotice(false);
+  }
 
   async function handleSave(profile: ProfileLayer, biodata: BiodataLayer) {
     setSaving(true);
@@ -134,6 +155,19 @@ export default function DashboardClient() {
               Please verify your email address — check your inbox for a confirmation link we sent
               when you signed up.
             </p>
+          </Card>
+        )}
+
+        {showIhnNotice && (
+          <Card className={styles.ihnBanner} role="status">
+            <p>
+              A quick heads-up: your <strong>IHN access code</strong> below is a static emergency
+              key that never changes. Keep it private and only share it with people you trust to
+              view your medical information.
+            </p>
+            <Button variant="ghost" onClick={dismissIhnNotice}>
+              Got it
+            </Button>
           </Card>
         )}
 

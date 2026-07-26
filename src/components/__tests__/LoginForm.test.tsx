@@ -60,6 +60,16 @@ describe('LoginForm', () => {
     expect(screen.getByText('One symbol').closest('li')).toHaveClass('checkMet');
   });
 
+  it('shows a "Forgot password?" link in login mode only', () => {
+    render(<LoginForm />);
+    expect(screen.getByRole('link', { name: /forgot password/i })).toHaveAttribute(
+      'href',
+      '/forgot-password',
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'Sign up' }));
+    expect(screen.queryByRole('link', { name: /forgot password/i })).not.toBeInTheDocument();
+  });
+
   it('shows the IHN code once after a successful signup', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
