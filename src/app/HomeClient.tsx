@@ -14,8 +14,17 @@ import { getCurrentPosition, DEFAULT_CENTER, type Coords } from '@/lib/geolocati
 import { fetchRoute, distanceKm, geocode } from '@/lib/map';
 import { clampSheetHeightPx, resolveSheetSnap } from '@/lib/sheetDrag';
 import { buildHospitalsQuery } from '@/lib/filter-search';
+import { specialtyLabelsForSymptomIds } from '@/lib/symptom-specialty-map';
+import { prefersReducedMotion } from '@/lib/reducedMotion';
 import type { Hospital } from '@/types';
 import styles from './HomeClient.module.css';
+
+// A drag ending faster than FLICK velocity snaps in the direction of travel
+// (see sheetDrag.ts) — this caps how far the map's counter-parallax offset
+// can travel regardless of how far/fast the sheet itself is dragged, since
+// the point is a SUBTLE depth cue, not a second thing visibly moving.
+const MAP_PARALLAX_MAX_PX = 6;
+const MAP_PARALLAX_FACTOR = 0.03;
 
 // Below this width the results panel is a docked side panel (see
 // HomeClient.module.css), not a draggable bottom sheet — matches the
@@ -44,24 +53,46 @@ export default function HomeClient() {
   const [manualError, setManualError] = useState<string | null>(null);
   const darkenRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
-  const dragRef = useRef<{ pointerId: number; startY: number; startHeightPx: number } | null>(
-    null,
-  );
+  const mapLayerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startY: number;
+    startHeightPx: number;
+    // Velocity tracking (worklist #1 item 2 — velocity-aware release, not
+    // just position-aware). `lastY`/`lastT` are the previous pointermove
+    // sample; `velocityPxPerMs` is an exponentially-smoothed rate of HEIGHT
+    // change (not raw pointer speed) so it directly matches what
+    // resolveSheetSnap compares against. Smoothing (not just the final
+    // instantaneous sample) avoids a single jittery low-dt sample producing
+    // a spurious "flick" reading right at release.
+    lastY: number;
+    lastT: number;
+    velocityPxPerMs: number;
+  } | null>(null);
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [isDraggingSheet, setIsDraggingSheet] = useState(false);
   const [filters, setFilters] = useState<HomeFilterValue>(DEFAULT_HOME_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const nameQuery = searchParams.get('q') ?? '';
+  // Stage 1 emergency gate result (symptom-red-flags.ts), decided client-side
+  // in Header.tsx before navigation — when set, Stage 2 specialty routing is
+  // skipped ENTIRELY (no symptom param is ever sent alongside `emergency=1`,
+  // but this is also defensively ignored below even if both were present).
+  const isEmergency = searchParams.get('emergency') === '1';
   const symptomQuery = searchParams.get('symptom') ?? '';
-  // Whitelisted symptom tags, comma-separated in the URL (see Header.tsx's
-  // multi-select) — dropped here entirely before this fix (worklist #8), so a
-  // symptom search silently fell through to the unfiltered hospital list.
+  // Whitelisted symptom ids (the homepage's own non-emergency, region-based
+  // vocabulary — see symptom-specialty-map.ts), comma-separated in the URL
+  // (see Header.tsx's multi-select). Never applied during an emergency
+  // outcome — Stage 1 always wins.
   const symptomTags = useMemo(
-    () => symptomQuery.split(',').map((s) => s.trim()).filter(Boolean),
-    [symptomQuery],
+    () =>
+      isEmergency
+        ? []
+        : symptomQuery.split(',').map((s) => s.trim()).filter(Boolean),
+    [symptomQuery, isEmergency],
   );
-  const wantNearest = searchParams.get('nearest') === '1';
+  const wantNearest = searchParams.get('nearest') === '1' || isEmergency;
 
   const loadHospitals = useCallback(
     async (nextOffset: number, append: boolean) => {
@@ -149,6 +180,11 @@ export default function HomeClient() {
     let ticking = false;
     const applyDarken = () => {
       ticking = false;
+      // A continuous scroll-linked transform is exactly the kind of motion
+      // prefers-reduced-motion asks apps to avoid — skip the per-scroll
+      // write entirely rather than just relying on the CSS transition-speed
+      // override, so the value doesn't visibly ratchet on every scroll tick.
+      if (prefersReducedMotion()) return;
       const distance = window.innerHeight || 1;
       const progress = Math.min(1, Math.max(0, window.scrollY / distance));
       darkenRef.current?.style.setProperty('--map-darken', String(progress * MAX_DARKEN));
@@ -183,10 +219,14 @@ export default function HomeClient() {
     const panel = panelRef.current;
     if (!panel) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    const now = performance.now();
     dragRef.current = {
       pointerId: e.pointerId,
       startY: e.clientY,
       startHeightPx: panel.getBoundingClientRect().height,
+      lastY: e.clientY,
+      lastT: now,
+      velocityPxPerMs: 0,
     };
     setIsDraggingSheet(true);
   }, []);
@@ -198,6 +238,34 @@ export default function HomeClient() {
     const deltaUp = drag.startY - e.clientY;
     const nextHeightPx = clampSheetHeightPx(drag.startHeightPx + deltaUp, window.innerHeight);
     panel.style.height = `${nextHeightPx}px`;
+
+    // Velocity: rate of HEIGHT change (not raw pointer delta) between this
+    // sample and the last one, exponentially smoothed so the final reading
+    // reflects the recent trend of the gesture rather than one noisy sample.
+    const now = performance.now();
+    const dt = now - drag.lastT;
+    if (dt > 0) {
+      const deltaHeightPx = drag.lastY - e.clientY; // matches deltaUp's sign convention
+      const instantVelocity = deltaHeightPx / dt;
+      drag.velocityPxPerMs = drag.velocityPxPerMs * 0.5 + instantVelocity * 0.5;
+    }
+    drag.lastY = e.clientY;
+    drag.lastT = now;
+
+    // One clear parallax/depth proof-point (worklist #1 item 4): nudge the
+    // map layer a few px opposite the sheet's own motion while dragging, so
+    // the panel and the layer behind it move at genuinely different rates —
+    // a few px of differential motion is what makes the blur between them
+    // read as a pane with real thickness rather than a flat texture. Skipped
+    // entirely under prefers-reduced-motion (a continuous transform tied to
+    // pointer movement, not a static end-state).
+    if (!prefersReducedMotion()) {
+      const parallaxPx = Math.max(
+        -MAP_PARALLAX_MAX_PX,
+        Math.min(MAP_PARALLAX_MAX_PX, -deltaUp * MAP_PARALLAX_FACTOR),
+      );
+      mapLayerRef.current?.style.setProperty('--map-parallax', `${parallaxPx}px`);
+    }
   }, []);
 
   const endGrabberDrag = useCallback((e: React.PointerEvent<HTMLSpanElement>) => {
@@ -206,10 +274,13 @@ export default function HomeClient() {
     if (!drag || drag.pointerId !== e.pointerId) return;
     dragRef.current = null;
     setIsDraggingSheet(false);
+    mapLayerRef.current?.style.setProperty('--map-parallax', '0px');
     if (!panel) return;
     const currentHeightPx = panel.getBoundingClientRect().height;
     panel.style.height = ''; // hand back to the CSS class + transition for the snap animation
-    setSheetExpanded(resolveSheetSnap(currentHeightPx, window.innerHeight));
+    setSheetExpanded(
+      resolveSheetSnap(currentHeightPx, window.innerHeight, undefined, undefined, drag.velocityPxPerMs),
+    );
   }, []);
 
   const onGrabberKeyDown = useCallback((e: React.KeyboardEvent<HTMLSpanElement>) => {
@@ -257,7 +328,12 @@ export default function HomeClient() {
   return (
     <Layout fullBleed page="homepage">
       <div className={styles.stage}>
-        <div className={styles.mapLayer}>
+        <div
+          ref={mapLayerRef}
+          className={[styles.mapLayer, isDraggingSheet && styles.parallaxDragging]
+            .filter(Boolean)
+            .join(' ')}
+        >
           <Map
             center={center}
             userLocation={userLocation}
@@ -290,6 +366,17 @@ export default function HomeClient() {
             onPointerCancel={endGrabberDrag}
             onKeyDown={onGrabberKeyDown}
           />
+        {isEmergency && (
+          <div className={styles.emergencyBanner} role="alert">
+            <p className={styles.emergencyBannerText}>
+              This may be an emergency — go to the nearest hospital or emergency department now,
+              or call 112.
+            </p>
+            <a className={styles.emergencyCallBtn} href="tel:112">
+              Call 112
+            </a>
+          </div>
+        )}
         {geoError && (
           <div className={styles.notice} role="status">
             <p className={styles.noticeText}>{geoError}</p>
@@ -309,10 +396,12 @@ export default function HomeClient() {
             {manualError && <p className={styles.noticeText}>{manualError}</p>}
           </div>
         )}
-        {symptomTags.length > 0 && (
+        {!isEmergency && symptomTags.length > 0 && (
           <p className={styles.notice}>
-            Showing hospitals ranked for “{symptomTags.join(', ')}”. Symptom-based routing is
-            guidance only — it never diagnoses. For emergencies, call local services immediately.
+            People with symptoms like this usually see:{' '}
+            {specialtyLabelsForSymptomIds(symptomTags).join(', ')}. This is based on which
+            services hospitals list, not an assessment of your condition. If you think this is an
+            emergency, call 112 or go to the nearest hospital now.
           </p>
         )}
         <div className={styles.headingRow}>

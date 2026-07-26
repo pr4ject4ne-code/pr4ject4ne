@@ -10,12 +10,27 @@
 
 /* Fixed viewport backdrop (not confined to .stage): fills the screen and
    stays put as the page scrolls, rather than scrolling away with the
-   80vh stage that contains it. */
+   80vh stage that contains it. `--map-parallax` is a small (few-px)
+   counter-offset written imperatively (HomeClient.tsx) while the mobile
+   bottom-sheet is being dragged — the sheet already visually "lifts" via its
+   own height change, so nudging the map layer a few px the OPPOSITE
+   direction during that same gesture is the one deliberate parallax/depth
+   proof-point this pass adds: differential motion between the glass panel
+   and the layer behind it is what makes blur read as a pane with actual
+   thickness, not just a flat blurred texture (see globals.css/spring comment
+   for the fuller research context). Transition only applies once the drag
+   ends (`.mapLayer` has no `dragging` class at that point) so it snaps back
+   to 0 with the same spring, not linearly. */
 .mapLayer {
   position: fixed;
   inset: 0;
   z-index: 0;
   background: var(--color-blue-light);
+  transform: translateY(var(--map-parallax, 0px));
+  transition: transform 0.35s var(--spring);
+}
+.mapLayer.parallaxDragging {
+  transition: none;
 }
 
 /* Sits above the fixed map, below the floating results panel (z-index 400).
@@ -62,6 +77,17 @@
   box-shadow:
     var(--shadow-lg),
     inset 0 1px 1px rgba(255, 255, 255, 0.85);
+}
+
+/* Device-tier fallback (see GfxTier.tsx): the SVG refraction filter chain
+   (feTurbulence + feDisplacementMap composited every frame this panel is
+   visible) is the single most expensive blur on the page since it sits over
+   the live MapLibre canvas — drop it for the low tier in favor of a cheaper
+   plain blur, rather than stacking a costly filter graph on hardware least
+   able to afford it. */
+html[data-gfx-tier='low'] .panel {
+  backdrop-filter: saturate(150%) blur(10px);
+  -webkit-backdrop-filter: saturate(150%) blur(10px);
 }
 
 /* Expanded state (drag-to-resize / keyboard-toggled), mobile only. Scoped
@@ -152,6 +178,44 @@
 }
 .noticeText {
   margin: 0;
+}
+
+/* Stage-1 emergency outcome (symptom-red-flags.ts) — a persistent, high-
+   contrast banner that stays pinned to the top of the results panel as the
+   user scrolls, so the "call for emergency" affordance is never scrolled
+   out of view. */
+.emergencyBanner {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: #b02a2a;
+  color: var(--color-white);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 16px rgba(176, 42, 42, 0.35);
+}
+.emergencyBannerText {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+.emergencyCallBtn {
+  align-self: flex-start;
+  background: var(--color-white);
+  color: #b02a2a;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+.emergencyCallBtn:hover {
+  background: #fdeaea;
 }
 
 /* Manual-location fallback shown when geolocation is denied/unavailable. */

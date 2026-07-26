@@ -1,5 +1,5 @@
 import { escapeLikePattern } from './sanitize';
-import { normalizeSymptomTags, specialtyKeywordsForSymptoms } from './symptom-specialty-map';
+import { normalizeSymptomIds, specialtyKeywordsForSymptomIds } from './symptom-specialty-map';
 import type { ServiceType } from '@/types';
 
 const SERVICE_TYPES: ServiceType[] = ['hospital', 'clinic', 'pharmacy', 'radiology', 'other'];
@@ -41,9 +41,14 @@ export interface HospitalFilterParams {
   lat?: string | null;
   lng?: string | null;
   radiusKm?: string | null;
-  /** Symptom tags (worklist #8/#34) — whitelisted values from FIRST_AID_TAGS,
-   * mapped to specialty keywords via symptom-specialty-map.ts. Unrecognised
-   * strings are dropped silently (same convention as an invalid service_type). */
+  /** Symptom ids (worklist #8/#11) — whitelisted values from the homepage's
+   * own non-emergency, region-based vocabulary (symptom-specialty-map.ts's
+   * SYMPTOM_ITEMS — a SEPARATE closed vocabulary from First Aid's
+   * FIRST_AID_TAGS), mapped to specialty keywords via that same module.
+   * Unrecognised strings are dropped silently (same convention as an
+   * invalid service_type). Callers must only pass this when Stage 1's
+   * red-flag emergency gate (symptom-red-flags.ts) is clear — this filter
+   * has no emergency awareness of its own. */
   symptoms?: string[] | null;
 }
 
@@ -158,15 +163,15 @@ export function buildHospitalFilters(p: HospitalFilterParams): BuiltHospitalFilt
     );
   }
 
-  // Symptom search (worklist #8/#34): whitelisted symptom tags map to
+  // Symptom search (worklist #8/#11): whitelisted symptom ids map to
   // specialty keywords (symptom-specialty-map.ts) and match against the
   // hospital's free-text `specialties` array. A hospital matches if ANY
   // specialty contains ANY keyword from ANY selected symptom; the per-row
   // match count then drives ranking (specialty-match strength first).
-  const symptomTags = normalizeSymptomTags(p.symptoms);
+  const symptomIds = normalizeSymptomIds(p.symptoms);
   let orderBy: string | null = null;
-  if (symptomTags.length > 0) {
-    const keywords = specialtyKeywordsForSymptoms(symptomTags);
+  if (symptomIds.length > 0) {
+    const keywords = specialtyKeywordsForSymptomIds(symptomIds);
     if (keywords.length > 0) {
       // Keywords are our own static, hardcoded strings (never user input),
       // so no LIKE-escaping is needed here — unlike the `q`/`location`

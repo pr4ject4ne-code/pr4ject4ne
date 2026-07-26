@@ -100,19 +100,19 @@ describe('buildHospitalFilters', () => {
     expect(negativeRadius.conditions.some((c) => c.includes('<='))).toBe(false);
   });
 
-  describe('symptom search (worklist #8/#34)', () => {
+  describe('symptom search (worklist #8/#11 — region-based, non-emergency vocabulary)', () => {
     it('adds a specialty-match condition and an orderBy for a recognised symptom', () => {
-      const { conditions, params, orderBy } = buildHospitalFilters({ symptoms: ['Bleeding'] });
+      const { conditions, params, orderBy } = buildHospitalFilters({
+        symptoms: ['eye-red-itchy'],
+      });
       expect(conditions.some((c) => c.includes('unnest(specialties)'))).toBe(true);
       expect(conditions.some((c) => c.includes('> 0'))).toBe(true);
       expect(orderBy).not.toBeNull();
       expect(orderBy).toMatch(/DESC/);
-      expect(params[params.length - 1]).toEqual(
-        expect.arrayContaining(['%emergency medicine%']),
-      );
+      expect(params[params.length - 1]).toEqual(expect.arrayContaining(['%ophthalmology%']));
     });
 
-    it('ignores unrecognised symptom tags (no condition, no orderBy)', () => {
+    it('ignores unrecognised symptom ids (no condition, no orderBy)', () => {
       const { conditions, orderBy } = buildHospitalFilters({ symptoms: ['NotARealSymptom'] });
       expect(conditions).toEqual([`status = 'approved'`]);
       expect(orderBy).toBeNull();
@@ -122,15 +122,17 @@ describe('buildHospitalFilters', () => {
       expect(buildHospitalFilters({}).orderBy).toBeNull();
     });
 
-    it('unions keyword patterns across multiple symptom tags into one ANY() param', () => {
-      const { params } = buildHospitalFilters({ symptoms: ['Bleeding', 'Seizures'] });
+    it('unions keyword patterns across multiple symptom ids into one ANY() param', () => {
+      const { params } = buildHospitalFilters({
+        symptoms: ['eye-red-itchy', 'neuro-typical-headache'],
+      });
       const patterns = params[params.length - 1] as string[];
-      expect(patterns).toEqual(expect.arrayContaining(['%emergency medicine%', '%neurology%']));
+      expect(patterns).toEqual(expect.arrayContaining(['%ophthalmology%', '%neurology%']));
     });
 
     it('folds distance into the orderBy (ASC) when a location is also given', () => {
       const { orderBy } = buildHospitalFilters({
-        symptoms: ['Bleeding'],
+        symptoms: ['eye-red-itchy'],
         lat: '6.44',
         lng: '7.5',
       });

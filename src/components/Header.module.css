@@ -166,13 +166,104 @@
   right: 0;
   z-index: 600;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  padding: 0.75rem;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
   background: var(--color-white);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+}
+
+.severityBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.severityLabel {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.severitySlider {
+  width: 100%;
+  accent-color: var(--color-amethyst);
+}
+
+.severityValue {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-amethyst-dark, var(--color-amethyst));
+}
+
+.redFlagLabel {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.redFlagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.redFlagChip,
+.redFlagChipOn {
+  border: 1px solid #d94b4b;
+  background: var(--color-white);
+  color: #b02a2a;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.redFlagChipOn {
+  background: #d94b4b;
+  color: var(--color-white);
+  border-color: #d94b4b;
+}
+
+.emergencyHint {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius);
+  background: #fdeaea;
+  color: #8a1f1f;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.symptomRegionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.symptomRegionLabel {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-muted);
+}
+
+.symptomRegionChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 .symptomChip,

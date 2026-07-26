@@ -21,8 +21,11 @@ const COUNT_CAP = 500;
  * Query params: location, specialty, service_type, min_rating, open_24, q,
  * ownership (private|public), open_day (day name, e.g. "monday"),
  * lat + lng + radius_km (distance filter, all three required together),
- * symptom (comma-separated whitelisted symptom tags, worklist #8/#34 — ranks
- * results by specialty-match strength, then distance, then rating),
+ * symptom (comma-separated whitelisted symptom ids from the homepage's own
+ * non-emergency, region-based vocabulary — worklist #8/#11, see
+ * symptom-specialty-map.ts — ranks results by specialty-match strength,
+ * then distance, then rating; callers must only send this after Stage 1's
+ * red-flag gate, symptom-red-flags.ts, is clear),
  * limit, offset.
  */
 export async function GET(req: Request) {
