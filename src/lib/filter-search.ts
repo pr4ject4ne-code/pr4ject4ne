@@ -7,6 +7,14 @@ export interface FilterParams {
   minRating?: number;
   open24?: boolean;
   q?: string;
+  /** Private vs. public/government ownership (worklist #13). */
+  ownership?: 'private' | 'public' | '';
+  /** Day name, e.g. "monday" — filters to hospitals open that day. */
+  openDay?: string;
+  /** Distance-radius filter; lat/lng are required alongside radiusKm or it's a no-op. */
+  radiusKm?: number;
+  lat?: number;
+  lng?: number;
   limit?: number;
   offset?: number;
 }
@@ -29,6 +37,21 @@ export function buildHospitalsQuery(params: FilterParams): string {
   }
   if (params.open24) sp.set('open_24', 'true');
   if (params.q) sp.set('q', params.q);
+  if (params.ownership) sp.set('ownership', params.ownership);
+  if (params.openDay) sp.set('open_day', params.openDay);
+  // radius filter only makes sense with a coordinate to measure from — a
+  // radius without lat/lng (or vice versa) is silently dropped rather than
+  // sent as a half-formed, no-op filter.
+  if (
+    typeof params.radiusKm === 'number' &&
+    params.radiusKm > 0 &&
+    typeof params.lat === 'number' &&
+    typeof params.lng === 'number'
+  ) {
+    sp.set('radius_km', String(params.radiusKm));
+    sp.set('lat', String(params.lat));
+    sp.set('lng', String(params.lng));
+  }
   sp.set('limit', String(params.limit ?? 20));
   sp.set('offset', String(params.offset ?? 0));
   return sp.toString();

@@ -105,6 +105,13 @@
   outline-offset: 2px;
 }
 
+.headingRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
 .heading {
   font-size: 1.25rem;
   letter-spacing: -0.01em;
@@ -114,6 +121,24 @@
   color: var(--color-muted);
   font-weight: 400;
   font-size: 0.9rem;
+}
+
+.filterToggle {
+  flex: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--color-amethyst-dark, var(--color-amethyst));
+  cursor: pointer;
+}
+.filterToggle:hover,
+.filterToggle[aria-expanded='true'] {
+  background: var(--color-amethyst);
+  color: #fff;
+  border-color: var(--color-amethyst);
 }
 
 .notice {

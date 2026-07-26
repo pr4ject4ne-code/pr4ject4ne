@@ -6,9 +6,14 @@ import { useSearchParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import HospitalMiniProfile from '@/components/HospitalMiniProfile';
 import Button from '@/components/Button';
+import HospitalFilters, {
+  DEFAULT_HOME_FILTERS,
+  type HomeFilterValue,
+} from '@/components/HospitalFilters';
 import { getCurrentPosition, DEFAULT_CENTER, type Coords } from '@/lib/geolocation';
 import { fetchRoute, distanceKm, geocode } from '@/lib/map';
 import { clampSheetHeightPx, resolveSheetSnap } from '@/lib/sheetDrag';
+import { buildHospitalsQuery } from '@/lib/filter-search';
 import type { Hospital } from '@/types';
 import styles from './HomeClient.module.css';
 
@@ -44,6 +49,8 @@ export default function HomeClient() {
   );
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [isDraggingSheet, setIsDraggingSheet] = useState(false);
+  const [filters, setFilters] = useState<HomeFilterValue>(DEFAULT_HOME_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const nameQuery = searchParams.get('q') ?? '';
   const symptomQuery = searchParams.get('symptom') ?? '';
@@ -53,13 +60,19 @@ export default function HomeClient() {
     async (nextOffset: number, append: boolean) => {
       setLoading(true);
       setLoadError(null);
-      const params = new URLSearchParams({
-        limit: String(PAGE_SIZE),
-        offset: String(nextOffset),
+      const qs = buildHospitalsQuery({
+        q: nameQuery || undefined,
+        minRating: filters.minRating || undefined,
+        ownership: filters.ownership || undefined,
+        openDay: filters.openDay || undefined,
+        radiusKm: filters.radiusKm ? Number(filters.radiusKm) : undefined,
+        lat: userLocation?.lat,
+        lng: userLocation?.lng,
+        limit: PAGE_SIZE,
+        offset: nextOffset,
       });
-      if (nameQuery) params.set('q', nameQuery);
       try {
-        const res = await fetch(`/api/hospitals?${params.toString()}`);
+        const res = await fetch(`/api/hospitals?${qs}`);
         if (!res.ok) throw new Error(`Request failed (${res.status})`);
         const data = await res.json();
         const list: Hospital[] = data.hospitals ?? [];
@@ -77,7 +90,7 @@ export default function HomeClient() {
         setLoading(false);
       }
     },
-    [nameQuery],
+    [nameQuery, filters, userLocation],
   );
 
   // Ask for geolocation when the user requests "nearest".
@@ -291,10 +304,27 @@ export default function HomeClient() {
             — it never diagnoses. For emergencies, call local services immediately.
           </p>
         )}
-        <h2 className={styles.heading}>
-          {nameQuery ? `Results for “${nameQuery}”` : 'Hospitals'}{' '}
-          <span className={styles.count}>({total})</span>
-        </h2>
+        <div className={styles.headingRow}>
+          <h2 className={styles.heading}>
+            {nameQuery ? `Results for “${nameQuery}”` : 'Hospitals'}{' '}
+            <span className={styles.count}>({total})</span>
+          </h2>
+          <button
+            type="button"
+            className={styles.filterToggle}
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((prev) => !prev)}
+          >
+            {filtersOpen ? 'Hide filters' : 'Filters'}
+          </button>
+        </div>
+        {filtersOpen && (
+          <HospitalFilters
+            value={filters}
+            onChange={setFilters}
+            hasLocation={userLocation != null}
+          />
+        )}
         <div className={styles.list}>
           {orderedHospitals.map((h) => (
             <HospitalMiniProfile key={h.id} hospital={h} etaSec={etas[h.id]} />

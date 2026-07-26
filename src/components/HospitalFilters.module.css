@@ -1,0 +1,65 @@
+/* Compact filter controls embedded in the homepage results panel — same
+   glass/token language as Card.module.css and FilterForm.module.css, but
+   denser and always-live (no submit step) for the narrow panel context. */
+.filters {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.9rem;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.55));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+}
+
+.row {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-ink, inherit);
+}
+
+.row select,
+.row input[type='range'] {
+  width: 100%;
+}
+
+.row select {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  background: var(--color-surface, #fff);
+}
+
+.segmented {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.seg,
+.segActive {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-ink, inherit);
+}
+
+.segActive {
+  background: var(--color-amethyst);
+  border-color: var(--color-amethyst);
+  color: #fff;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}

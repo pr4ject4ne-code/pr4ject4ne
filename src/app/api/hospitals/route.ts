@@ -2,7 +2,8 @@ import { query } from '@/lib/db';
 import { apiError, apiOk, readJson, parseLimit, parseOffset } from '@/lib/api';
 import { checkRateLimit } from '@/lib/auth';
 import { logAudit, clientIpFrom } from '@/lib/audit';
-import { sanitizeText, safeHttpUrl, escapeLikePattern } from '@/lib/sanitize';
+import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
+import { buildHospitalFilters } from '@/lib/hospital-filters';
 import type { Hospital, ServiceType } from '@/types';
 
 const SERVICE_TYPES: ServiceType[] = ['hospital', 'clinic', 'pharmacy', 'radiology', 'other'];
@@ -17,54 +18,29 @@ const COUNT_CAP = 500;
 
 /**
  * GET /api/hospitals — paginated, filterable directory (public).
- * Query params: location, specialty, service_type, min_rating, open_24, q, limit, offset.
+ * Query params: location, specialty, service_type, min_rating, open_24, q,
+ * ownership (private|public), open_day (day name, e.g. "monday"),
+ * lat + lng + radius_km (distance filter, all three required together),
+ * limit, offset.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const limit = parseLimit(url.searchParams.get('limit'));
   const offset = parseOffset(url.searchParams.get('offset'));
 
-  const conditions: string[] = [`status = 'approved'`];
-  const params: unknown[] = [];
-
-  const location = url.searchParams.get('location');
-  if (location) {
-    params.push(`%${escapeLikePattern(location)}%`);
-    conditions.push(
-      `(city ILIKE $${params.length} ESCAPE '\\' OR address ILIKE $${params.length} ESCAPE '\\')`,
-    );
-  }
-
-  const specialty = url.searchParams.get('specialty');
-  if (specialty) {
-    params.push(specialty);
-    conditions.push(`$${params.length} = ANY (specialties)`);
-  }
-
-  const serviceType = url.searchParams.get('service_type');
-  if (serviceType && SERVICE_TYPES.includes(serviceType as ServiceType)) {
-    params.push(serviceType);
-    conditions.push(`service_type = $${params.length}`);
-  }
-
-  const minRating = url.searchParams.get('min_rating');
-  if (minRating && Number.isFinite(Number(minRating))) {
-    // Clamp to the valid rating range so out-of-range values can't silently
-    // become no-op or nonsensical filters.
-    const clamped = Math.min(5, Math.max(0, Number(minRating)));
-    params.push(clamped);
-    conditions.push(`rating_avg >= $${params.length}`);
-  }
-
-  if (url.searchParams.get('open_24') === 'true') {
-    conditions.push('is_24_hour = TRUE');
-  }
-
-  const q = url.searchParams.get('q');
-  if (q) {
-    params.push(`%${escapeLikePattern(q)}%`);
-    conditions.push(`name ILIKE $${params.length} ESCAPE '\\'`);
-  }
+  const { conditions, params } = buildHospitalFilters({
+    location: url.searchParams.get('location'),
+    specialty: url.searchParams.get('specialty'),
+    serviceType: url.searchParams.get('service_type'),
+    minRating: url.searchParams.get('min_rating'),
+    open24: url.searchParams.get('open_24'),
+    q: url.searchParams.get('q'),
+    ownership: url.searchParams.get('ownership'),
+    openDay: url.searchParams.get('open_day'),
+    lat: url.searchParams.get('lat'),
+    lng: url.searchParams.get('lng'),
+    radiusKm: url.searchParams.get('radius_km'),
+  });
 
   const where = `WHERE ${conditions.join(' AND ')}`;
 
@@ -79,8 +55,8 @@ export async function GET(req: Request) {
     query<Hospital>(
       `SELECT id, name, service_type, address, city, latitude, longitude, website,
               contact_phone, contact_email, logo_url, photos, hours, specialties, departments,
-              rating_avg, rating_count, is_24_hour, show_doctors, verified, account_id, status,
-              created_at, updated_at
+              rating_avg, rating_count, is_24_hour, show_doctors, is_private, verified, account_id,
+              status, created_at, updated_at
        FROM hospitals ${where}
        ORDER BY verified DESC, rating_avg DESC, name ASC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,

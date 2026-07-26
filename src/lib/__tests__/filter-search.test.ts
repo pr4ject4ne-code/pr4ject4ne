@@ -27,4 +27,32 @@ describe('buildHospitalsQuery', () => {
     expect(params.get('min_rating')).toBe('4');
     expect(params.get('open_24')).toBe('true');
   });
+
+  it('includes ownership and open_day when set', () => {
+    const params = new URLSearchParams(
+      buildHospitalsQuery({ ownership: 'private', openDay: 'monday' }),
+    );
+    expect(params.get('ownership')).toBe('private');
+    expect(params.get('open_day')).toBe('monday');
+  });
+
+  it('omits an empty-string ownership', () => {
+    const params = new URLSearchParams(buildHospitalsQuery({ ownership: '' }));
+    expect(params.get('ownership')).toBeNull();
+  });
+
+  it('includes the radius filter only when radiusKm + lat + lng are all present', () => {
+    const full = new URLSearchParams(
+      buildHospitalsQuery({ radiusKm: 5, lat: 6.44, lng: 7.5 }),
+    );
+    expect(full.get('radius_km')).toBe('5');
+    expect(full.get('lat')).toBe('6.44');
+    expect(full.get('lng')).toBe('7.5');
+
+    const missingCoords = new URLSearchParams(buildHospitalsQuery({ radiusKm: 5 }));
+    expect(missingCoords.get('radius_km')).toBeNull();
+
+    const missingRadius = new URLSearchParams(buildHospitalsQuery({ lat: 6.44, lng: 7.5 }));
+    expect(missingRadius.get('lat')).toBeNull();
+  });
 });

@@ -69,6 +69,8 @@ export interface Hospital {
   rating_count: number;
   is_24_hour: boolean;
   show_doctors: boolean;
+  /** Private vs. public/government ownership (worklist #13). Default false = public. */
+  is_private: boolean;
   verified: boolean;
   account_id: string | null;
   status: 'pending' | 'approved' | 'rejected';
