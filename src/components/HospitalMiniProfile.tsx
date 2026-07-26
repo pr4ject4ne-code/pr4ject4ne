@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Card from './Card';
 import Stars from './Stars';
 import { formatEta } from '@/lib/map';
+import { prefersReducedMotion } from '@/lib/reducedMotion';
 import type { Hospital } from '@/types';
 import styles from './HospitalMiniProfile.module.css';
 
@@ -24,7 +25,11 @@ export default function HospitalMiniProfile({ hospital, etaSec }: Props) {
       className={styles.card}
       onPointerMove={(e) => {
         // Pointer-tracked specular light: the highlight follows the cursor
-        // across the glass. currentTarget is the card element itself.
+        // across the glass, continuously (every event), not just on
+        // enter/leave. Skipped under prefers-reduced-motion — this is a
+        // continuous transform tied to pointer movement, exactly the class
+        // of effect that preference asks apps to avoid.
+        if (prefersReducedMotion()) return;
         const r = e.currentTarget.getBoundingClientRect();
         e.currentTarget.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
         e.currentTarget.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);

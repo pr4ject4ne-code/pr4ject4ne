@@ -64,8 +64,58 @@
   --shadow-lg: 0 8px 40px rgba(20, 30, 60, 0.12);
 
   /* Spring / gel easing — the shared curve for the liquid-glass interactions
-     (segmented control slide, card lift, jelly tap). Overshoots, then settles. */
-  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+     (segmented control slide, card lift, jelly tap, bottom-sheet snap).
+     This is a genuinely SAMPLED damped-harmonic-oscillator response
+     (zeta≈0.55, wn=8), not a bezier reshaped to look springy — beziers can't
+     be interrupted mid-gesture with velocity continuity (reversing a bezier
+     transition restarts from t=0 in the new direction, producing a stutter/
+     snap), which was the single highest-impact gap the interaction-feel
+     research flagged. `linear()` is broadly supported (Chrome/Edge 113+,
+     Firefox 112+, Safari 17.5+) and lets a CSS transition sample an arbitrary
+     curve instead of a 4-parameter bezier. 27 points: one ~12.6% overshoot,
+     settles to 1 by the end of the transition — a real, moderate spring, not
+     a snappier-looking cubic-bezier. Regenerate via a damped-oscillator
+     formula if the feel needs retuning (see docs/liquid-glass.md). */
+  --spring: linear(
+    0, 0.042, 0.148, 0.292, 0.451, 0.608, 0.751, 0.873, 0.97, 1.041, 1.089,
+    1.116, 1.126, 1.123, 1.111, 1.094, 1.074, 1.054, 1.035, 1.019, 1.006,
+    0.997, 0.99, 0.986, 0.984, 0.984, 1
+  );
+}
+
+/* prefers-reduced-motion: springs/parallax/pointer-tracked continuous effects
+   are motion-heavy by design, which is a hard accessibility gap for users who
+   have asked the OS to reduce motion (this app's users may also be stressed/
+   injured/on a shaky connection — reduced motion isn't just a preference
+   here, it can be a real need). --spring collapses to a plain, short,
+   non-bouncy ease everywhere it's referenced, and every CSS transition/
+   animation site-wide collapses to effectively-instant. The imperative-JS
+   effects this can't reach (pointer-tracked sheen in HospitalMiniProfile,
+   the drag parallax + scroll-darken in HomeClient) check
+   `src/lib/reducedMotion.ts`'s `prefersReducedMotion()` directly and skip
+   their own continuous per-event DOM writes when it's true. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --spring: ease-out;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Device-tier fallback (GfxTier.tsx sets this attribute once at mount from a
+   coarse hardwareConcurrency/deviceMemory/connection heuristic — see that
+   file for reasoning). Lower-end hardware gets a cheaper, smaller blur
+   radius and less saturation boost instead of the full glass treatment;
+   stacked/oversized `backdrop-filter` blur is a documented real compositor
+   cost, and this is the simplest defensible cap without frame-rate probing. */
+html[data-gfx-tier='low'] {
+  --glass-blur: saturate(140%) blur(9px);
 }
 
 * {

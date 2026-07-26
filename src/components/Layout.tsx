@@ -2,6 +2,7 @@ import Header from './Header';
 import Footer from './Footer';
 import SuggestionTab from './SuggestionTab';
 import LiquidFilters from './LiquidFilters';
+import GfxTier from './GfxTier';
 import styles from './Layout.module.css';
 
 interface LayoutProps {
@@ -42,6 +43,7 @@ export default function Layout({
       <SuggestionTab hospitalId={hospitalId} page={page} />
       <Footer />
       <LiquidFilters />
+      <GfxTier />
     </div>
   );
 }

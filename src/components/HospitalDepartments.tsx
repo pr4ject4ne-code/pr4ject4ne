@@ -16,7 +16,7 @@ export default function HospitalDepartments({
   if (departments.length === 0) return null;
 
   return (
-    <Card as="section">
+    <Card variant="plain" as="section">
       <button
         type="button"
         className={styles.header}

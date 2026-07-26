@@ -11,7 +11,7 @@
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition:
-    transform 0.15s ease,
+    transform 0.3s var(--spring),
     box-shadow 0.15s ease,
     background 0.15s ease,
     border-color 0.15s ease;
@@ -40,7 +40,12 @@
 
 .btn:active:not(:disabled) {
   transform: scale(0.97) translateY(-1px);
-  transition: transform var(--spring) 0s;
+  /* Was `transition: transform var(--spring) 0s` — a literal 0s duration,
+     so the press itself never actually animated through the spring curve
+     (only the release, via the base .btn rule above, did). A real spring
+     needs to be visible on BOTH the squash and the release for the jelly
+     effect to read as continuous rather than a snap-then-bounce. */
+  transition: transform 0.22s var(--spring);
 }
 
 .btn:disabled {

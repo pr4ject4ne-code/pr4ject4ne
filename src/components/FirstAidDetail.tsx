@@ -85,7 +85,7 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
   const signsSymptoms = entry.signs_symptoms ?? [];
 
   return (
-    <Card as="article" className={styles.detail}>
+    <Card variant="plain" as="article" className={styles.detail}>
       <span className={styles.category}>{entry.category}</span>
       <h1 className={styles.title}>{entry.title}</h1>
       {entry.tags?.length > 0 && (

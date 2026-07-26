@@ -24,7 +24,7 @@ export default function HospitalRankingPanel({ city, ranking }: HospitalRankingP
   const hasReviews = ranking.rating_count > 0;
 
   return (
-    <Card as="section" className={styles.panel}>
+    <Card variant="plain" as="section" className={styles.panel}>
       <h2 className={styles.title}>Rating</h2>
       {hasReviews ? (
         <>

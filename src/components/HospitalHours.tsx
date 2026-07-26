@@ -21,7 +21,7 @@ export default function HospitalHours({
 }) {
   const hasHours = hours && Object.keys(hours).length > 0;
   return (
-    <Card as="section">
+    <Card variant="plain" as="section">
       <h2 className={styles.title}>Times of service and visit</h2>
       {is24Hour && <p className={styles.badge}>Open 24 hours</p>}
       {hasHours ? (

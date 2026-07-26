@@ -29,14 +29,14 @@ export default function DevDashboardClient() {
           marginTop: '1rem',
         }}
       >
-        <Card>
+        <Card variant="plain">
           <h2 style={{ fontSize: '1.1rem', marginTop: 0 }}>First Aid catalog</h2>
           <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem' }}>
             Create, edit and delete first-aid entries.
           </p>
           <Link href="/dev/first-aid">Manage entries →</Link>
         </Card>
-        <Card>
+        <Card variant="plain">
           <h2 style={{ fontSize: '1.1rem', marginTop: 0 }}>Institutions</h2>
           <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem' }}>
             Provision and manage hospital (tertiary) staff accounts.
@@ -44,7 +44,7 @@ export default function DevDashboardClient() {
           <Link href="/dev/institutions">Manage accounts →</Link>
         </Card>
         {dev?.is_primary && (
-          <Card>
+          <Card variant="plain">
             <h2 style={{ fontSize: '1.1rem', marginTop: 0 }}>Admin</h2>
             <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem' }}>
               Developer accounts, audit logs, suggestions.

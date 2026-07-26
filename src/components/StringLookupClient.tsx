@@ -86,7 +86,7 @@ export default function StringLookupClient() {
 
   if (!user) {
     return (
-      <Card className={styles.gate}>
+      <Card variant="plain" className={styles.gate}>
         <h1 className={styles.title}>Find by IHN</h1>
         <p className={styles.subtitle}>
           Sign in to look someone up by their IHN code — this keeps every lookup tied to an
@@ -113,7 +113,7 @@ export default function StringLookupClient() {
         </p>
       </div>
 
-      <Card>
+      <Card variant="plain">
         <form className={styles.form} onSubmit={onSubmit} noValidate>
           <div className={styles.formRow}>
             <Input
@@ -137,13 +137,13 @@ export default function StringLookupClient() {
       </Card>
 
       {result && !result.available && (
-        <Card className={styles.notFound} role="status">
+        <Card variant="plain" className={styles.notFound} role="status">
           <p>No shareable record was found for that code.</p>
         </Card>
       )}
 
       {result && result.available && report && (
-        <Card className={styles.docCard} as="section">
+        <Card variant="plain" className={styles.docCard} as="section">
           <div className={styles.docHeader}>
             <div>
               <h2 className={styles.docTitle}>Biodata report — {searchedCode}</h2>

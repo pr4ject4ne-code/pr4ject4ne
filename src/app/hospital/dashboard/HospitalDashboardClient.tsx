@@ -118,7 +118,7 @@ export default function HospitalDashboardClient() {
 
       <section className={styles.account} style={{ marginBottom: '1.5rem' }}>
         <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>My account password</h3>
-        <Card>
+        <Card variant="plain">
           <form onSubmit={changePassword}>
             <Input
               label="Current password"
@@ -260,7 +260,7 @@ function InfoTab({
   const [showDoctors, setShowDoctors] = useState(hospital.show_doctors);
 
   return (
-    <Card as="section">
+    <Card variant="plain" as="section">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -308,7 +308,7 @@ function HoursTab({
 }) {
   const [state, setState] = useState<Record<string, string>>(hours);
   return (
-    <Card as="section">
+    <Card variant="plain" as="section">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -378,7 +378,7 @@ function DepartmentsTab({
   }
 
   return (
-    <Card as="section">
+    <Card variant="plain" as="section">
       <h2 className={styles.subheading}>Departments &amp; services</h2>
       <p className={styles.meta} style={{ marginBottom: '1rem' }}>
         Organize your services under departments (e.g. “Surgery” → General Surgery,
@@ -488,7 +488,7 @@ function AnnouncementsTab({
 
   return (
     <div>
-      <Card as="section" style={{ marginBottom: '1rem' }}>
+      <Card variant="plain" as="section" style={{ marginBottom: '1rem' }}>
         <h2 className={styles.subheading}>New announcement</h2>
         <AnnouncementForm onSubmit={create} submitting={saving} />
       </Card>
@@ -566,7 +566,7 @@ function PersonnelTab({
 
   return (
     <div>
-      <Card as="section" style={{ marginBottom: '1rem' }}>
+      <Card variant="plain" as="section" style={{ marginBottom: '1rem' }}>
         <h2 className={styles.subheading}>Add doctor</h2>
         <DoctorForm onSubmit={add} submitting={saving} submitLabel="Add doctor" />
       </Card>

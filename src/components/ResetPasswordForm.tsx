@@ -65,7 +65,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
 
   if (!token) {
     return (
-      <Card className={styles.card}>
+      <Card variant="plain" className={styles.card}>
         <h1 className={styles.title}>Invalid link</h1>
         <p className={styles.subtitle}>
           This reset link is missing its token. Double-check you copied the full link from your
@@ -80,7 +80,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
 
   if (done) {
     return (
-      <Card className={styles.card}>
+      <Card variant="plain" className={styles.card}>
         <h1 className={styles.title}>Password changed</h1>
         <p className={styles.subtitle}>
           Your password has been reset. You&apos;ve been signed out everywhere — log in again with
@@ -97,7 +97,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
   }
 
   return (
-    <Card className={styles.card}>
+    <Card variant="plain" className={styles.card}>
       <h1 className={styles.title}>Choose a new password</h1>
       <p className={styles.subtitle}>Enter a new password for your account.</p>
       <form onSubmit={onSubmit} noValidate>

@@ -172,7 +172,7 @@ export default function DevDoctorConsentClient() {
           patient.
         </p>
 
-        <Card style={{ marginBottom: '1rem' }}>
+        <Card variant="plain" style={{ marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.05rem', marginTop: 0 }}>1. Select the patient</h2>
           <form onSubmit={searchPatients} className={styles.createForm}>
             <Input
@@ -202,7 +202,7 @@ export default function DevDoctorConsentClient() {
         </Card>
 
         {selectedPatient && (
-          <Card style={{ marginBottom: '1rem' }}>
+          <Card variant="plain" style={{ marginBottom: '1rem' }}>
             <h2 style={{ fontSize: '1.05rem', marginTop: 0 }}>
               2. Select the doctor (for {selectedPatient.email})
             </h2>
@@ -250,7 +250,7 @@ export default function DevDoctorConsentClient() {
         )}
 
         {selectedPatient && selectedDoctor && (
-          <Card style={{ marginTop: '1rem' }}>
+          <Card variant="plain" style={{ marginTop: '1rem' }}>
             <form onSubmit={recordConsent} className={styles.createForm} style={{ gridTemplateColumns: '1fr 1fr auto' }}>
               <Input
                 label="Contacted via"

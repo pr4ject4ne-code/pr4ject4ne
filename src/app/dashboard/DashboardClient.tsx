@@ -173,7 +173,7 @@ export default function DashboardClient() {
         </div>
 
         {data && data.email_verified === false && (
-          <Card className={styles.verifyBanner} role="status">
+          <Card variant="plain" className={styles.verifyBanner} role="status">
             <p>
               Please verify your email address — check your inbox for a confirmation link we sent
               when you signed up.
@@ -182,7 +182,7 @@ export default function DashboardClient() {
         )}
 
         {showIhnNotice && (
-          <Card className={styles.ihnBanner} role="status">
+          <Card variant="plain" className={styles.ihnBanner} role="status">
             <p>
               A quick heads-up: your <strong>IHN access code</strong> below is a static emergency
               key that never changes. Keep it private and only share it with people you trust to
@@ -196,7 +196,7 @@ export default function DashboardClient() {
 
         <section className={styles.account}>
           <h2 className={styles.sectionTitle}>My account</h2>
-          <Card>
+          <Card variant="plain">
             <form onSubmit={changePassword}>
               <Input
                 label="Current password"
@@ -222,11 +222,11 @@ export default function DashboardClient() {
         </section>
 
         <section className={styles.mainGrid}>
-          <Card as="section">
+          <Card variant="plain" as="section">
             <h2 className={styles.heading}>Recent</h2>
             <p className={styles.muted}>No recent activity yet.</p>
           </Card>
-          <Card as="section">
+          <Card variant="plain" as="section">
             <div className={styles.calHeader}>
               <h2 className={styles.heading}>Calendar</h2>
               <Button variant="ghost" onClick={() => setCalendarOpen((o) => !o)}>

@@ -12,8 +12,18 @@
 }
 
 /* Pointer-tracked specular light on the glass surface. The `--mx`/`--my` CSS
-   variables are set via onPointerMove handler; the sheen follows the cursor
-   across the card, giving the illusion of a wet highlight on the glass. */
+   variables are set continuously via onPointerMove (every event, not just on
+   enter/leave) so the highlight genuinely follows the cursor across the
+   card, the way a real Liquid Glass surface illuminates FROM the point of
+   contact rather than snapping a fixed highlight on when the surface is
+   touched. The gap the interaction-feel research actually flagged wasn't
+   the tracking itself but the APPEARANCE/DISAPPEARANCE of the sheen: a
+   flat 0.1s linear `ease` fade reads as a state toggle snapping in, the same
+   discrete-vs-continuous problem as everywhere else --spring fixes. Using
+   the shared spring here (with a duration long enough to actually show its
+   settle, unlike the near-instant fade before) makes the highlight itself
+   feel like it's easing in with real presence/weight instead of a light
+   switch. */
 .sheen {
   position: absolute;
   inset: 0;
@@ -25,7 +35,7 @@
     transparent 40%
   );
   opacity: 0;
-  transition: opacity 0.1s ease;
+  transition: opacity 0.35s var(--spring);
 }
 .card:hover .sheen {
   opacity: 1;

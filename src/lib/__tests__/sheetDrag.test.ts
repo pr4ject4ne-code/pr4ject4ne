@@ -4,6 +4,7 @@ import {
   sheetVhToPx,
   COLLAPSED_SHEET_VH,
   EXPANDED_SHEET_VH,
+  FLICK_VELOCITY_PX_PER_MS,
 } from '@/lib/sheetDrag';
 
 // Pure-function coverage for the mobile bottom-sheet drag-to-resize math.
@@ -58,5 +59,40 @@ describe('sheetDrag', () => {
     const endY = startY - dragUpBy;
     const candidateDuringDrag = clampSheetHeightPx(collapsedPx + (startY - endY), viewportHeight);
     expect(resolveSheetSnap(candidateDuringDrag, viewportHeight)).toBe(true);
+  });
+
+  // Velocity-aware release (worklist item #1's "make the sheet drag
+  // velocity-aware" testbed): a fast flick wins even when the pointer never
+  // crossed the midpoint, and a fast flick the "wrong" way overrides a
+  // position that would otherwise resolve the other way.
+  describe('velocity-aware snap', () => {
+    it('snaps expanded on a fast upward flick even near the collapsed floor', () => {
+      const nearCollapsed = sheetVhToPx(COLLAPSED_SHEET_VH + 2, viewportHeight);
+      expect(
+        resolveSheetSnap(nearCollapsed, viewportHeight, undefined, undefined, FLICK_VELOCITY_PX_PER_MS + 0.1),
+      ).toBe(true);
+    });
+
+    it('snaps collapsed on a fast downward flick even past the midpoint', () => {
+      const midpointVh = (COLLAPSED_SHEET_VH + EXPANDED_SHEET_VH) / 2;
+      const pastMidpoint = sheetVhToPx(midpointVh + 5, viewportHeight);
+      expect(
+        resolveSheetSnap(pastMidpoint, viewportHeight, undefined, undefined, -(FLICK_VELOCITY_PX_PER_MS + 0.1)),
+      ).toBe(false);
+    });
+
+    it('falls back to position when velocity is below the flick threshold', () => {
+      const nearCollapsed = sheetVhToPx(COLLAPSED_SHEET_VH + 2, viewportHeight);
+      // A slow drift, well under the threshold — should NOT override position.
+      expect(
+        resolveSheetSnap(nearCollapsed, viewportHeight, undefined, undefined, FLICK_VELOCITY_PX_PER_MS - 0.3),
+      ).toBe(false);
+    });
+
+    it('defaults to 0 velocity (pure position) when the param is omitted', () => {
+      const midpointVh = (COLLAPSED_SHEET_VH + EXPANDED_SHEET_VH) / 2;
+      const justPastMidpoint = sheetVhToPx(midpointVh + 1, viewportHeight);
+      expect(resolveSheetSnap(justPastMidpoint, viewportHeight)).toBe(true);
+    });
   });
 });

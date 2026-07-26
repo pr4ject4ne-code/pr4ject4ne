@@ -55,7 +55,7 @@ export default function AnnouncementCalendar({ announcements }: { announcements:
   const selectedItems = selected ? (byDate.get(selected) ?? []) : [];
 
   return (
-    <Card as="section">
+    <Card variant="plain" as="section">
       {barAnnouncement && (
         <div className={`${styles.bar} ${styles[`bar_${barAnnouncement.color}`]}`} role="status">
           <strong>{barAnnouncement.title}</strong>

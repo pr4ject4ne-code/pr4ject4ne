@@ -74,7 +74,7 @@ export default function SharingPrefsPanel({ value, onSave, saving }: SharingPref
   }
 
   return (
-    <Card className={styles.panel}>
+    <Card variant="plain" className={styles.panel}>
       <h3 className={styles.title}>What&apos;s visible via your IHN code</h3>
       <p className={styles.intro}>
         Anyone with the correct IHN code can look up your record, but they can only see the

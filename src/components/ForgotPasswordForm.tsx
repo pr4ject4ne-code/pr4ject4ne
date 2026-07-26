@@ -48,7 +48,7 @@ export default function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <Card className={styles.card}>
+      <Card variant="plain" className={styles.card}>
         <h1 className={styles.title}>Check your email</h1>
         <p className={styles.subtitle}>{GENERIC_MESSAGE}</p>
         <p className={styles.backLink}>
@@ -59,7 +59,7 @@ export default function ForgotPasswordForm() {
   }
 
   return (
-    <Card className={styles.card}>
+    <Card variant="plain" className={styles.card}>
       <h1 className={styles.title}>Forgot password?</h1>
       <p className={styles.subtitle}>
         Enter the email address on your account and we&apos;ll send you a link to reset your

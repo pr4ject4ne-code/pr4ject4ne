@@ -8,7 +8,7 @@ export default function HospitalInfo({ hospital }: { hospital: Hospital }) {
   // href sink at render so a stale bad value can never produce a javascript: link.
   const website = safeHttpUrl(hospital.website);
   return (
-    <Card as="section">
+    <Card variant="plain" as="section">
       <h2 className={styles.name}>
         {hospital.name}
         {hospital.verified && <span className={styles.verified}>Verified</span>}

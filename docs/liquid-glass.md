@@ -37,9 +37,42 @@ old flat "matte" look to the liquid-glass finish. Founder-approved 2026-07-08.
    border, no default outline.
 
 ## Reference implementation
-`src/components/Card.module.css` is already correct — match its register
-(white surface, hairline border, token radius, token shadow). Do NOT re-edit
-Card, Header, HomeClient, HospitalMiniProfile, or Map — those are done.
+`src/components/Card.module.css` is the shared register. **Updated 2026-07-26
+(worklist #1, interaction-feel engineering pass)** — Card now has two
+variants, not one fixed style: `<Card variant="glass">` (default) and
+`<Card variant="plain">`. Per Apple's own liquid-glass guidance, glass is
+reserved for the navigation/floating-chrome layer, not stamped on every
+surface — stacking/overusing it is exactly why nothing used to read
+distinctly AS glass. **Kept glass:** Header (`Header.module.css`, unchanged),
+the homepage results panel (`HomeClient.module.css` — doesn't use the Card
+component, has its own refraction/backdrop-filter), Modal/dropdown popovers
+(`Modal.module.css`), the IHN "why does this matter?" collapsible
+(`IHNCodeDisplay.module.css`'s `.whyBody`, independent of Card), the Help
+panel (`HelpBar.module.css`, rendered inside Modal), `HospitalMiniProfile`
+(explicitly kept — the homepage's pointer-tracked-sheen exemplar, sits
+inside the already-glass results panel), and `HospitalProfileClient`'s
+in-page search-results dropdown (`.searchResults`, behaves like a popover).
+**Converted to `variant="plain"`:** every other `<Card>` consumer across the
+app (~23 files, ~40 usages) — hospital-profile info/hours/departments/
+ranking/doctor-roster sections, dashboard/hospital-dashboard/dev-portal
+panels, all auth-flow cards (login/signup/forgot/reset/verify-email), First
+Aid catalog + detail, IHN's own outer card, string-lookup, sharing-prefs,
+results-list. These are page CONTENT, not floating chrome — `.plain` uses
+the same on-theme off-white/hairline-border/shadow-token register, just
+without blur.
+
+Do NOT re-edit Header or Map (still done/unchanged). Card, HomeClient, and
+HospitalMiniProfile WERE deliberately re-edited this pass (spring easing,
+velocity-aware sheet drag, a parallax proof-point, the sheen fade, the glass
+variant split, reduced-motion + device-tier fallbacks) — this overrides the
+prior "don't touch" note for those three files specifically, same as the
+2026-07-11 homepage rebuild overrode an earlier version of this same note.
+`--spring` (globals.css) is a real sampled damped-spring `linear()` curve now,
+not a bezier — every consumer needs an explicit `<duration> var(--spring)`
+pair (a bare `var(--spring) ease` or `var(--spring) 0s` is invalid/inert CSS;
+three such bugs existed in `LoginForm.module.css` and one in
+`Button.module.css` before this pass, silently killing the "spring feel" —
+fixed, see inline comments at each site).
 
 ## Verification
 Do **not** run `npm run build` (concurrent builds race on `.next/` on Windows).

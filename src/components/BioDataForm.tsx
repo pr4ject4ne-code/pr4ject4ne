@@ -173,7 +173,7 @@ export default function BioDataForm({
 
   return (
     <form onSubmit={submit}>
-      <Card as="section" className={styles.section}>
+      <Card variant="plain" as="section" className={styles.section}>
         <h2 className={styles.heading}>Profile</h2>
         <p className={styles.sub}>Freely visible. Required fields are marked.</p>
 
@@ -277,7 +277,7 @@ export default function BioDataForm({
         </label>
       </Card>
 
-      <Card as="section" className={styles.section}>
+      <Card variant="plain" as="section" className={styles.section}>
         <h2 className={styles.heading}>Biodata</h2>
         <p className={styles.sub}>
           Locked behind your IHN code. Optional but recommended. Clinical fields are most reliable

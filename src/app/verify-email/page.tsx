@@ -47,7 +47,7 @@ export default async function VerifyEmailPage({
   return (
     <Layout page="verify-email">
       <div className="auth-page">
-        <Card className={styles.card}>
+        <Card variant="plain" className={styles.card}>
           <h1 className={styles.title}>{copy.title}</h1>
           <p className={styles.body}>{copy.body}</p>
           <Link href="/dashboard" className={`${buttonStyles.btn} ${buttonStyles.primary}`}>

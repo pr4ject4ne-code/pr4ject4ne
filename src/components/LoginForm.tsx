@@ -75,7 +75,7 @@ export default function LoginForm() {
 
   if (ihn) {
     return (
-      <Card className={styles.card}>
+      <Card variant="plain" className={styles.card}>
         <h1 className={styles.title}>Account created</h1>
         <p>
           Your personal IHN access code is below. It is a{' '}
@@ -89,7 +89,7 @@ export default function LoginForm() {
   }
 
   return (
-    <Card className={styles.card}>
+    <Card variant="plain" className={styles.card}>
       <h1 className={styles.title}>{mode === 'signup' ? 'Create your account' : 'Welcome back'}</h1>
       <p className={styles.subtitle}>
         {mode === 'signup'

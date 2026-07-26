@@ -33,7 +33,7 @@ export default function DoctorRoster({ doctors }: { doctors: Doctor[] }) {
   }, [doctors, specialty, sortAlpha]);
 
   return (
-    <Card as="section">
+    <Card variant="plain" as="section">
       <button
         type="button"
         className={styles.header}

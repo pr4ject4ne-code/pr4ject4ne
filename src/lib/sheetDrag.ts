@@ -28,14 +28,30 @@ export function clampSheetHeightPx(
   return Math.min(max, Math.max(min, candidatePx));
 }
 
+/** A drag ending faster than this (px of height change per ms) is treated as
+ * a deliberate flick — it snaps in the direction of travel even if the
+ * pointer never crossed the midpoint. ~0.5px/ms is roughly 500px/s, a speed
+ * a slow/considered drag won't reach but a real flick easily will. */
+export const FLICK_VELOCITY_PX_PER_MS = 0.5;
+
 /** Given the sheet's current height on pointer-release, decide which snap
- * point (collapsed/expanded) it should animate to — whichever is nearer. */
+ * point (collapsed/expanded) it should animate to. Velocity-aware: a fast
+ * flick in either direction wins outright (matches the "grabbed and flicked"
+ * gesture people actually use, not just "dragged past the midpoint") —
+ * falls back to whichever snap point is nearer by position when the release
+ * velocity is too small to count as a flick. `velocityPxPerMs` is signed the
+ * same way height itself is: positive = growing (dragging toward expanded),
+ * negative = shrinking (toward collapsed). Optional + defaulted to 0 so
+ * existing position-only callers/tests keep working unchanged. */
 export function resolveSheetSnap(
   currentHeightPx: number,
   viewportHeightPx: number,
   collapsedVh: number = COLLAPSED_SHEET_VH,
   expandedVh: number = EXPANDED_SHEET_VH,
+  velocityPxPerMs: number = 0,
 ): boolean {
+  if (velocityPxPerMs >= FLICK_VELOCITY_PX_PER_MS) return true;
+  if (velocityPxPerMs <= -FLICK_VELOCITY_PX_PER_MS) return false;
   const collapsedPx = sheetVhToPx(collapsedVh, viewportHeightPx);
   const expandedPx = sheetVhToPx(expandedVh, viewportHeightPx);
   const midpoint = (collapsedPx + expandedPx) / 2;

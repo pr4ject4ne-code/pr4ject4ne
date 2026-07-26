@@ -96,7 +96,7 @@ export default function FirstAidList({
             return (
               <li key={e.id}>
                 <Link href={`/first-aid/${e.id}`} className={styles.cardLink}>
-                  <Card as="article" className={styles.card}>
+                  <Card variant="plain" as="article" className={styles.card}>
                     {thumb && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={thumb} alt="" className={styles.thumb} />

@@ -34,8 +34,13 @@
   cursor: pointer;
   color: var(--color-blue-dark);
   border-radius: 999px;
+  /* Was `color var(--spring) ease` — an invalid extra trailing timing-
+     function token with NO explicit duration, which made this transition
+     entry invalid CSS (silently dropped, so the tab label color never
+     actually eased — it just snapped). Needs a real duration for the
+     spring curve to be visible at all. */
   transition:
-    color var(--spring) ease,
+    color 0.3s var(--spring),
     box-shadow 0.15s ease;
   position: relative;
   z-index: 1;
@@ -52,7 +57,13 @@
   border-radius: 999px;
   box-shadow: var(--shadow-sm);
   z-index: -1;
-  transition: all var(--spring) ease;
+  /* Was `transition: all var(--spring) ease` — no explicit <time> value at
+     all, just two timing-function-shaped tokens with nothing recognizable
+     as a duration. This is the actual root cause behind "the sliding pill
+     doesn't feel springy": with no duration, the pill's position/opacity
+     jumped between tabs instantly instead of sliding — there was nothing to
+     feel because nothing was animating. */
+  transition: all 0.4s var(--spring);
   opacity: 0;
 }
 .activeTab::before {
@@ -105,7 +116,9 @@
   height: 5px;
   border-radius: 999px;
   background: var(--color-blue-light);
-  transition: background var(--spring) ease;
+  /* Same missing-duration bug as the tab pill above — fixed with an
+     explicit duration so the color change actually eases. */
+  transition: background 0.3s var(--spring);
 }
 .strengthPill.strength-weak {
   background: var(--color-red);

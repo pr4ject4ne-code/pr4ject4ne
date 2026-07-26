@@ -25,7 +25,7 @@ export default function ResultsList({ hospitals }: { hospitals: Hospital[] }) {
         const website = safeHttpUrl(h.website);
         return (
         <li key={h.id}>
-          <Card as="article" className={styles.card}>
+          <Card variant="plain" as="article" className={styles.card}>
             <div className={styles.head}>
               <h3 className={styles.name}>
                 <Link href={`/hospitals/${h.id}`}>{h.name}</Link>

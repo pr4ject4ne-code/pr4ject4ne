@@ -1,12 +1,31 @@
 .card {
-  /* Frosted-glass surface: translucent white + backdrop blur reads as liquid
-     glass over the page's ambient wash, with depth from a soft layered shadow
-     rather than a hard border. */
+  /* Shared box model regardless of variant — radius/shadow/padding stay
+     consistent so swapping variant doesn't reflow surrounding layout. */
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 1.4rem 1.5rem;
+}
+
+/* 'glass' variant: frosted-glass surface, reserved for floating chrome
+   (worklist #1 / research finding #5 — Apple's own guidance is this is a
+   navigation/overlay-layer material, and stacking it on every surface is
+   why nothing reads distinctly AS glass). Translucent white + backdrop blur
+   reads as liquid glass over the page's ambient wash, with depth from a
+   soft layered shadow rather than a hard border. */
+.glass {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  padding: 1.4rem 1.5rem;
+}
+
+/* 'plain' variant: the default for page CONTENT (most Card usages across
+   the app — hospital-profile info sections, dashboard biodata sections,
+   dev-portal panels, form cards, etc.). Same on-theme register as the rest
+   of the app — off-white surface, hairline-faint border, the same shadow
+   token — just without blur, since these sit flat on the page rather than
+   floating over other content. */
+.plain {
+  background: var(--color-off-white);
+  border: 1px solid var(--color-hairline);
 }

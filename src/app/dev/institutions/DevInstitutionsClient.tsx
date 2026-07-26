@@ -105,7 +105,7 @@ export default function DevInstitutionsClient() {
           Provision a <strong>tertiary</strong> (institution) account. The staff member
           signs in at <code>/login</code> and can edit only that hospital&apos;s listing.
         </p>
-        <Card style={{ marginBottom: '1rem' }}>
+        <Card variant="plain" style={{ marginBottom: '1rem' }}>
           <form onSubmit={createTertiary} className={styles.createForm}>
             <Input
               label="Staff email"

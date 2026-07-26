@@ -135,7 +135,7 @@ export default function DevPrimaryClient() {
         <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>
           Change your own sign-in password. Email ({dev.email}) cannot be changed here.
         </p>
-        <Card style={{ marginBottom: '1rem' }}>
+        <Card variant="plain" style={{ marginBottom: '1rem' }}>
           <form onSubmit={changePassword} className={styles.createForm}>
             <Input
               label="Current password"
@@ -167,7 +167,7 @@ export default function DevPrimaryClient() {
           secondary developer, and inspect, suspend, promote, revoke, or reset any developer
           below. Only a level-1 admin can manage other devs.
         </p>
-        <Card style={{ marginBottom: '1rem' }}>
+        <Card variant="plain" style={{ marginBottom: '1rem' }}>
           <form onSubmit={createAccount} className={styles.createForm}>
             <Input
               label="New developer email"

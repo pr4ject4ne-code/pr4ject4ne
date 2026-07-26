@@ -34,7 +34,7 @@ export default function IHNCodeDisplay({ code }: { code: string }) {
   }, [code]);
 
   return (
-    <Card as="section" className={styles.card}>
+    <Card variant="plain" as="section" className={styles.card}>
       <h2 className={styles.title}>Your IHN access code</h2>
       <p className={styles.code}>{code}</p>
       <div className={styles.qrRow}>
