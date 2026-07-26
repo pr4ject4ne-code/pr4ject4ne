@@ -63,3 +63,51 @@
   white-space: pre-wrap;
   line-height: 1.55;
 }
+
+/* Grouped section headings (worklist #33 polish pass). */
+.group {
+  margin-top: 1.75rem;
+}
+.group:first-of-type {
+  margin-top: 0;
+}
+.groupTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  border-left: 3px solid var(--color-amethyst);
+  padding-left: 0.6rem;
+  margin: 0 0 0.6rem;
+}
+.groupHint {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+.tag {
+  background: var(--color-blue-light);
+  color: var(--color-blue-dark);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+/* Signs & symptoms chips — visually distinct from the topic .tag badges
+   above (amethyst vs. blue) so the two whitelist-driven axes read as
+   different concepts, matching the reasoning in migration 011. */
+.symptomTag {
+  background: var(--color-amethyst-light);
+  color: var(--color-amethyst-dark);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+}

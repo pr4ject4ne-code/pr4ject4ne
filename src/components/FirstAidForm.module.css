@@ -46,3 +46,60 @@
   color: var(--color-white);
   border-color: var(--color-amethyst);
 }
+
+/* Image picker (worklist #33) — a real upload control (file input + optional
+   URL fallback + thumbnail grid with remove), replacing the old raw
+   newline-URL textarea. Mirrors PhotoUpload.module.css's visual language. */
+.imageGrid {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.6rem;
+}
+.imageItem {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--color-white);
+}
+.imageItem img {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+  display: block;
+  background: var(--color-blue-light);
+}
+.imageItem button {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  border: none;
+  background: rgba(15, 30, 70, 0.65);
+  color: var(--color-white);
+  border-radius: 999px;
+  width: 22px;
+  height: 22px;
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.imageAddRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.5rem;
+}
+.imageAddRow input {
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .imageAddRow {
+    grid-template-columns: 1fr;
+  }
+}
