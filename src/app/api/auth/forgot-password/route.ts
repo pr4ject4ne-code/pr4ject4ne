@@ -10,6 +10,12 @@ interface Body {
   email?: string;
 }
 
+/** Approximates the typical token-insert + email-provider round trip a hit
+ * incurs, so a miss doesn't respond in measurably less time (enumeration
+ * timing side-channel). Not meant to match worst-case latency (the provider
+ * call has its own multi-second timeout) — just the common-case gap. */
+const MISS_BRANCH_DELAY_MS = 250;
+
 /**
  * POST /api/auth/forgot-password — public, unauthenticated by nature.
  *
@@ -18,21 +24,21 @@ interface Body {
  * caller can't tell an unregistered address from a registered one, or a
  * throttled request from an accepted one.
  *
- * Timing note (documented per the security posture for this endpoint): unlike
- * login, this path does not need a bcrypt call on the miss branch (there is
- * no password to compare), so there is no dummy-bcrypt-hash equivalent to
- * apply here. A syntactically invalid email short-circuits before the DB
- * lookup — that only reveals "not a valid email shape", not "not a
- * registered account", so it is not an enumeration leak. A valid-format miss
- * still does the same `findUserByEmail` lookup a hit does, so the two cases
- * share a query. The one part that is NOT perfectly timing-equalized is that
- * a genuine hit also creates a token row and calls the outbound email
- * provider (which can add real network latency, e.g. Resend's own response
- * time), while a miss does not — this is an accepted, documented tradeoff
- * (mirrors how sendEmail() itself already accepts variable external latency
- * elsewhere in the codebase) rather than a rejected one; closing it fully
- * would mean firing a real outbound email on every miss too, which is worse
- * (spam/cost) for a low-value timing side-channel.
+ * Timing note: unlike login, this path does not need a bcrypt call on the
+ * miss branch (there is no password to compare), so there is no
+ * dummy-bcrypt-hash equivalent to apply here. A syntactically invalid email
+ * short-circuits before the DB lookup — that only reveals "not a valid email
+ * shape", not "not a registered account", so it is not an enumeration leak. A
+ * valid-format miss still does the same `findUserByEmail` lookup a hit does,
+ * so the two cases share a query. A genuine hit additionally creates a token
+ * row and calls the outbound email provider (real network latency, e.g.
+ * Resend's own response time) — a security audit flagged this as a real,
+ * if low-severity given the rate limits below, timing side-channel. Closed
+ * via `MISS_BRANCH_DELAY_MS`: the miss branch sleeps a fixed interval
+ * approximating that typical cost, same spirit as login's dummy-bcrypt
+ * equalization, rather than making the hit branch fire-and-forget (which
+ * would race the response and make token/email creation unobservable —
+ * including to this route's own tests).
  *
  * Rate-limited on two independent dimensions: per-IP (bounds a single client
  * spraying many target emails — the email-bombing abuse case) and per-email
@@ -87,6 +93,16 @@ export async function POST(req: Request) {
         ip,
       });
     } else {
+      // Timing-equalization for the miss branch: a genuine hit does a token
+      // insert + an outbound email-provider call, which takes real (if
+      // typically small) network time a miss otherwise wouldn't spend —
+      // security-audit-flagged as a minor enumeration timing oracle. Close it
+      // with a fixed delay approximating that typical cost, same spirit as
+      // login's dummy-bcrypt-on-miss equalization elsewhere in this codebase,
+      // rather than making the hit branch fire-and-forget (which would race
+      // against the response and make token/email creation unobservable to
+      // the caller — including tests — entirely).
+      await new Promise((resolve) => setTimeout(resolve, MISS_BRANCH_DELAY_MS));
       await logAudit({
         userId: null,
         action: 'password_reset_requested',

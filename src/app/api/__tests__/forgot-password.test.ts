@@ -110,6 +110,18 @@ describe('POST /api/auth/forgot-password', () => {
     );
   });
 
+  it('delays the miss branch by roughly the same order as a real email-provider round trip (enumeration hardening)', async () => {
+    // The rest of this suite mocks findUserByEmail/createPasswordResetToken/
+    // sendEmail to resolve near-instantly, so a real hit-vs-miss timing
+    // comparison isn't meaningful here — this just confirms the equalizing
+    // delay actually fires on the miss branch, not that it's a bug if a
+    // mocked hit is faster than the fixed delay.
+    mockFindUserByEmail.mockResolvedValueOnce(null);
+    const start = Date.now();
+    await POST(makeReq({ email: 'noone@b.co' }));
+    expect(Date.now() - start).toBeGreaterThanOrEqual(200);
+  });
+
   it('audit-logs found:true/false without exposing it in the response', async () => {
     mockFindUserByEmail.mockResolvedValue({ id: 'u1', email: 'real@b.co', is_active: true });
     await POST(makeReq({ email: 'real@b.co' }));
