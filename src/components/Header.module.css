@@ -79,15 +79,16 @@
   color: var(--header-fg);
 }
 
+/* No background tile (founder ask, 2026-07-26: "remove the white
+   background on the logo, make it transparent") — the mark now takes
+   --header-fg directly (see Header.tsx), so it stays legible against the
+   header's own ink/white swaps instead of needing an opaque backing tile. */
 .logoBadge {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
-  background: var(--color-white);
-  box-shadow: 0 2px 8px rgba(15, 30, 70, 0.22);
   flex-shrink: 0;
 }
 

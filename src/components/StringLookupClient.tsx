@@ -7,7 +7,7 @@ import Card from './Card';
 import Input from './Input';
 import Button from './Button';
 import { useSession } from '@/lib/useSession';
-import { isValidIhnCode } from '@/lib/ihn-code';
+import { isValidIhnCode } from '@/lib/ihn-code-validate';
 import { safeHttpUrl } from '@/lib/sanitize';
 import type { ProfileLayer, BiodataLayer } from '@/types';
 import type { DoctorReport } from '@/lib/doctor-report';

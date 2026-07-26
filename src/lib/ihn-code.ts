@@ -9,7 +9,14 @@ import { randomInt } from 'node:crypto';
  *
  * Ambiguous characters (0/O, 1/I/L) are excluded so it can be read aloud/copied
  * reliably in an emergency.
+ *
+ * `isValidIhnCode` lives in ihn-code-validate.ts (no `node:crypto` import) and
+ * is re-exported here for existing server-side callers — a client component
+ * needing it should import ihn-code-validate.ts directly instead of this
+ * file, since this file's `generateIhnCode` needs a real CSPRNG and can't be
+ * bundled for the browser.
  */
+export { isValidIhnCode } from './ihn-code-validate';
 
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no O,I,L,0,1
 const GROUPS = 3;
@@ -26,12 +33,4 @@ export function generateIhnCode(): string {
     groups.push(group);
   }
   return `IHN-${groups.join('-')}`;
-}
-
-const IHN_PATTERN = new RegExp(
-  `^IHN-[${ALPHABET}]{${GROUP_LEN}}-[${ALPHABET}]{${GROUP_LEN}}-[${ALPHABET}]{${GROUP_LEN}}$`,
-);
-
-export function isValidIhnCode(code: string): boolean {
-  return IHN_PATTERN.test(code);
 }

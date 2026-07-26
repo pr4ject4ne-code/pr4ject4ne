@@ -274,3 +274,16 @@ h4 {
   font-size: 1.1rem;
   color: var(--color-muted);
 }
+
+/* Print-friendly override for the string-lookup "organized document" view
+   (worklist #24/#29) — hides the site-wide chrome so only the report
+   content prints. Lives here (a plain global stylesheet), not in
+   StringLookupClient.module.css, because header/footer are global layout
+   elements outside that component's own DOM subtree, and every :global(...)
+   form in a CSS Module was rejected by Next's purity check when tried there. */
+@media print {
+  header,
+  footer {
+    display: none !important;
+  }
+}

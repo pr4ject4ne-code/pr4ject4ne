@@ -98,7 +98,7 @@ export default function Header({
       <div className={styles.left}>
         <Link href="/" className={styles.brand} aria-label="Racoon Eye home">
           <span className={styles.logoBadge}>
-            <Logo size={26} />
+            <Logo size={26} color="var(--header-fg)" />
           </span>
           <span className={styles.brandName}>Racoon Eye</span>
         </Link>

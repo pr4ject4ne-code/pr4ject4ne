@@ -185,10 +185,15 @@
 }
 
 /* Print-friendly view (#24's "organized document form"): strip chrome, keep
-   only the document card content readable on paper. */
+   only the document card content readable on paper.
+   Hiding the site-wide <header>/<footer> for print lives in globals.css, not
+   here — every :global(...) form (function, comma list, block) was rejected
+   by Next's CSS-Modules purity check as "not pure" (confirmed live, this was
+   a genuine broken build: the whole page 500'd on load), and header/footer
+   are global layout elements outside this component's own DOM subtree
+   anyway, so a plain global stylesheet is the correct place for that rule,
+   not a workaround. */
 @media print {
-  :global(header),
-  :global(footer),
   .form,
   .printBtn,
   .disclaimer {
