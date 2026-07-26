@@ -112,8 +112,32 @@ export interface Doctor {
   level: string | null;
   rating_avg: number;
   rating_count: number;
+  /** Nullable — only populated when a doctor may need crediting in a report
+   * (worklist #29/#30). See migration 015. */
+  contact_phone?: string | null;
+  contact_email?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Outcome of an admin-recorded, out-of-band contact with a doctor about
+ * whether they consent to their name/contact being attributed in a
+ * generated report (worklist #30). See migration 014 for the full
+ * default-deny rationale — a doctor with NO record is implicitly
+ * not-consented, never inferred as approved.
+ */
+export type ConsentStatus = 'pending' | 'approved' | 'denied';
+
+export interface DoctorConsentRecord {
+  id: string;
+  doctor_id: string;
+  consent_status: ConsentStatus;
+  contacted_via: string | null;
+  denial_reason: string | null;
+  recorded_by_dev_id: string | null;
+  decided_at: string | null;
+  created_at: string;
 }
 
 /** Profile layer — freely visible (except DOB, gated by dob_visible). */
@@ -138,6 +162,14 @@ export interface ClinicalCondition {
   complication?: string;
   care?: string;
   timestamp?: string;
+  /** The doctor who recommended/confirmed this condition, if any (worklist
+   * #29/#30's data-model gap: previously no field existed anywhere to
+   * associate a clinical_condition with a specific doctor, so a doctor's
+   * recommendation could never actually be attributed). This alone does NOT
+   * mean the doctor's name may be shown in a report — that additionally
+   * requires an `approved` row in `doctor_consent_records` for this exact
+   * doctor_id (src/lib/doctor-report.ts). */
+  doctor_id?: string;
 }
 
 /** Biodata layer — locked behind the IHN code. */

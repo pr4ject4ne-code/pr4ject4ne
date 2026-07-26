@@ -8,14 +8,22 @@ import Input from './Input';
 import Button from './Button';
 import { useSession } from '@/lib/useSession';
 import { isValidIhnCode } from '@/lib/ihn-code';
-import { buildBiodataDocument } from '@/lib/biodata-document';
+import { safeHttpUrl } from '@/lib/sanitize';
 import type { ProfileLayer, BiodataLayer } from '@/types';
+import type { DoctorReport } from '@/lib/doctor-report';
 import styles from './StringLookupClient.module.css';
 
 interface LookupResponse {
   available: boolean;
   profile_layer: Partial<ProfileLayer>;
   biodata_layer: Partial<BiodataLayer>;
+  /**
+   * The organized report (worklist #29/#30) — built server-side (never in
+   * the client) FROM this same already-sharing-prefs-filtered read, so a
+   * doctor's name/contact can only ever arrive here already gated on an
+   * `approved` doctor_consent_records row. `null` when nothing is shared.
+   */
+  report: DoctorReport | null;
 }
 
 /**
@@ -91,9 +99,8 @@ export default function StringLookupClient() {
     );
   }
 
-  const sections = result?.available
-    ? buildBiodataDocument(result.profile_layer, result.biodata_layer)
-    : [];
+  const report = result?.available ? result.report : null;
+  const sections = report?.sections ?? [];
 
   return (
     <div className={styles.wrap}>
@@ -135,14 +142,27 @@ export default function StringLookupClient() {
         </Card>
       )}
 
-      {result && result.available && (
+      {result && result.available && report && (
         <Card className={styles.docCard} as="section">
           <div className={styles.docHeader}>
-            <h2 className={styles.docTitle}>Biodata summary — {searchedCode}</h2>
+            <div>
+              <h2 className={styles.docTitle}>Biodata report — {searchedCode}</h2>
+              <p className={styles.docSubtitle}>
+                Generated {new Date(report.generatedAt).toLocaleString()}
+              </p>
+            </div>
+            {/* Photo top-right, per worklist #29's layout requirement — reuses
+                the existing profile_photo_url field (worklist #21), no new
+                photo field. */}
+            {safeHttpUrl(report.photoUrl) && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={safeHttpUrl(report.photoUrl)!} alt="Profile" className={styles.docPhoto} />
+            )}
             <Button type="button" variant="ghost" className={styles.printBtn} onClick={() => window.print()}>
               Print
             </Button>
           </div>
+
           {sections.map((section) => (
             <div className={styles.section} key={section.key}>
               <h3 className={styles.sectionTitle}>{section.title}</h3>
@@ -156,6 +176,23 @@ export default function StringLookupClient() {
               </div>
             </div>
           ))}
+
+          <p className={styles.declaration}>{report.declaration}</p>
+
+          {report.signatures.length > 0 && (
+            <div className={styles.signatureBlock}>
+              <h3 className={styles.sectionTitle}>Doctor confirmation</h3>
+              <ul className={styles.signatureList}>
+                {report.signatures.map((sig) => (
+                  <li key={sig.doctorId} className={styles.signature}>
+                    <span className={styles.signatureName}>Dr. {sig.name}</span>
+                    {sig.contact && <span className={styles.signatureContact}>{sig.contact}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <p className={styles.disclaimer}>
             Educational/emergency reference only — always confirm critical details with the
             person or a medical professional where possible.

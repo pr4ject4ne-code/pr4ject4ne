@@ -71,7 +71,10 @@ export interface SanitizedClinicalCondition {
   complication?: string;
   care?: string;
   timestamp: string;
+  doctor_id?: string;
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Sanitize the biodata layer's `clinical_conditions` array. sanitizeLayer drops
@@ -105,6 +108,12 @@ export function sanitizeClinicalConditions(
       typeof rawTs === 'string' && !Number.isNaN(Date.parse(rawTs))
         ? new Date(rawTs).toISOString()
         : new Date().toISOString();
+    // doctor_id is a raw UUID reference to `doctors`, not free text — validate
+    // shape only (existence is checked, if at all, by whatever reads it), and
+    // drop silently rather than store a garbage value that would later be
+    // mistaken for a real doctor reference.
+    const rawDoctorId = rec.doctor_id;
+    const doctorId = typeof rawDoctorId === 'string' && UUID_RE.test(rawDoctorId) ? rawDoctorId : undefined;
     out.push({
       condition,
       ...(cause && cause.trim() ? { cause } : {}),
@@ -113,6 +122,7 @@ export function sanitizeClinicalConditions(
       ...(complication && complication.trim() ? { complication } : {}),
       ...(care && care.trim() ? { care } : {}),
       timestamp,
+      ...(doctorId ? { doctor_id: doctorId } : {}),
     });
   }
   return out;

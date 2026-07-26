@@ -85,8 +85,63 @@
   font-size: 1.2rem;
 }
 
+.docSubtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+/* Profile photo top-right, per worklist #29. */
+.docPhoto {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
 .printBtn {
   flex-shrink: 0;
+}
+
+.declaration {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  background: var(--color-off-white);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin: 1rem 0 0;
+}
+
+.signatureBlock {
+  margin-top: 1.1rem;
+}
+
+.signatureList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.signature {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.5rem;
+}
+
+.signatureName {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.signatureContact {
+  font-size: 0.82rem;
+  color: var(--color-muted);
 }
 
 .section {

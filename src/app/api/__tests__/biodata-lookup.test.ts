@@ -83,7 +83,7 @@ describe('GET /api/biodata/lookup', () => {
     const res = await GET(req(IHN));
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toEqual({ available: false, profile_layer: {}, biodata_layer: {} });
+    expect(json).toEqual({ available: false, profile_layer: {}, biodata_layer: {}, report: null });
     expect(mockLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'biodata_lookup_no_match', details: { ihn_code: IHN } }),
     );
@@ -103,7 +103,7 @@ describe('GET /api/biodata/lookup', () => {
     const res = await GET(req(IHN));
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toEqual({ available: false, profile_layer: {}, biodata_layer: {} });
+    expect(json).toEqual({ available: false, profile_layer: {}, biodata_layer: {}, report: null });
   });
 
   it('matched with something shared: available:true and only the opted-in fields, via the SAME pipeline as [userId]', async () => {
@@ -128,6 +128,64 @@ describe('GET /api/biodata/lookup', () => {
     expect(mockLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'biodata_shared_read', userId: REQUESTER_ID, resourceId: TARGET_ID }),
     );
+  });
+
+  it('attaches a report; a credited doctor only gets a signature when their consent is approved', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: REQUESTER_ID, account_type: 'patient' });
+    const DOCTOR_ID = '22222222-2222-4222-8222-222222222222';
+    mockQueryOne
+      .mockResolvedValueOnce({ user_id: TARGET_ID })
+      .mockResolvedValueOnce({
+        user_id: TARGET_ID,
+        ihn_code: IHN,
+        profile_layer: {},
+        biodata_layer: {
+          clinical_conditions: [{ condition: 'Hypertension', doctor_id: DOCTOR_ID }],
+        },
+        sharing_prefs: { clinical_conditions: true },
+      });
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: DOCTOR_ID,
+          name: 'Ada Obi',
+          contact_phone: '0800-000-0000',
+          contact_email: null,
+          consent_status: 'approved',
+          denial_reason: null,
+        },
+      ],
+    });
+    const res = await GET(req(IHN));
+    const json = await res.json();
+    expect(json.available).toBe(true);
+    expect(json.report.signatures).toEqual([{ doctorId: DOCTOR_ID, name: 'Ada Obi', contact: '0800-000-0000' }]);
+    expect(json.report.declaration).toMatch(/doctor's explicit consent/);
+  });
+
+  it('never shows a doctor name when there is no consent record for the credited doctor', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: REQUESTER_ID, account_type: 'patient' });
+    const DOCTOR_ID = '22222222-2222-4222-8222-222222222222';
+    mockQueryOne
+      .mockResolvedValueOnce({ user_id: TARGET_ID })
+      .mockResolvedValueOnce({
+        user_id: TARGET_ID,
+        ihn_code: IHN,
+        profile_layer: {},
+        biodata_layer: {
+          clinical_conditions: [{ condition: 'Hypertension', doctor_id: DOCTOR_ID }],
+        },
+        sharing_prefs: { clinical_conditions: true },
+      });
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { id: DOCTOR_ID, name: 'Ada Obi', contact_phone: null, contact_email: null, consent_status: null, denial_reason: null },
+      ],
+    });
+    const res = await GET(req(IHN));
+    const json = await res.json();
+    expect(json.report.signatures).toEqual([]);
+    expect(JSON.stringify(json.report.sections)).not.toContain('Ada Obi');
   });
 
   it('reuses the existing biodata_shared_target/biodata_shared_ip buckets (not a new weaker path) once resolved', async () => {

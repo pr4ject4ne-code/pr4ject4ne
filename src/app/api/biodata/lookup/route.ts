@@ -5,6 +5,8 @@ import { getPatientSession, checkRateLimit } from '@/lib/auth';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import { isValidIhnCode } from '@/lib/ihn-code';
 import { authorizeRead, buildReadResult } from '@/app/api/biodata/[userId]/route';
+import { fetchDoctorAttributionLookup } from '@/lib/doctor-consent-db';
+import { buildDoctorReport } from '@/lib/doctor-report';
 
 /**
  * By-IHN-code lookup (worklist #24's "string tab"). `biodata.ihn_code` is
@@ -79,7 +81,7 @@ export async function GET(req: Request) {
       details: { ihn_code: rawCode },
       ip: clientIpFrom(req.headers),
     });
-    return apiOk({ available: false, profile_layer: {}, biodata_layer: {} });
+    return apiOk({ available: false, profile_layer: {}, biodata_layer: {}, report: null });
   }
 
   // Reuse the SAME authorization pipeline as the direct userId route: it
@@ -97,9 +99,25 @@ export async function GET(req: Request) {
 
   // ihn_code is never echoed back on this lookup surface, even for the rare
   // case where someone looks up their own code.
+  if (nothingShared) {
+    return apiOk({ available: false, profile_layer: {}, biodata_layer: {}, report: null });
+  }
+
+  // Report generation (worklist #29/#30) — built strictly FROM this
+  // already-filtered read, never an independent unfiltered one. Only the
+  // doctor_ids actually present in the (already-filtered) clinical_conditions
+  // are looked up — a doctor who isn't credited here never has their consent
+  // status touched by this request at all.
+  const doctorIds = (result.biodata_layer.clinical_conditions ?? [])
+    .map((c) => c.doctor_id)
+    .filter((id): id is string => typeof id === 'string');
+  const doctorLookup = await fetchDoctorAttributionLookup(doctorIds);
+  const report = buildDoctorReport(result.profile_layer, result.biodata_layer, doctorLookup);
+
   return apiOk({
-    available: !nothingShared,
+    available: true,
     profile_layer: result.profile_layer,
     biodata_layer: result.biodata_layer,
+    report,
   });
 }

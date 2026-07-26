@@ -34,6 +34,7 @@ export default function DevShell({
             <Link href="/dev/dashboard">Dashboard</Link>
             <Link href="/dev/first-aid">First Aid</Link>
             <Link href="/dev/institutions">Institutions</Link>
+            <Link href="/dev/doctor-consent">Doctor consent</Link>
             <Link href="/dev/primary">Admin</Link>
             <button type="button" onClick={logout}>
               Log out
