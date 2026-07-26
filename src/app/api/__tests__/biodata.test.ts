@@ -27,8 +27,9 @@ jest.mock('@/lib/db', () => ({
   query: (...a: unknown[]) => mockQuery(...a),
 }));
 
+const mockLogAudit = jest.fn().mockResolvedValue(undefined);
 jest.mock('@/lib/audit', () => ({
-  logAudit: jest.fn().mockResolvedValue(undefined),
+  logAudit: (...a: unknown[]) => mockLogAudit(...a),
   clientIpFrom: () => null,
 }));
 
@@ -36,10 +37,10 @@ const OWN_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_ID = '22222222-2222-4222-8222-222222222222';
 const IHN = 'IHN-ABCD-EFGH-JKMN';
 
-function req(ihn?: string): Request {
+function req(ihn?: string, targetId = OWN_ID): Request {
   const headers: Record<string, string> = {};
   if (ihn) headers['x-ihn-code'] = ihn;
-  return new Request(`http://localhost/api/biodata/${OWN_ID}`, { headers });
+  return new Request(`http://localhost/api/biodata/${targetId}`, { headers });
 }
 
 describe('GET /api/biodata/[userId]', () => {
@@ -49,12 +50,6 @@ describe('GET /api/biodata/[userId]', () => {
     mockGetPatientSession.mockResolvedValue(null);
     const res = await GET(req(IHN), { params: Promise.resolve({ userId: OWN_ID }) });
     expect(res.status).toBe(401);
-  });
-
-  it('403 when accessing another users biodata', async () => {
-    mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
-    const res = await GET(req(IHN), { params: Promise.resolve({ userId: OWN_ID }) });
-    expect(res.status).toBe(403);
   });
 
   it('401 when the IHN header is missing', async () => {
@@ -72,13 +67,14 @@ describe('GET /api/biodata/[userId]', () => {
     expect((await res.json()).code).toBe('IHN_INVALID');
   });
 
-  it('200 with biodata when session + IHN match', async () => {
+  it('200 with FULL biodata when the owner reads their own row (sharing_prefs is all-false and never gates this)', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: OWN_ID, account_type: 'patient' });
     mockQueryOne.mockResolvedValue({
       user_id: OWN_ID,
       ihn_code: IHN,
       profile_layer: { full_name: 'Ada' },
-      biodata_layer: { blood_group: 'O+' },
+      biodata_layer: { blood_group: 'O+', genotype: 'AA' },
+      sharing_prefs: {}, // nothing opted in — owner must still see everything
       last_modified_at: '2026-07-05T00:00:00Z',
     });
     const res = await GET(req(IHN), { params: Promise.resolve({ userId: OWN_ID }) });
@@ -86,12 +82,142 @@ describe('GET /api/biodata/[userId]', () => {
     const json = await res.json();
     expect(json.profile_layer.full_name).toBe('Ada');
     expect(json.biodata_layer.blood_group).toBe('O+');
+    expect(json.biodata_layer.genotype).toBe('AA');
+    expect(json.ihn_code).toBe(IHN); // owner's own read still returns the code
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'biodata_read', userId: OWN_ID }),
+    );
   });
 
   it('429 when rate limited', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: OWN_ID, account_type: 'patient' });
     mockCheckRateLimit.mockResolvedValueOnce(false);
     const res = await GET(req(IHN), { params: Promise.resolve({ userId: OWN_ID }) });
+    expect(res.status).toBe(429);
+  });
+});
+
+describe('GET /api/biodata/[userId] — cross-user IHN-authenticated read (worklist #23)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('is no longer 403 for a different authenticated patient session (the fixed dead path)', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({
+      user_id: OWN_ID,
+      ihn_code: IHN,
+      profile_layer: { full_name: 'Ada' },
+      biodata_layer: { blood_group: 'O+' },
+      sharing_prefs: { blood_group: true },
+      last_modified_at: '2026-07-05T00:00:00Z',
+    });
+    const res = await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
+    expect(res.status).toBe(200);
+  });
+
+  it('field-level isolation: a field NOT opted in is never returned, even when every other field is opted in', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({
+      user_id: OWN_ID,
+      ihn_code: IHN,
+      profile_layer: { full_name: 'Ada' },
+      biodata_layer: {
+        blood_group: 'O+',
+        genotype: 'AA', // deliberately NOT opted in below
+        disability: 'None',
+        health_preferences: 'Prefers female doctor',
+        chronic_disease: 'Asthma',
+        clinical_conditions: [{ condition: 'Hypertension', timestamp: '2026-01-01T00:00:00Z' }],
+        occupation: 'Engineer',
+        height_cm: 180,
+      },
+      sharing_prefs: {
+        profile: true,
+        demographics: true,
+        anthropometrics: true,
+        chronic_disease: true,
+        blood_group: true,
+        disability: true,
+        health_preferences: true,
+        clinical_conditions: true,
+        genotype: false, // explicitly withheld
+      },
+      last_modified_at: '2026-07-05T00:00:00Z',
+    });
+    const res = await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.biodata_layer.genotype).toBeUndefined();
+    expect(json.biodata_layer.blood_group).toBe('O+');
+    expect(json.profile_layer.full_name).toBe('Ada');
+    expect(json.ihn_code).toBeUndefined(); // never leak the code back
+  });
+
+  it('default-deny: nothing is returned when sharing_prefs is empty/absent', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({
+      user_id: OWN_ID,
+      ihn_code: IHN,
+      profile_layer: { full_name: 'Ada' },
+      biodata_layer: { blood_group: 'O+' },
+      sharing_prefs: {},
+      last_modified_at: '2026-07-05T00:00:00Z',
+    });
+    const res = await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
+    const json = await res.json();
+    expect(json.profile_layer).toEqual({});
+    expect(json.biodata_layer).toEqual({});
+  });
+
+  it('logs a distinct biodata_shared_read action (not biodata_read) on both success and IHN mismatch', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({
+      user_id: OWN_ID,
+      ihn_code: IHN,
+      profile_layer: {},
+      biodata_layer: {},
+      sharing_prefs: {},
+    });
+    await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'biodata_shared_read', userId: OTHER_ID, resourceId: OWN_ID }),
+    );
+
+    jest.clearAllMocks();
+    mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({ user_id: OWN_ID, ihn_code: 'IHN-ZZZZ-ZZZZ-ZZZZ' });
+    const res = await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
+    expect(res.status).toBe(401);
+    // Logged even on FAILURE — a wrong-code attempt against a real target is the abuse signal.
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'biodata_shared_read',
+        userId: OTHER_ID,
+        resourceId: OWN_ID,
+        details: expect.objectContaining({ result: 'ihn_mismatch' }),
+      }),
+    );
+  });
+
+  it('uses a distinct rate-limit bucket for cross-user reads (target + IP), not the owner bucket', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({
+      user_id: OWN_ID,
+      ihn_code: IHN,
+      profile_layer: {},
+      biodata_layer: {},
+      sharing_prefs: {},
+    });
+    await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
+    const buckets = mockCheckRateLimit.mock.calls.map((c) => c[0] as string);
+    expect(buckets.some((b) => b.startsWith('biodata_shared_target:'))).toBe(true);
+    expect(buckets.some((b) => b.startsWith('biodata_shared_ip:'))).toBe(true);
+    expect(buckets.some((b) => b.startsWith(`biodata:${OTHER_ID}`))).toBe(false);
+  });
+
+  it('429 when the cross-user bucket is exhausted', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
+    mockCheckRateLimit.mockResolvedValueOnce(false);
+    const res = await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
     expect(res.status).toBe(429);
   });
 });

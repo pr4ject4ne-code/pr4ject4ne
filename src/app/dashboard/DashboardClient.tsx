@@ -9,7 +9,9 @@ import Input from '@/components/Input';
 import Calendar from '@/components/Calendar';
 import BioDataForm from '@/components/BioDataForm';
 import IHNCodeDisplay from '@/components/IHNCodeDisplay';
-import type { ProfileLayer, BiodataLayer } from '@/types';
+import SharingPrefsPanel from '@/components/SharingPrefsPanel';
+import { DEFAULT_SHARING_PREFS } from '@/lib/sharing-prefs';
+import type { ProfileLayer, BiodataLayer, SharingPrefs } from '@/types';
 import styles from './Dashboard.module.css';
 
 interface BiodataResponse {
@@ -17,6 +19,9 @@ interface BiodataResponse {
   profile_layer: ProfileLayer;
   biodata_layer: BiodataLayer;
   ihn_code: string;
+  /** Worklist #23 — default-deny sharing preferences for the IHN cross-user
+   * read path; always present/normalized by the API. */
+  sharing_prefs?: SharingPrefs;
   /** Worklist #18: non-blocking nudge only — an unverified account can still
    * use the full dashboard/biodata farm. */
   email_verified?: boolean;
@@ -35,6 +40,7 @@ export default function DashboardClient() {
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState(false);
   const [showIhnNotice, setShowIhnNotice] = useState(false);
+  const [sharingSaving, setSharingSaving] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -102,6 +108,23 @@ export default function DashboardClient() {
       setSaveError('Network error. Please try again.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSaveSharingPrefs(next: SharingPrefs) {
+    setSharingSaving(true);
+    try {
+      const res = await fetch('/api/biodata/me', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sharing_prefs: next }),
+      });
+      const body = await res.json();
+      if (res.ok) {
+        setData((prev) => (prev ? { ...prev, sharing_prefs: body.sharing_prefs } : prev));
+      }
+    } finally {
+      setSharingSaving(false);
     }
   }
 
@@ -220,6 +243,13 @@ export default function DashboardClient() {
 
         <h2 className={styles.sectionTitle}>Biodata</h2>
         {data && <IHNCodeDisplay code={data.ihn_code} />}
+        {data && (
+          <SharingPrefsPanel
+            value={data.sharing_prefs ?? DEFAULT_SHARING_PREFS}
+            onSave={handleSaveSharingPrefs}
+            saving={sharingSaving}
+          />
+        )}
         {savedAt && (
           <p className={styles.saved} role="status">
             Saved.

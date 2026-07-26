@@ -4,7 +4,8 @@ import { apiError, apiOk, readJson } from '@/lib/api';
 import { getPatientSession } from '@/lib/auth';
 import { sanitizeLayer, sanitizeClinicalConditions, safeHttpUrl } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
-import type { Biodata, BiodataLayer, ProfileLayer } from '@/types';
+import { normalizeSharingPrefs } from '@/lib/sharing-prefs';
+import type { Biodata, BiodataLayer, ProfileLayer, SharingPrefs } from '@/types';
 
 /**
  * Owner-only biodata access for the dashboard. The authenticated patient session
@@ -26,8 +27,8 @@ export async function GET(req: Request) {
   // Joins users.email_verified so the dashboard can show a non-blocking
   // "please verify your email" nudge (worklist #18) without a second request.
   const record = await queryOne<Biodata & { email_verified: boolean }>(
-    `SELECT b.user_id, b.profile_layer, b.biodata_layer, b.ihn_code, b.last_modified_at, b.created_at,
-            u.email_verified
+    `SELECT b.user_id, b.profile_layer, b.biodata_layer, b.ihn_code, b.sharing_prefs,
+            b.last_modified_at, b.created_at, u.email_verified
      FROM biodata b
      JOIN users u ON u.id = b.user_id
      WHERE b.user_id = $1`,
@@ -49,6 +50,9 @@ export async function GET(req: Request) {
     profile_layer: record.profile_layer,
     biodata_layer: record.biodata_layer,
     ihn_code: record.ihn_code,
+    // Always normalized here — the owner's dashboard toggle UI needs a
+    // complete, well-formed object even for rows created before migration 013.
+    sharing_prefs: normalizeSharingPrefs(record.sharing_prefs),
     last_modified_at: record.last_modified_at,
     email_verified: record.email_verified,
   });
@@ -57,6 +61,10 @@ export async function GET(req: Request) {
 interface PatchBody {
   profile_layer?: ProfileLayer;
   biodata_layer?: BiodataLayer;
+  /** Worklist #23 — owner-only toggle of what's shareable via the IHN code.
+   * Sent as a full object from the dashboard panel and stored as a full
+   * replace (normalized/default-deny), not merged key-by-key. */
+  sharing_prefs?: Partial<SharingPrefs>;
 }
 
 export async function PATCH(req: Request) {
@@ -64,7 +72,7 @@ export async function PATCH(req: Request) {
   if (!userId) return apiError('Not authenticated.', 'UNAUTHENTICATED', 401);
 
   const body = await readJson<PatchBody>(req);
-  if (!body || (!body.profile_layer && !body.biodata_layer)) {
+  if (!body || (!body.profile_layer && !body.biodata_layer && !body.sharing_prefs)) {
     return apiError('Nothing to update.', 'BAD_REQUEST', 400);
   }
 
@@ -95,7 +103,7 @@ export async function PATCH(req: Request) {
   }
 
   const record = await queryOne<Biodata>(
-    `SELECT profile_layer, biodata_layer FROM biodata WHERE user_id = $1`,
+    `SELECT profile_layer, biodata_layer, sharing_prefs FROM biodata WHERE user_id = $1`,
     [userId],
   );
   if (!record) return apiError('Biodata not found.', 'NOT_FOUND', 404);
@@ -109,11 +117,20 @@ export async function PATCH(req: Request) {
     if (h > 0) nextBiodata.bmi = Math.round((nextBiodata.weight_kg / (h * h)) * 10) / 10;
   }
 
+  // sharing_prefs (worklist #23): sent as a full object by the dashboard panel
+  // and stored as a full REPLACE (not a partial merge) — normalizeSharingPrefs
+  // is default-deny (only a literal `true` opts a section in), so an omitted
+  // update simply keeps the previously-normalized value rather than resetting
+  // anything.
+  const nextSharingPrefs = normalizeSharingPrefs(
+    body.sharing_prefs !== undefined ? body.sharing_prefs : record.sharing_prefs,
+  );
+
   await query(
     `UPDATE biodata
-     SET profile_layer = $2::jsonb, biodata_layer = $3::jsonb, last_modified_at = now()
+     SET profile_layer = $2::jsonb, biodata_layer = $3::jsonb, sharing_prefs = $4::jsonb, last_modified_at = now()
      WHERE user_id = $1`,
-    [userId, JSON.stringify(nextProfile), JSON.stringify(nextBiodata)],
+    [userId, JSON.stringify(nextProfile), JSON.stringify(nextBiodata), JSON.stringify(nextSharingPrefs)],
   );
 
   await logAudit({
@@ -124,9 +141,15 @@ export async function PATCH(req: Request) {
     details: {
       profile_fields: Object.keys(body.profile_layer ?? {}),
       biodata_fields: Object.keys(body.biodata_layer ?? {}),
+      sharing_prefs_changed: body.sharing_prefs !== undefined,
     },
     ip: clientIpFrom(req.headers),
   });
 
-  return apiOk({ success: true, profile_layer: nextProfile, biodata_layer: nextBiodata });
+  return apiOk({
+    success: true,
+    profile_layer: nextProfile,
+    biodata_layer: nextBiodata,
+    sharing_prefs: nextSharingPrefs,
+  });
 }

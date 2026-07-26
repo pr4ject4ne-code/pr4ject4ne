@@ -10,6 +10,7 @@ import { logger, errMessage } from '@/lib/logger';
 export type AuditAction =
   | 'biodata_read'
   | 'biodata_write'
+  | 'biodata_shared_read'
   | 'hospital_register'
   | 'hospital_update'
   | 'announcement_change'

@@ -5,36 +5,147 @@ import { getPatientSession, checkRateLimit, constantTimeEquals } from '@/lib/aut
 import { sanitizeLayer, sanitizeClinicalConditions, safeHttpUrl } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import { isValidIhnCode } from '@/lib/ihn-code';
+import { normalizeSharingPrefs, filterBiodataBySharingPrefs } from '@/lib/sharing-prefs';
 import type { Biodata, BiodataLayer, ProfileLayer } from '@/types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Biodata access is gated by BOTH:
- *  1. A valid patient session (cookie), AND
- *  2. The correct IHN code (X-IHN-Code header) for the target row.
+ * Biodata READ access is gated by BOTH:
+ *  1. A valid patient session (cookie) — of ANY patient, not just the owner, AND
+ *  2. The correct IHN code (X-IHN-Code header) for the TARGET row.
  *
- * A user may only ever read/write their OWN biodata (session.user_id must equal
- * the path userId) — row-level isolation. The IHN code is the second factor that
- * unlocks the sensitive biodata layer, exactly as the emergency-access design
- * intends.
+ * The owner reading their own row via this route behaves exactly as before
+ * (full profile_layer + biodata_layer, unaffected by sharing_prefs — that only
+ * gates the OTHER-user path). A DIFFERENT authenticated patient may now also
+ * read the target's row if they supply the correct IHN code, but the response
+ * is filtered through `filterBiodataBySharingPrefs` against the OWNER's own
+ * `sharing_prefs` (worklist #23) — nothing is shared until the owner opts a
+ * section in from their dashboard. This is the fix for the long-flagged
+ * "IHN sharing is a dead path" gap: the IHN code parameter was previously
+ * unreachable because ownership was required BEFORE the code was ever checked.
+ *
+ * WRITE access (PATCH) is unchanged and stays strictly owner-only — see
+ * authorizeWrite below.
  */
 
-interface Authorized {
+const SHARED_READ_TARGET_MAX = 10;
+const SHARED_READ_TARGET_WINDOW_SECONDS = 60 * 60; // 1 hour
+const SHARED_READ_IP_MAX = 30;
+const SHARED_READ_IP_WINDOW_SECONDS = 60 * 60; // 1 hour
+
+interface ReadAuthorized {
+  requesterId: string;
+  targetUserId: string;
+  isOwner: boolean;
+  record: Biodata;
+}
+
+interface WriteAuthorized {
   userId: string;
   record: Biodata;
 }
 
-async function authorize(
+async function loadSession(headers: Headers) {
+  const store = await cookies();
+  return getPatientSession((n) => store.get(n)?.value);
+}
+
+/**
+ * READ authorization: owner (same session.user_id) OR any other authenticated
+ * patient session presenting the correct IHN code for the target.
+ *
+ * Rate limiting uses DISTINCT buckets per threat model:
+ *  - owner reading their own data: `biodata:<userId>` (unchanged, 10/min) — a
+ *    legitimate owner hitting their own data repeatedly.
+ *  - cross-user reads: TWO buckets, since an attacker guessing/brute-forcing
+ *    ANOTHER person's IHN code is a different abuse pattern entirely —
+ *    `biodata_shared_target:<targetUserId>` (bounds attempts against ONE
+ *    victim, the real brute-force threat) AND `biodata_shared_ip:<ip>`
+ *    (bounds a single attacker spraying guesses across MANY targets), mirroring
+ *    the dual per-IP + per-email bucket design already used by
+ *    forgot-password (see src/lib/auth.ts / memory 2026-07-26).
+ */
+async function authorizeRead(
   paramUserId: string,
   headers: Headers,
-): Promise<{ ok: true; data: Authorized } | { ok: false; response: ReturnType<typeof apiError> }> {
+): Promise<{ ok: true; data: ReadAuthorized } | { ok: false; response: ReturnType<typeof apiError> }> {
   if (!UUID_RE.test(paramUserId)) {
     return { ok: false, response: apiError('Not found.', 'NOT_FOUND', 404) };
   }
 
-  const store = await cookies();
-  const session = await getPatientSession((n) => store.get(n)?.value);
+  const session = await loadSession(headers);
+  if (!session) {
+    return { ok: false, response: apiError('Not authenticated.', 'UNAUTHENTICATED', 401) };
+  }
+
+  const isOwner = session.user_id === paramUserId;
+
+  if (isOwner) {
+    const allowed = await checkRateLimit(`biodata:${session.user_id}`, 10, 60);
+    if (!allowed) {
+      return { ok: false, response: apiError('Too many attempts.', 'RATE_LIMITED', 429) };
+    }
+  } else {
+    const targetAllowed = await checkRateLimit(
+      `biodata_shared_target:${paramUserId}`,
+      SHARED_READ_TARGET_MAX,
+      SHARED_READ_TARGET_WINDOW_SECONDS,
+    );
+    const ip = clientIpFrom(headers) ?? 'unknown';
+    const ipAllowed = await checkRateLimit(
+      `biodata_shared_ip:${ip}`,
+      SHARED_READ_IP_MAX,
+      SHARED_READ_IP_WINDOW_SECONDS,
+    );
+    if (!targetAllowed || !ipAllowed) {
+      return { ok: false, response: apiError('Too many attempts.', 'RATE_LIMITED', 429) };
+    }
+  }
+
+  const ihnHeader = headers.get('x-ihn-code')?.trim() ?? '';
+  if (!isValidIhnCode(ihnHeader)) {
+    return { ok: false, response: apiError('IHN code required.', 'IHN_REQUIRED', 401) };
+  }
+
+  const record = await queryOne<Biodata>(
+    `SELECT user_id, profile_layer, biodata_layer, ihn_code, sharing_prefs, last_modified_at, created_at
+     FROM biodata WHERE user_id = $1`,
+    [paramUserId],
+  );
+  if (!record) {
+    return { ok: false, response: apiError('Not found.', 'NOT_FOUND', 404) };
+  }
+  if (!constantTimeEquals(record.ihn_code, ihnHeader)) {
+    // Logged even on failure — a wrong-code attempt against a real target is
+    // exactly the abuse signal this needs to catch, not just successful reads.
+    await logAudit({
+      userId: session.user_id,
+      action: isOwner ? 'biodata_read' : 'biodata_shared_read',
+      resourceType: 'biodata',
+      resourceId: paramUserId,
+      details: { result: 'ihn_mismatch', via: isOwner ? 'owner' : 'cross_user' },
+      ip: clientIpFrom(headers),
+    });
+    return { ok: false, response: apiError('Invalid IHN code.', 'IHN_INVALID', 401) };
+  }
+
+  return { ok: true, data: { requesterId: session.user_id, targetUserId: paramUserId, isOwner, record } };
+}
+
+/**
+ * WRITE authorization: unchanged from before this task — strictly owner-only.
+ * Sharing a read via IHN never implies write access.
+ */
+async function authorizeWrite(
+  paramUserId: string,
+  headers: Headers,
+): Promise<{ ok: true; data: WriteAuthorized } | { ok: false; response: ReturnType<typeof apiError> }> {
+  if (!UUID_RE.test(paramUserId)) {
+    return { ok: false, response: apiError('Not found.', 'NOT_FOUND', 404) };
+  }
+
+  const session = await loadSession(headers);
   if (!session) {
     return { ok: false, response: apiError('Not authenticated.', 'UNAUTHENTICATED', 401) };
   }
@@ -42,7 +153,6 @@ async function authorize(
     return { ok: false, response: apiError('Forbidden.', 'FORBIDDEN', 403) };
   }
 
-  // Rate-limit biodata access attempts: max 10 / minute per user.
   const allowed = await checkRateLimit(`biodata:${session.user_id}`, 10, 60);
   if (!allowed) {
     return { ok: false, response: apiError('Too many attempts.', 'RATE_LIMITED', 429) };
@@ -54,7 +164,7 @@ async function authorize(
   }
 
   const record = await queryOne<Biodata>(
-    `SELECT user_id, profile_layer, biodata_layer, ihn_code, last_modified_at, created_at
+    `SELECT user_id, profile_layer, biodata_layer, ihn_code, sharing_prefs, last_modified_at, created_at
      FROM biodata WHERE user_id = $1`,
     [paramUserId],
   );
@@ -77,24 +187,55 @@ async function authorize(
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ userId: string }> }) {
-  const auth = await authorize((await params).userId, req.headers);
+  const paramUserId = (await params).userId;
+  const auth = await authorizeRead(paramUserId, req.headers);
   if (!auth.ok) return auth.response;
 
+  const { requesterId, targetUserId, isOwner, record } = auth.data;
+
+  if (isOwner) {
+    await logAudit({
+      userId: requesterId,
+      action: 'biodata_read',
+      resourceType: 'biodata',
+      resourceId: targetUserId,
+      details: { via: 'ihn_code' },
+      ip: clientIpFrom(req.headers),
+    });
+    return apiOk({
+      user_id: record.user_id,
+      profile_layer: record.profile_layer,
+      biodata_layer: record.biodata_layer,
+      ihn_code: record.ihn_code,
+      last_modified_at: record.last_modified_at,
+    });
+  }
+
+  // Cross-user read: filter server-side through the OWNER's sharing_prefs.
+  // Never trust the client to do this — the client only ever sees the
+  // already-filtered result.
+  const prefs = normalizeSharingPrefs(record.sharing_prefs);
+  const filtered = filterBiodataBySharingPrefs(record.profile_layer, record.biodata_layer, prefs);
+  const fieldsReturned = [
+    ...Object.keys(filtered.profile_layer),
+    ...Object.keys(filtered.biodata_layer),
+  ];
+
   await logAudit({
-    userId: auth.data.userId,
-    action: 'biodata_read',
+    userId: requesterId,
+    action: 'biodata_shared_read',
     resourceType: 'biodata',
-    resourceId: (await params).userId,
-    details: { via: 'ihn_code' },
+    resourceId: targetUserId,
+    details: { via: 'ihn_code', fields_returned: fieldsReturned },
     ip: clientIpFrom(req.headers),
   });
 
-  const { record } = auth.data;
+  // ihn_code is intentionally omitted here — the requester already supplied
+  // it, and a cross-user response should carry the least possible privilege.
   return apiOk({
     user_id: record.user_id,
-    profile_layer: record.profile_layer,
-    biodata_layer: record.biodata_layer,
-    ihn_code: record.ihn_code,
+    profile_layer: filtered.profile_layer,
+    biodata_layer: filtered.biodata_layer,
     last_modified_at: record.last_modified_at,
   });
 }
@@ -105,7 +246,7 @@ interface PatchBody {
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ userId: string }> }) {
-  const auth = await authorize((await params).userId, req.headers);
+  const auth = await authorizeWrite((await params).userId, req.headers);
   if (!auth.ok) return auth.response;
 
   const body = await readJson<PatchBody>(req);

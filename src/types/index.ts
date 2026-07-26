@@ -162,11 +162,33 @@ export interface BiodataLayer {
   health_preferences?: string;
 }
 
+/**
+ * Default-deny sharing preferences (worklist #23) — gates what a DIFFERENT
+ * authenticated user can see when reading someone else's biodata via a valid
+ * IHN code (GET /api/biodata/[userId]). Never gates the owner's own view of
+ * their own data (that always sees everything, via this route or /me).
+ * See migration 013 + src/lib/sharing-prefs.ts for the granularity rationale.
+ */
+export interface SharingPrefs {
+  profile: boolean;
+  demographics: boolean;
+  anthropometrics: boolean;
+  chronic_disease: boolean;
+  genotype: boolean;
+  blood_group: boolean;
+  disability: boolean;
+  health_preferences: boolean;
+  clinical_conditions: boolean;
+}
+
 export interface Biodata {
   user_id: string;
   profile_layer: ProfileLayer;
   biodata_layer: BiodataLayer;
   ihn_code: string;
+  /** Stored as JSONB; may be `{}` or missing keys for pre-existing rows —
+   * always run through `normalizeSharingPrefs` before trusting it. */
+  sharing_prefs: SharingPrefs | Record<string, unknown>;
   last_modified_at: string;
   created_at: string;
 }

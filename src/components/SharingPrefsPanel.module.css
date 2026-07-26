@@ -1,0 +1,45 @@
+.panel {
+  margin: 1rem 0 1.5rem;
+}
+.title {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+.intro {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+.list {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+.row input[type='checkbox'] {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.2rem;
+  accent-color: var(--color-amethyst);
+  flex-shrink: 0;
+}
+.rowTitle {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.rowHint {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+.saved {
+  color: var(--color-green);
+  font-weight: 600;
+  margin: 0.75rem 0 0;
+}
