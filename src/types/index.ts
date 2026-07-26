@@ -132,6 +132,11 @@ export type ConsentStatus = 'pending' | 'approved' | 'denied';
 export interface DoctorConsentRecord {
   id: string;
   doctor_id: string;
+  /** The biodata owner (patient) this consent decision applies to — consent
+   * is scoped to this EXACT (doctor, patient) pair, never to the doctor
+   * alone (see migration 016; a per-doctor-only approval was a real
+   * fabricated-attribution vulnerability, fixed same-day). */
+  patient_user_id: string;
   consent_status: ConsentStatus;
   contacted_via: string | null;
   denial_reason: string | null;

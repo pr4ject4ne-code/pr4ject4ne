@@ -163,6 +163,62 @@ describe('GET /api/biodata/lookup', () => {
     expect(json.report.declaration).toMatch(/doctor's explicit consent/);
   });
 
+  it('resolves consent SCOPED TO THE TARGET PATIENT (row.user_id), never doctor-only (migration 016 regression)', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: REQUESTER_ID, account_type: 'patient' });
+    const DOCTOR_ID = '22222222-2222-4222-8222-222222222222';
+    mockQueryOne
+      .mockResolvedValueOnce({ user_id: TARGET_ID })
+      .mockResolvedValueOnce({
+        user_id: TARGET_ID,
+        ihn_code: IHN,
+        profile_layer: {},
+        biodata_layer: {
+          clinical_conditions: [{ condition: 'Hypertension', doctor_id: DOCTOR_ID }],
+        },
+        sharing_prefs: { clinical_conditions: true },
+      });
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+    await GET(req(IHN));
+    const consentLookupParams = mockQuery.mock.calls[0]![1] as unknown[];
+    // fetchDoctorAttributionLookup(doctorIds, patientUserId) — the patient is
+    // the biodata OWNER (TARGET_ID), never anything from request input.
+    expect(consentLookupParams[1]).toBe(TARGET_ID);
+  });
+
+  it('strips doctor_id from the raw biodata_layer clinical_conditions in the response (HIGH finding) — even though the report field still attributes correctly', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: REQUESTER_ID, account_type: 'patient' });
+    const DOCTOR_ID = '22222222-2222-4222-8222-222222222222';
+    mockQueryOne
+      .mockResolvedValueOnce({ user_id: TARGET_ID })
+      .mockResolvedValueOnce({
+        user_id: TARGET_ID,
+        ihn_code: IHN,
+        profile_layer: {},
+        biodata_layer: {
+          clinical_conditions: [{ condition: 'Hypertension', doctor_id: DOCTOR_ID }],
+        },
+        sharing_prefs: { clinical_conditions: true },
+      });
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: DOCTOR_ID,
+          name: 'Ada Obi',
+          contact_phone: '0800-000-0000',
+          contact_email: null,
+          consent_status: 'approved',
+          denial_reason: null,
+        },
+      ],
+    });
+    const res = await GET(req(IHN));
+    const json = await res.json();
+    expect(JSON.stringify(json.biodata_layer)).not.toContain(DOCTOR_ID);
+    expect(json.biodata_layer.clinical_conditions[0].doctor_id).toBeUndefined();
+    // The report field is unaffected — attribution still surfaces correctly there.
+    expect(json.report.signatures).toEqual([{ doctorId: DOCTOR_ID, name: 'Ada Obi', contact: '0800-000-0000' }]);
+  });
+
   it('never shows a doctor name when there is no consent record for the credited doctor', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: REQUESTER_ID, account_type: 'patient' });
     const DOCTOR_ID = '22222222-2222-4222-8222-222222222222';

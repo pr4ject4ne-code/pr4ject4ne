@@ -9,6 +9,7 @@
 import { randomUUID } from 'node:crypto';
 import { query, closePool } from '@/lib/db';
 import { checkRateLimit, createSession, getSession, destroySession } from '@/lib/auth';
+import { fetchDoctorAttributionLookup } from '@/lib/doctor-consent-db';
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 const d = hasDb ? describe : describe.skip;
@@ -63,6 +64,62 @@ d('session lifecycle', () => {
 
     await destroySession(token);
     expect(await getSession(token)).toBeNull();
+  });
+});
+
+d('doctor consent is scoped to a (doctor, patient) pair — real regression test for the fabricated-attribution vulnerability (migration 016)', () => {
+  let hospitalId = '';
+  let doctorId = '';
+  let patientAId = '';
+  let patientBId = '';
+
+  beforeAll(async () => {
+    hospitalId = randomUUID();
+    doctorId = randomUUID();
+    await query(
+      `INSERT INTO hospitals (id, name, service_type, status) VALUES ($1, $2, 'hospital', 'approved')`,
+      [hospitalId, `ItestHospital-${hospitalId}`],
+    );
+    await query(
+      `INSERT INTO doctors (id, hospital_id, name) VALUES ($1, $2, 'Dr. Itest')`,
+      [doctorId, hospitalId],
+    );
+    const a = await query<{ id: string }>(
+      `INSERT INTO users (email, password_hash, account_type) VALUES ($1, 'x', 'patient') RETURNING id`,
+      [`itest-a+${randomUUID()}@example.com`],
+    );
+    patientAId = a.rows[0]!.id;
+    const b = await query<{ id: string }>(
+      `INSERT INTO users (email, password_hash, account_type) VALUES ($1, 'x', 'patient') RETURNING id`,
+      [`itest-b+${randomUUID()}@example.com`],
+    );
+    patientBId = b.rows[0]!.id;
+
+    // The doctor is APPROVED for patient A's record only.
+    await query(
+      `INSERT INTO doctor_consent_records (doctor_id, patient_user_id, consent_status, decided_at)
+       VALUES ($1, $2, 'approved', now())`,
+      [doctorId, patientAId],
+    );
+  });
+
+  afterAll(async () => {
+    await query('DELETE FROM doctors WHERE id = $1', [doctorId]);
+    await query('DELETE FROM hospitals WHERE id = $1', [hospitalId]);
+    await query('DELETE FROM users WHERE id = ANY($1)', [[patientAId, patientBId]]); // cascades consent rows
+  });
+
+  it("THE EXPLOIT: fabricating this same real doctor_id onto patient B's clinical_conditions must NOT be attributed", async () => {
+    // This is exactly the attack: a patient copies a doctor_id from the public
+    // roster (GET /api/hospitals/[id]) and PATCHes it onto their own record.
+    const lookupForPatientB = await fetchDoctorAttributionLookup([doctorId], patientBId);
+    expect(lookupForPatientB[doctorId]?.consentStatus).toBeNull();
+  });
+
+  it('the SAME doctor_id IS correctly attributed for the patient it was actually approved for', async () => {
+    const lookupForPatientA = await fetchDoctorAttributionLookup([doctorId], patientAId);
+    expect(lookupForPatientA[doctorId]?.consentStatus).toBe('approved');
+    expect(lookupForPatientA[doctorId]?.doctor.name).toBe('Dr. Itest');
   });
 });
 

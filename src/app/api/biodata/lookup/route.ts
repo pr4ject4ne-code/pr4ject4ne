@@ -107,17 +107,40 @@ export async function GET(req: Request) {
   // already-filtered read, never an independent unfiltered one. Only the
   // doctor_ids actually present in the (already-filtered) clinical_conditions
   // are looked up — a doctor who isn't credited here never has their consent
-  // status touched by this request at all.
+  // status touched by this request at all. Consent is resolved for THIS
+  // EXACT patient (`row.user_id`, the biodata owner already resolved above —
+  // never anything derived from request input) — see migration 016 and
+  // src/lib/doctor-consent-db.ts: a doctor approved for a DIFFERENT patient
+  // must never be credited here.
   const doctorIds = (result.biodata_layer.clinical_conditions ?? [])
     .map((c) => c.doctor_id)
     .filter((id): id is string => typeof id === 'string');
-  const doctorLookup = await fetchDoctorAttributionLookup(doctorIds);
+  const doctorLookup = await fetchDoctorAttributionLookup(doctorIds, row.user_id);
   const report = buildDoctorReport(result.profile_layer, result.biodata_layer, doctorLookup);
+
+  // Strip doctor_id from the RAW biodata_layer before it's returned — the
+  // report (built above) already surfaces attribution correctly through its
+  // own gated pipeline; leaving the raw UUID in biodata_layer would let any
+  // authenticated caller cross-reference it against the public doctor roster
+  // (GET /api/hospitals/[id]) and learn exactly which doctor was credited,
+  // even when consent is denied/pending/nonexistent — defeating the whole
+  // point of the report's anonymization. This mutates only the RESPONSE
+  // shape, never the stored record.
+  const sanitizedBiodataLayer = {
+    ...result.biodata_layer,
+    ...(result.biodata_layer.clinical_conditions
+      ? {
+          clinical_conditions: result.biodata_layer.clinical_conditions.map(
+            ({ doctor_id: _doctorId, ...rest }) => rest,
+          ),
+        }
+      : {}),
+  };
 
   return apiOk({
     available: true,
     profile_layer: result.profile_layer,
-    biodata_layer: result.biodata_layer,
+    biodata_layer: sanitizedBiodataLayer,
     report,
   });
 }

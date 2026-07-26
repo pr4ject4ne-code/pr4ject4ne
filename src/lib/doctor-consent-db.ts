@@ -8,11 +8,21 @@ import type { DoctorAttributionLookup } from '@/lib/doctor-report';
  * with no database, matching this project's existing pure/DB-wrapper split
  * (e.g. sharing-prefs.ts vs. the route that calls it).
  *
- * Resolves each doctor_id's MOST RECENT `doctor_consent_records` row (a
- * doctor with no row at all correctly comes back with `consentStatus: null`
- * via the LEFT JOIN LATERAL — never defaulted to anything else).
+ * Resolves each doctor_id's MOST RECENT `doctor_consent_records` row FOR THIS
+ * EXACT PATIENT (a doctor with no row at all for this patient correctly comes
+ * back with `consentStatus: null` via the LEFT JOIN LATERAL — never defaulted
+ * to anything else, and never picks up a row recorded for a DIFFERENT
+ * patient). Consent is scoped to the (doctor, patient) pair, not the doctor
+ * alone — see migration 016 for the fabricated-attribution vulnerability this
+ * closes: without this scoping, a doctor approved for one patient's record
+ * would be incorrectly credited on any other patient's fabricated doctor_id.
+ * `patientUserId` MUST be the biodata owner's own user_id (the caller's
+ * already-authorized read target), never a value taken from request input.
  */
-export async function fetchDoctorAttributionLookup(doctorIds: string[]): Promise<DoctorAttributionLookup> {
+export async function fetchDoctorAttributionLookup(
+  doctorIds: string[],
+  patientUserId: string,
+): Promise<DoctorAttributionLookup> {
   const uniqueIds = Array.from(new Set(doctorIds)).filter(Boolean);
   if (uniqueIds.length === 0) return {};
 
@@ -30,12 +40,12 @@ export async function fetchDoctorAttributionLookup(doctorIds: string[]): Promise
      LEFT JOIN LATERAL (
        SELECT consent_status, denial_reason
        FROM doctor_consent_records r
-       WHERE r.doctor_id = d.id
-       ORDER BY r.created_at DESC
+       WHERE r.doctor_id = d.id AND r.patient_user_id = $2
+       ORDER BY r.created_at DESC, r.id DESC
        LIMIT 1
      ) c ON true
      WHERE d.id = ANY($1::uuid[])`,
-    [uniqueIds],
+    [uniqueIds, patientUserId],
   );
 
   const lookup: DoctorAttributionLookup = {};
