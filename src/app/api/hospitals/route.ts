@@ -131,6 +131,24 @@ export async function POST(req: Request) {
         .slice(0, 50)
     : [];
 
+  // Range/finite-checked, not just typeof — this is a public, unauthenticated
+  // endpoint (now also reachable via the /hospitals/register form, worklist
+  // #35/#36), and `typeof x === 'number'` alone accepts NaN/Infinity (e.g.
+  // JSON's `1e400` parses to Infinity) and any out-of-range value, which
+  // would corrupt map rendering and radius_km distance filtering downstream.
+  // Mirrors the same check already used in PATCH /api/hospital/[id]/info.
+  const lat =
+    typeof body.latitude === 'number' && Number.isFinite(body.latitude) && body.latitude >= -90 && body.latitude <= 90
+      ? body.latitude
+      : null;
+  const lng =
+    typeof body.longitude === 'number' &&
+    Number.isFinite(body.longitude) &&
+    body.longitude >= -180 &&
+    body.longitude <= 180
+      ? body.longitude
+      : null;
+
   const { rows } = await query<{ id: string }>(
     `INSERT INTO hospitals
        (name, service_type, address, city, latitude, longitude, website,
@@ -142,8 +160,8 @@ export async function POST(req: Request) {
       serviceType,
       sanitizeText(body.address, 500),
       sanitizeText(body.city, 200),
-      typeof body.latitude === 'number' ? body.latitude : null,
-      typeof body.longitude === 'number' ? body.longitude : null,
+      lat,
+      lng,
       safeHttpUrl(body.website),
       sanitizeText(body.contact_phone, 100),
       sanitizeText(body.contact_email, 254),
