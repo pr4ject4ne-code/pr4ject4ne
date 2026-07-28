@@ -11,6 +11,8 @@ interface Body {
   name?: string;
   address?: string;
   city?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   website?: string;
   contact_phone?: string;
   contact_email?: string;
@@ -44,6 +46,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   if ('address' in body) push('address', sanitizeText(body.address, 500));
   if ('city' in body) push('city', sanitizeText(body.city, 200));
+  if ('latitude' in body) {
+    const lat = body.latitude;
+    push('latitude', typeof lat === 'number' && Number.isFinite(lat) && lat >= -90 && lat <= 90 ? lat : null);
+  }
+  if ('longitude' in body) {
+    const lng = body.longitude;
+    push(
+      'longitude',
+      typeof lng === 'number' && Number.isFinite(lng) && lng >= -180 && lng <= 180 ? lng : null,
+    );
+  }
   if ('website' in body) push('website', safeHttpUrl(body.website));
   if ('contact_phone' in body) push('contact_phone', sanitizeText(body.contact_phone, 100));
   if ('contact_email' in body) push('contact_email', sanitizeText(body.contact_email, 254));

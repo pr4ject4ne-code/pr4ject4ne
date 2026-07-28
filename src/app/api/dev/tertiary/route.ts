@@ -92,6 +92,16 @@ export async function POST(req: Request) {
       [email, passwordHash, body.hospital_id, dev.id],
     );
     const id = rows[0]!.id;
+    // This IS the "verification handover" (worklist #36): the schema's own
+    // definition of "verified" is `hospitals.account_id IS NOT NULL` (see
+    // migration 001's table comment), and `verified` is a redundant boolean
+    // mirror of that same fact — so creating a hospital's first tertiary
+    // account here is the one place that flips both. Without this, the
+    // concept was decorative: nothing anywhere ever set either column.
+    await query(`UPDATE hospitals SET account_id = $1, verified = TRUE WHERE id = $2`, [
+      id,
+      body.hospital_id,
+    ]);
     await logAudit({
       userId: dev.id,
       action: 'tertiary_account_change',

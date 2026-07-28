@@ -64,6 +64,26 @@ describe('POST /api/dev/tertiary', () => {
     expect(json.temp_password.length).toBeGreaterThan(10);
   });
 
+  it('marks the hospital verified (account_id + verified) when its first tertiary account is created — the actual "verification handover" (worklist #36)', async () => {
+    // Before this fix, nothing anywhere in the codebase ever set
+    // hospitals.account_id/verified — the schema's own definition of
+    // "verified" (migration 001) was decorative. This is the regression
+    // test for that gap.
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'secondary' });
+    mockQueryOne.mockResolvedValue({ id: HOSP });
+    mockQuery.mockResolvedValue({ rows: [{ id: USER }] });
+    const res = await POST(req({ email: 'staff@hosp.co', hospital_id: HOSP }));
+    expect(res.status).toBe(201);
+    const updateCall = mockQuery.mock.calls.find(
+      (call) => typeof call[0] === 'string' && call[0].includes('UPDATE hospitals'),
+    );
+    expect(updateCall).toBeDefined();
+    const [sql, values] = updateCall as [string, unknown[]];
+    expect(sql).toContain('account_id');
+    expect(sql).toContain('verified = TRUE');
+    expect(values).toEqual([USER, HOSP]);
+  });
+
   it('409 on a duplicate email', async () => {
     mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'secondary' });
     mockQueryOne.mockResolvedValue({ id: HOSP });

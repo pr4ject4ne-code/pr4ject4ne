@@ -125,6 +125,31 @@ describe('hospital data isolation', () => {
     expect(stored).toEqual([]);
   });
 
+  it('lets a hospital set well-formed latitude/longitude', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const res = await patchInfo(infoReq({ latitude: 6.45, longitude: 7.5 }, HOSP_A), {
+      params: Promise.resolve({ id: HOSP_A }),
+    });
+    expect(res.status).toBe(200);
+    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('latitude');
+    expect(sql).toContain('longitude');
+    expect(values).toContain(6.45);
+    expect(values).toContain(7.5);
+  });
+
+  it('drops out-of-range latitude/longitude to null instead of storing garbage', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const res = await patchInfo(infoReq({ latitude: 999, longitude: -999 }, HOSP_A), {
+      params: Promise.resolve({ id: HOSP_A }),
+    });
+    expect(res.status).toBe(200);
+    const [, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(values).toContain(null);
+    expect(values).not.toContain(999);
+    expect(values).not.toContain(-999);
+  });
+
   it('403 when staff of hospital A sets hospital B departments', async () => {
     setStaff({ userId: 'staffA', hospitalId: HOSP_A });
     const res = await patchInfo(

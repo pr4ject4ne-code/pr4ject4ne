@@ -44,7 +44,13 @@ export default function DevInstitutionsClient() {
   }, []);
 
   const loadHospitals = useCallback(async () => {
-    const res = await fetch('/api/hospitals?limit=200');
+    // Uses the DEV-only listing (not the public /api/hospitals, which only
+    // ever returns status='approved') so a just-approved-but-not-yet-verified
+    // hospital is selectable here right away — see worklist #36. Pending
+    // hospitals are deliberately excluded too: assigning a tertiary account
+    // to a hospital nobody has approved yet would grant it verified status
+    // while still bypassing moderation; approve it at /dev/hospitals first.
+    const res = await fetch('/api/dev/hospitals?status=approved&limit=200');
     if (res.ok) {
       const list = ((await res.json()).hospitals ?? []) as HospitalOption[];
       setHospitals(list);

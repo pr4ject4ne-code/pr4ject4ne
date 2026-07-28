@@ -11,6 +11,8 @@ import Stars from '@/components/Stars';
 import PhotoUpload from '@/components/PhotoUpload';
 import DoctorForm, { type DoctorFormValues } from '@/components/DoctorForm';
 import AnnouncementForm, { type AnnouncementFormValues } from '@/components/AnnouncementForm';
+import LocationPicker from '@/components/LocationPicker';
+import type { Coords } from '@/lib/geolocation';
 import type { Hospital, Doctor, Announcement, HospitalPhoto, HospitalDepartment } from '@/types';
 import styles from './HospitalDashboard.module.css';
 
@@ -258,6 +260,16 @@ function InfoTab({
   const [phone, setPhone] = useState(hospital.contact_phone ?? '');
   const [email, setEmail] = useState(hospital.contact_email ?? '');
   const [showDoctors, setShowDoctors] = useState(hospital.show_doctors);
+  const [lat, setLat] = useState(hospital.latitude != null ? String(hospital.latitude) : '');
+  const [lng, setLng] = useState(hospital.longitude != null ? String(hospital.longitude) : '');
+
+  const parsedLat = lat.trim() === '' ? null : Number(lat);
+  const parsedLng = lng.trim() === '' ? null : Number(lng);
+
+  function handlePin(coords: Coords) {
+    setLat(String(coords.lat));
+    setLng(String(coords.lng));
+  }
 
   return (
     <Card variant="plain" as="section">
@@ -272,6 +284,8 @@ function InfoTab({
             contact_phone: phone,
             contact_email: email,
             show_doctors: showDoctors,
+            latitude: Number.isFinite(parsedLat) ? parsedLat : null,
+            longitude: Number.isFinite(parsedLng) ? parsedLng : null,
           });
         }}
       >
@@ -281,6 +295,32 @@ function InfoTab({
         <Input label="Website" value={website} onChange={(e) => setWebsite(e.target.value)} />
         <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
         <Input label="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <div>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
+            Location — click or drag the pin, or type exact coordinates
+          </span>
+          <LocationPicker
+            lat={Number.isFinite(parsedLat) ? (parsedLat as number) : null}
+            lng={Number.isFinite(parsedLng) ? (parsedLng as number) : null}
+            onChange={handlePin}
+          />
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <Input
+              label="Latitude"
+              type="number"
+              step="any"
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+            />
+            <Input
+              label="Longitude"
+              type="number"
+              step="any"
+              value={lng}
+              onChange={(e) => setLng(e.target.value)}
+            />
+          </div>
+        </div>
         <label className={styles.checkboxRow}>
           <input
             type="checkbox"
