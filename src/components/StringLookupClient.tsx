@@ -8,6 +8,7 @@ import Input from './Input';
 import Button from './Button';
 import { useSession } from '@/lib/useSession';
 import { isValidIhnCode } from '@/lib/ihn-code-validate';
+import { autoFormatIhnInput } from '@/lib/ihn-code-format';
 import { safeHttpUrl } from '@/lib/sanitize';
 import type { ProfileLayer, BiodataLayer } from '@/types';
 import type { DoctorReport } from '@/lib/doctor-report';
@@ -41,7 +42,7 @@ interface LookupResponse {
 export default function StringLookupClient() {
   const { loading: sessionLoading, user } = useSession();
   const searchParams = useSearchParams();
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState('IHN-');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<LookupResponse | null>(null);
@@ -51,7 +52,7 @@ export default function StringLookupClient() {
   // ?ihn=<code> pre-filled, so scanning it lands here ready to search.
   useEffect(() => {
     const prefill = searchParams.get('ihn');
-    if (prefill) setCode(prefill.toUpperCase());
+    if (prefill) setCode(autoFormatIhnInput(prefill));
   }, [searchParams]);
 
   async function onSubmit(e: React.FormEvent) {
@@ -119,7 +120,7 @@ export default function StringLookupClient() {
             <Input
               label="IHN code"
               value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              onChange={(e) => setCode(autoFormatIhnInput(e.target.value))}
               placeholder="IHN-XXXX-XXXX-XXXX"
               autoComplete="off"
               required

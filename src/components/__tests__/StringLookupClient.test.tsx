@@ -37,6 +37,24 @@ describe('StringLookupClient', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it('auto-formats a lowercase, dash-free typed value before calling the API (founder ask, not a numbered worklist item)', async () => {
+    mockUseSession.mockReturnValue({ loading: false, user: { id: 'u1' } });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ available: false, profile_layer: {}, biodata_layer: {} }),
+    });
+    render(<StringLookupClient />);
+    const input = screen.getByLabelText('IHN code');
+    fireEvent.change(input, { target: { value: 'ihnabcdefghjkmn' } });
+    expect(input).toHaveValue('IHN-ABCD-EFGH-JKMN');
+    fireEvent.click(screen.getByText('Look up'));
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining(encodeURIComponent('IHN-ABCD-EFGH-JKMN')),
+      ),
+    );
+  });
+
   it('shows "no shareable record" when the lookup returns available:false', async () => {
     mockUseSession.mockReturnValue({ loading: false, user: { id: 'u1' } });
     (global.fetch as jest.Mock).mockResolvedValue({
