@@ -12,6 +12,7 @@ import PhotoUpload from '@/components/PhotoUpload';
 import DoctorForm, { type DoctorFormValues } from '@/components/DoctorForm';
 import AnnouncementForm, { type AnnouncementFormValues } from '@/components/AnnouncementForm';
 import LocationPicker from '@/components/LocationPicker';
+import { authFetch } from '@/lib/authFetch';
 import type { Coords } from '@/lib/geolocation';
 import type { Hospital, Doctor, Announcement, HospitalPhoto, HospitalDepartment } from '@/types';
 import styles from './HospitalDashboard.module.css';
@@ -31,6 +32,7 @@ interface SessionData {
   hospital: Hospital;
   doctors: Doctor[];
   announcements: Announcement[];
+  staff_email?: string;
 }
 
 export default function HospitalDashboardClient() {
@@ -45,6 +47,9 @@ export default function HospitalDashboardClient() {
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState(false);
 
+  // Initial page load's own session check — already correctly redirects to
+  // /login on a 401, so this one stays a plain fetch (not authFetch, which is
+  // for the ACTION calls below that fire after the page has already loaded).
   const load = useCallback(async () => {
     const res = await fetch('/api/hospital/session');
     if (res.status === 401) {
@@ -68,11 +73,16 @@ export default function HospitalDashboardClient() {
     e.preventDefault();
     setPwError(null);
     setPwSuccess(false);
-    const res = await fetch('/api/account/password', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
-    });
+    const res = await authFetch(
+      '/api/account/password',
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      },
+      { onUnauthenticated: setPwError },
+    );
+    if (res.status === 401) return;
     const respData = await res.json();
     if (!res.ok) {
       setPwError(respData.error ?? 'Could not change password.');
@@ -95,7 +105,7 @@ export default function HospitalDashboardClient() {
   const hid = hospital.id;
 
   return (
-    <HospitalShell title={hospital.name}>
+    <HospitalShell title={hospital.name} staffEmail={data.staff_email}>
       <nav className={styles.tabs} aria-label="Sections">
         {(
           [
@@ -157,12 +167,17 @@ export default function HospitalDashboardClient() {
           saving={saving}
           onSave={async (patch) => {
             setSaving(true);
-            const res = await fetch(`/api/hospital/${hid}/info`, {
-              method: 'PATCH',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify(patch),
-            });
+            const res = await authFetch(
+              `/api/hospital/${hid}/info`,
+              {
+                method: 'PATCH',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify(patch),
+              },
+              { onUnauthenticated: flash },
+            );
             setSaving(false);
+            if (res.status === 401) return;
             if (res.ok) {
               flash('Info saved.');
               load();
@@ -177,12 +192,17 @@ export default function HospitalDashboardClient() {
           saving={saving}
           onSave={async (photos: HospitalPhoto[]) => {
             setSaving(true);
-            const res = await fetch(`/api/hospital/${hid}/media`, {
-              method: 'PUT',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ photos }),
-            });
+            const res = await authFetch(
+              `/api/hospital/${hid}/media`,
+              {
+                method: 'PUT',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ photos }),
+              },
+              { onUnauthenticated: flash },
+            );
             setSaving(false);
+            if (res.status === 401) return;
             if (res.ok) {
               flash('Photos saved.');
               load();
@@ -197,12 +217,17 @@ export default function HospitalDashboardClient() {
           saving={saving}
           onSave={async (hours) => {
             setSaving(true);
-            const res = await fetch(`/api/hospital/${hid}/hours`, {
-              method: 'PATCH',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ hours }),
-            });
+            const res = await authFetch(
+              `/api/hospital/${hid}/hours`,
+              {
+                method: 'PATCH',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ hours }),
+              },
+              { onUnauthenticated: flash },
+            );
             setSaving(false);
+            if (res.status === 401) return;
             if (res.ok) {
               flash('Hours saved.');
               load();
@@ -217,12 +242,17 @@ export default function HospitalDashboardClient() {
           saving={saving}
           onSave={async (departments) => {
             setSaving(true);
-            const res = await fetch(`/api/hospital/${hid}/info`, {
-              method: 'PATCH',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ departments }),
-            });
+            const res = await authFetch(
+              `/api/hospital/${hid}/info`,
+              {
+                method: 'PATCH',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ departments }),
+              },
+              { onUnauthenticated: flash },
+            );
             setSaving(false);
+            if (res.status === 401) return;
             if (res.ok) {
               flash('Departments saved.');
               load();
@@ -507,12 +537,17 @@ function AnnouncementsTab({
 
   async function create(values: AnnouncementFormValues) {
     setSaving(true);
-    const res = await fetch(`/api/hospital/${hid}/announcements`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(values),
-    });
+    const res = await authFetch(
+      `/api/hospital/${hid}/announcements`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(values),
+      },
+      { onUnauthenticated: flash },
+    );
     setSaving(false);
+    if (res.status === 401) return;
     if (res.ok) {
       flash('Announcement added.');
       onChanged();
@@ -520,8 +555,13 @@ function AnnouncementsTab({
   }
 
   async function remove(a: Announcement) {
-    await fetch(`/api/hospital/${hid}/announcements?announcement_id=${a.id}`, { method: 'DELETE' });
+    const res = await authFetch(
+      `/api/hospital/${hid}/announcements?announcement_id=${a.id}`,
+      { method: 'DELETE' },
+      { onUnauthenticated: flash },
+    );
     setConfirmDelete(null);
+    if (res.status === 401) return;
     flash('Announcement deleted.');
     onChanged();
   }
@@ -585,12 +625,17 @@ function PersonnelTab({
 
   async function add(values: DoctorFormValues) {
     setSaving(true);
-    const res = await fetch(`/api/hospital/${hid}/personnel`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(values),
-    });
+    const res = await authFetch(
+      `/api/hospital/${hid}/personnel`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(values),
+      },
+      { onUnauthenticated: flash },
+    );
     setSaving(false);
+    if (res.status === 401) return;
     if (res.ok) {
       flash('Doctor added.');
       onChanged();
@@ -598,8 +643,13 @@ function PersonnelTab({
   }
 
   async function remove(d: Doctor) {
-    await fetch(`/api/hospital/${hid}/personnel?doctor_id=${d.id}`, { method: 'DELETE' });
+    const res = await authFetch(
+      `/api/hospital/${hid}/personnel?doctor_id=${d.id}`,
+      { method: 'DELETE' },
+      { onUnauthenticated: flash },
+    );
     setConfirmDelete(null);
+    if (res.status === 401) return;
     flash('Doctor removed.');
     onChanged();
   }

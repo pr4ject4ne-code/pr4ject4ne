@@ -9,6 +9,7 @@ import Input from '@/components/Input';
 import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
 import LocationPicker from '@/components/LocationPicker';
+import { authFetch } from '@/lib/authFetch';
 import type { Coords } from '@/lib/geolocation';
 import type { Hospital, ServiceType } from '@/types';
 import styles from '../primary/DevPrimary.module.css';
@@ -40,7 +41,10 @@ export default function DevHospitalsClient() {
   const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
 
   const loadPending = useCallback(async () => {
-    const res = await fetch('/api/dev/hospitals?status=pending&limit=200');
+    const res = await authFetch('/api/dev/hospitals?status=pending&limit=200', undefined, {
+      onUnauthenticated: setError,
+    });
+    if (res.status === 401) return;
     if (res.ok) setPending((await res.json()).hospitals ?? []);
   }, []);
 
@@ -55,11 +59,16 @@ export default function DevHospitalsClient() {
 
   async function moderate(id: string, action: 'approve' | 'reject') {
     setError(null);
-    const res = await fetch('/api/dev/hospitals', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, action }),
-    });
+    const res = await authFetch(
+      '/api/dev/hospitals',
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      },
+      { onUnauthenticated: setError },
+    );
+    if (res.status === 401) return;
     const data = await res.json();
     if (!res.ok) {
       setError(data.error ?? 'Could not update hospital.');
@@ -79,7 +88,7 @@ export default function DevHospitalsClient() {
   }
 
   return (
-    <DevShell title="Hospitals">
+    <DevShell title="Hospitals" dev={dev}>
       {notice && (
         <p className={styles.temp} role="status" style={{ marginBottom: '1rem' }}>
           {notice}
@@ -163,25 +172,30 @@ function CreateHospitalForm({ onCreated }: { onCreated: (id: string) => void }) 
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const res = await fetch('/api/dev/hospitals', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        service_type: serviceType,
-        address,
-        city,
-        contact_phone: phone,
-        contact_email: email,
-        website,
-        latitude: Number.isFinite(parsedLat) ? parsedLat : undefined,
-        longitude: Number.isFinite(parsedLng) ? parsedLng : undefined,
-        is_24_hour: is24Hour,
-        is_private: isPrivate,
-      }),
-    });
-    const data = await res.json();
+    const res = await authFetch(
+      '/api/dev/hospitals',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          service_type: serviceType,
+          address,
+          city,
+          contact_phone: phone,
+          contact_email: email,
+          website,
+          latitude: Number.isFinite(parsedLat) ? parsedLat : undefined,
+          longitude: Number.isFinite(parsedLng) ? parsedLng : undefined,
+          is_24_hour: is24Hour,
+          is_private: isPrivate,
+        }),
+      },
+      { onUnauthenticated: setError },
+    );
     setSubmitting(false);
+    if (res.status === 401) return;
+    const data = await res.json();
     if (!res.ok) {
       setError(data.error ?? 'Could not create hospital.');
       return;

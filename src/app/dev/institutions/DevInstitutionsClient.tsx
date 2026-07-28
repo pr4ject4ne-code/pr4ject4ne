@@ -7,6 +7,7 @@ import Card from '@/components/Card';
 import Input from '@/components/Input';
 import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
+import { authFetch } from '@/lib/authFetch';
 import styles from '../primary/DevPrimary.module.css';
 
 interface TertiaryAccount {
@@ -39,7 +40,8 @@ export default function DevInstitutionsClient() {
   const [error, setError] = useState<string | null>(null);
 
   const loadAccounts = useCallback(async () => {
-    const res = await fetch('/api/dev/tertiary?limit=200');
+    const res = await authFetch('/api/dev/tertiary?limit=200', undefined, { onUnauthenticated: setError });
+    if (res.status === 401) return;
     if (res.ok) setAccounts((await res.json()).accounts ?? []);
   }, []);
 
@@ -50,7 +52,10 @@ export default function DevInstitutionsClient() {
     // hospitals are deliberately excluded too: assigning a tertiary account
     // to a hospital nobody has approved yet would grant it verified status
     // while still bypassing moderation; approve it at /dev/hospitals first.
-    const res = await fetch('/api/dev/hospitals?status=approved&limit=200');
+    const res = await authFetch('/api/dev/hospitals?status=approved&limit=200', undefined, {
+      onUnauthenticated: setError,
+    });
+    if (res.status === 401) return;
     if (res.ok) {
       const list = ((await res.json()).hospitals ?? []) as HospitalOption[];
       setHospitals(list);
@@ -70,11 +75,16 @@ export default function DevInstitutionsClient() {
     e.preventDefault();
     setError(null);
     setTempPassword(null);
-    const res = await fetch('/api/dev/tertiary', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: newEmail, hospital_id: newHospitalId }),
-    });
+    const res = await authFetch(
+      '/api/dev/tertiary',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: newEmail, hospital_id: newHospitalId }),
+      },
+      { onUnauthenticated: setError },
+    );
+    if (res.status === 401) return;
     const data = await res.json();
     if (!res.ok) {
       setError(data.error ?? 'Could not create account.');
@@ -86,11 +96,17 @@ export default function DevInstitutionsClient() {
   }
 
   async function accountAction(id: string, action: 'revoke' | 'reactivate' | 'reset_password') {
-    const res = await fetch('/api/dev/tertiary', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, action }),
-    });
+    setError(null);
+    const res = await authFetch(
+      '/api/dev/tertiary',
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      },
+      { onUnauthenticated: setError },
+    );
+    if (res.status === 401) return;
     const data = await res.json();
     if (res.ok && data.temp_password) setTempPassword(data.temp_password);
     loadAccounts();
@@ -105,7 +121,7 @@ export default function DevInstitutionsClient() {
   }
 
   return (
-    <DevShell title="Institution accounts">
+    <DevShell title="Institution accounts" dev={dev}>
       <section className={styles.section}>
         <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>
           Provision a <strong>tertiary</strong> (institution) account. The staff member

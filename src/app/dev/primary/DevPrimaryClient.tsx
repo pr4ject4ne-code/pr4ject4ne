@@ -8,6 +8,7 @@ import Card from '@/components/Card';
 import Input from '@/components/Input';
 import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
+import { authFetch } from '@/lib/authFetch';
 import styles from './DevPrimary.module.css';
 
 type AccountAction = 'suspend' | 'reactivate' | 'revoke' | 'promote' | 'reset_password';
@@ -44,12 +45,14 @@ export default function DevPrimaryClient() {
   const [pwSuccess, setPwSuccess] = useState(false);
 
   const loadAccounts = useCallback(async () => {
-    const res = await fetch('/api/dev/accounts');
+    const res = await authFetch('/api/dev/accounts', undefined, { onUnauthenticated: setAccountError });
+    if (res.status === 401) return;
     if (res.ok) setAccounts((await res.json()).accounts ?? []);
   }, []);
 
   const loadLogs = useCallback(async () => {
-    const res = await fetch('/api/dev/audit-logs?limit=50');
+    const res = await authFetch('/api/dev/audit-logs?limit=50', undefined, { onUnauthenticated: setAccountError });
+    if (res.status === 401) return;
     if (res.ok) setLogs((await res.json()).logs ?? []);
   }, []);
 
@@ -64,11 +67,16 @@ export default function DevPrimaryClient() {
     e.preventDefault();
     setAccountError(null);
     setTempPassword(null);
-    const res = await fetch('/api/dev/accounts', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: newEmail, access_level: newLevel }),
-    });
+    const res = await authFetch(
+      '/api/dev/accounts',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: newEmail, access_level: newLevel }),
+      },
+      { onUnauthenticated: setAccountError },
+    );
+    if (res.status === 401) return;
     const data = await res.json();
     if (!res.ok) {
       setAccountError(data.error ?? 'Could not create account.');
@@ -83,11 +91,16 @@ export default function DevPrimaryClient() {
     e.preventDefault();
     setPwError(null);
     setPwSuccess(false);
-    const res = await fetch('/api/account/password', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
-    });
+    const res = await authFetch(
+      '/api/account/password',
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      },
+      { onUnauthenticated: setPwError },
+    );
+    if (res.status === 401) return;
     const data = await res.json();
     if (!res.ok) {
       setPwError(data.error ?? 'Could not change password.');
@@ -102,11 +115,17 @@ export default function DevPrimaryClient() {
     if (action === 'revoke' && !window.confirm('Permanently delete this developer account? This cannot be undone.')) {
       return;
     }
-    const res = await fetch('/api/dev/accounts', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, action, ...(level ? { level } : {}) }),
-    });
+    setAccountError(null);
+    const res = await authFetch(
+      '/api/dev/accounts',
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, action, ...(level ? { level } : {}) }),
+      },
+      { onUnauthenticated: setAccountError },
+    );
+    if (res.status === 401) return;
     const data = await res.json();
     if (res.ok && data.temp_password) setTempPassword(data.temp_password);
     loadAccounts();
@@ -122,14 +141,14 @@ export default function DevPrimaryClient() {
 
   if (!dev?.is_primary) {
     return (
-      <DevShell title="Primary Dev Admin">
+      <DevShell title="Primary Dev Admin" dev={dev}>
         <p>You do not have admin access.</p>
       </DevShell>
     );
   }
 
   return (
-    <DevShell title="Primary Dev Admin">
+    <DevShell title="Primary Dev Admin" dev={dev}>
       <section className={styles.section}>
         <h2>My account</h2>
         <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>

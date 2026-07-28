@@ -10,9 +10,18 @@
   background: var(--color-ink);
   color: var(--color-white);
 }
+.brandGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
 .brand {
   font-weight: 700;
   font-size: 0.95rem;
+}
+.identity {
+  font-size: 0.78rem;
+  color: var(--color-muted-light, rgba(255, 255, 255, 0.75));
 }
 .nav {
   display: flex;

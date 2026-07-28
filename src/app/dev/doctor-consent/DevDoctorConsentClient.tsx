@@ -7,6 +7,7 @@ import Card from '@/components/Card';
 import Input from '@/components/Input';
 import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
+import { authFetch } from '@/lib/authFetch';
 import type { ConsentStatus } from '@/types';
 import styles from '../primary/DevPrimary.module.css';
 
@@ -69,14 +70,22 @@ export default function DevDoctorConsentClient() {
   const [message, setMessage] = useState<string | null>(null);
 
   const loadPatients = useCallback(async (q: string) => {
-    const res = await fetch(`/api/dev/doctor-consent?resource=patients&q=${encodeURIComponent(q)}&limit=50`);
+    const res = await authFetch(
+      `/api/dev/doctor-consent?resource=patients&q=${encodeURIComponent(q)}&limit=50`,
+      undefined,
+      { onUnauthenticated: setError },
+    );
+    if (res.status === 401) return;
     if (res.ok) setPatients((await res.json()).patients ?? []);
   }, []);
 
   const loadDoctors = useCallback(async (q: string, patientUserId: string) => {
-    const res = await fetch(
+    const res = await authFetch(
       `/api/dev/doctor-consent?q=${encodeURIComponent(q)}&patient_user_id=${encodeURIComponent(patientUserId)}&limit=50`,
+      undefined,
+      { onUnauthenticated: setError },
     );
+    if (res.status === 401) return;
     if (res.ok) setDoctors((await res.json()).doctors ?? []);
   }, []);
 
@@ -122,17 +131,22 @@ export default function DevDoctorConsentClient() {
       setError('Select a doctor first.');
       return;
     }
-    const res = await fetch('/api/dev/doctor-consent', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        doctor_id: selectedDoctor,
-        patient_user_id: selectedPatient.id,
-        consent_status: status,
-        contacted_via: contactedVia,
-        denial_reason: status === 'denied' ? denialReason : undefined,
-      }),
-    });
+    const res = await authFetch(
+      '/api/dev/doctor-consent',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          doctor_id: selectedDoctor,
+          patient_user_id: selectedPatient.id,
+          consent_status: status,
+          contacted_via: contactedVia,
+          denial_reason: status === 'denied' ? denialReason : undefined,
+        }),
+      },
+      { onUnauthenticated: setError },
+    );
+    if (res.status === 401) return;
     const data = await res.json();
     if (!res.ok) {
       setError(data.error ?? 'Could not record consent.');
@@ -154,14 +168,14 @@ export default function DevDoctorConsentClient() {
 
   if (!dev?.is_primary) {
     return (
-      <DevShell title="Doctor consent">
+      <DevShell title="Doctor consent" dev={dev}>
         <p>You do not have admin access.</p>
       </DevShell>
     );
   }
 
   return (
-    <DevShell title="Doctor consent">
+    <DevShell title="Doctor consent" dev={dev}>
       <section className={styles.section}>
         <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>
           Record the outcome of contacting a doctor <strong>out-of-band</strong> (phone/email,

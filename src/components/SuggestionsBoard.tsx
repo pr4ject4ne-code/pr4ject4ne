@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { authFetch } from '@/lib/authFetch';
 import type { Suggestion, SuggestionStatus } from '@/types';
 import styles from './SuggestionsBoard.module.css';
 
@@ -12,11 +13,16 @@ export default function SuggestionsBoard() {
   const [rows, setRows] = useState<SuggestionRow[]>([]);
   const [filter, setFilter] = useState<SuggestionStatus | ''>('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
     const qs = filter ? `?status=${filter}` : '';
-    const res = await fetch(`/api/dev/suggestions${qs}`);
+    const res = await authFetch(`/api/dev/suggestions${qs}`, undefined, { onUnauthenticated: setError });
+    if (res.status === 401) {
+      setLoading(false);
+      return;
+    }
     const data = res.ok ? await res.json() : { suggestions: [] };
     setRows(data.suggestions ?? []);
     setLoading(false);
@@ -28,16 +34,22 @@ export default function SuggestionsBoard() {
   }, [filter]);
 
   async function updateStatus(id: string, status: SuggestionStatus) {
-    await fetch('/api/dev/suggestions', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, status }),
-    });
+    const res = await authFetch(
+      '/api/dev/suggestions',
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      },
+      { onUnauthenticated: setError },
+    );
+    if (res.status === 401) return;
     load();
   }
 
   return (
     <div>
+      {error && <p className={styles.empty} role="status">{error}</p>}
       <div className={styles.filters}>
         <label>
           Filter:{' '}

@@ -11,6 +11,7 @@ import BioDataForm from '@/components/BioDataForm';
 import IHNCodeDisplay from '@/components/IHNCodeDisplay';
 import SharingPrefsPanel from '@/components/SharingPrefsPanel';
 import { DEFAULT_SHARING_PREFS } from '@/lib/sharing-prefs';
+import { authFetch } from '@/lib/authFetch';
 import type { ProfileLayer, BiodataLayer, SharingPrefs } from '@/types';
 import styles from './Dashboard.module.css';
 
@@ -42,6 +43,9 @@ export default function DashboardClient() {
   const [showIhnNotice, setShowIhnNotice] = useState(false);
   const [sharingSaving, setSharingSaving] = useState(false);
 
+  // Initial page load's own session check — already correctly redirects to
+  // /login on a 401, so this one stays a plain fetch (not authFetch, which is
+  // for the ACTION calls below that fire after the page has already loaded).
   useEffect(() => {
     let active = true;
     fetch('/api/biodata/me')
@@ -88,11 +92,16 @@ export default function DashboardClient() {
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch('/api/biodata/me', {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ profile_layer: profile, biodata_layer: biodata }),
-      });
+      const res = await authFetch(
+        '/api/biodata/me',
+        {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ profile_layer: profile, biodata_layer: biodata }),
+        },
+        { onUnauthenticated: setSaveError },
+      );
+      if (res.status === 401) return;
       const body = await res.json();
       if (!res.ok) {
         setSaveError(body.error ?? 'Could not save.');
@@ -114,11 +123,16 @@ export default function DashboardClient() {
   async function handleSaveSharingPrefs(next: SharingPrefs) {
     setSharingSaving(true);
     try {
-      const res = await fetch('/api/biodata/me', {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sharing_prefs: next }),
-      });
+      const res = await authFetch(
+        '/api/biodata/me',
+        {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sharing_prefs: next }),
+        },
+        { onUnauthenticated: setSaveError },
+      );
+      if (res.status === 401) return;
       const body = await res.json();
       if (res.ok) {
         setData((prev) => (prev ? { ...prev, sharing_prefs: body.sharing_prefs } : prev));
@@ -137,11 +151,16 @@ export default function DashboardClient() {
     e.preventDefault();
     setPwError(null);
     setPwSuccess(false);
-    const res = await fetch('/api/account/password', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
-    });
+    const res = await authFetch(
+      '/api/account/password',
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      },
+      { onUnauthenticated: setPwError },
+    );
+    if (res.status === 401) return;
     const data = await res.json();
     if (!res.ok) {
       setPwError(data.error ?? 'Could not change password.');
@@ -171,6 +190,12 @@ export default function DashboardClient() {
             Log out
           </Button>
         </div>
+
+        {data && (
+          <p className={styles.saved} style={{ marginTop: '-0.5rem' }}>
+            Signed in as {data.profile_layer.email ?? '—'}
+          </p>
+        )}
 
         {data && data.email_verified === false && (
           <Card variant="plain" className={styles.verifyBanner} role="status">

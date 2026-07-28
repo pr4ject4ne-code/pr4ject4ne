@@ -6,6 +6,7 @@ import { useDevGuard } from '../useDevGuard';
 import FirstAidForm, { type FirstAidFormValues } from '@/components/FirstAidForm';
 import Button from '@/components/Button';
 import Modal from '@/components/Modal';
+import { authFetch } from '@/lib/authFetch';
 import type { FirstAidEntry } from '@/types';
 import styles from './DevFirstAid.module.css';
 
@@ -18,7 +19,7 @@ export default function DevFirstAidClient() {
   const [confirmDelete, setConfirmDelete] = useState<FirstAidEntry | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/dev/first-aid');
+    const res = await authFetch('/api/dev/first-aid', undefined, { onUnauthenticated: setError });
     if (!res.ok) return;
     const data = await res.json();
     setEntries(data.entries ?? []);
@@ -36,11 +37,16 @@ export default function DevFirstAidClient() {
       const url = isNew
         ? '/api/first-aid/entries/create'
         : `/api/first-aid/entries/${(editing as FirstAidEntry).id}`;
-      const res = await fetch(url, {
-        method: isNew ? 'POST' : 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(values),
-      });
+      const res = await authFetch(
+        url,
+        {
+          method: isNew ? 'POST' : 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(values),
+        },
+        { onUnauthenticated: setError },
+      );
+      if (res.status === 401) return;
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? 'Save failed.');
@@ -56,7 +62,7 @@ export default function DevFirstAidClient() {
   }
 
   async function doDelete(entry: FirstAidEntry) {
-    await fetch(`/api/first-aid/entries/${entry.id}`, { method: 'DELETE' });
+    await authFetch(`/api/first-aid/entries/${entry.id}`, { method: 'DELETE' }, { onUnauthenticated: setError });
     setConfirmDelete(null);
     load();
   }
@@ -71,7 +77,7 @@ export default function DevFirstAidClient() {
 
   if (editing) {
     return (
-      <DevShell title={editing === 'new' ? 'New entry' : 'Edit entry'}>
+      <DevShell title={editing === 'new' ? 'New entry' : 'Edit entry'} dev={dev}>
         <Button variant="ghost" onClick={() => setEditing(null)}>
           ← Back to list
         </Button>
@@ -88,7 +94,7 @@ export default function DevFirstAidClient() {
   }
 
   return (
-    <DevShell title="First Aid entries">
+    <DevShell title="First Aid entries" dev={dev}>
       <div className={styles.top}>
         <Button onClick={() => setEditing('new')}>New entry</Button>
       </div>

@@ -17,7 +17,7 @@ export default function DevDashboardClient() {
   }
 
   return (
-    <DevShell title="Developer Dashboard">
+    <DevShell title="Developer Dashboard" dev={dev}>
       <p style={{ color: 'var(--color-muted)' }}>
         Signed in as {dev?.email} ({dev?.access_level}).
       </p>

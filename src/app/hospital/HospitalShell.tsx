@@ -11,10 +11,14 @@ export default function HospitalShell({
   children,
   title,
   showLogout = true,
+  staffEmail,
 }: {
   children: React.ReactNode;
   title: string;
   showLogout?: boolean;
+  /** Currently signed-in hospital staff email, if known — shown next to the
+   * brand so it's always visible which account is authenticated. */
+  staffEmail?: string | null;
 }) {
   const router = useRouter();
 
@@ -26,7 +30,10 @@ export default function HospitalShell({
   return (
     <div className={styles.shell}>
       <header className={styles.bar}>
-        <span className={styles.brand}>Racoon Eye · Hospital Portal</span>
+        <div className={styles.brandGroup}>
+          <span className={styles.brand}>Racoon Eye · Hospital Portal</span>
+          {staffEmail && <span className={styles.identity}>Signed in as {staffEmail}</span>}
+        </div>
         {showLogout && (
           <button type="button" onClick={logout} className={styles.logout}>
             Log out
