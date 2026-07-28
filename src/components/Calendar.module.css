@@ -40,6 +40,7 @@
   aspect-ratio: 1;
 }
 .day {
+  position: relative;
   aspect-ratio: 1;
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -57,4 +58,87 @@
 .today {
   font-weight: 700;
   border-color: var(--color-blue);
+}
+
+/* Reminder marker dot, shown on any day that has at least one reminder. */
+.marker {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-amethyst);
+}
+
+.muted {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.dayPanel {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+.dayPanelTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+.reminderList {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.reminderItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-white);
+}
+.reminderBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.reminderTime {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-amethyst);
+  text-transform: uppercase;
+}
+.reminderTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  word-break: break-word;
+}
+.reminderNote {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  word-break: break-word;
+}
+.removeBtn {
+  flex-shrink: 0;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+}
+.reminderForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.formError {
+  color: var(--color-red);
+  font-size: 0.82rem;
+  margin: 0;
 }
