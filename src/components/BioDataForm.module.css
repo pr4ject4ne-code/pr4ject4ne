@@ -138,3 +138,55 @@
   align-items: center;
   margin-bottom: 0.9rem;
 }
+
+/* "Why does this matter?" collapsibles (BMI / genotype / blood group) — same
+   pattern and glass tokens as IHNCodeDisplay.module.css, duplicated here
+   since CSS module classes are file-scoped. */
+.why {
+  margin: 0.4rem 0 1rem;
+}
+.whySummary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-amethyst-dark);
+  padding: 0.1rem 0;
+}
+.whySummary::-webkit-details-marker {
+  display: none;
+}
+.whySummary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 0.4rem;
+  transition: transform 0.15s ease;
+}
+.why[open] .whySummary::before {
+  transform: rotate(90deg);
+}
+.whyBody {
+  margin-top: 0.6rem;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 0.85rem 1rem;
+  font-size: 0.85rem;
+  color: var(--color-ink);
+}
+.whyBody p {
+  margin: 0 0 0.5rem;
+}
+.whyBody p:last-child {
+  margin-bottom: 0;
+}
+.whyList {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}

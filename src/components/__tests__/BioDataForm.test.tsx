@@ -214,4 +214,21 @@ describe('BioDataForm', () => {
       cause: 'Family history',
     });
   });
+
+  it('shows the BMI formula and reveals the ranges explainer on click', () => {
+    render(<BioDataForm initialProfile={{}} initialBiodata={{}} onSave={jest.fn()} />);
+    expect(screen.getByText(/BMI = weight \(kg\) ÷ height \(m\)²/)).toBeInTheDocument();
+    const summary = screen.getByText('What do BMI ranges mean?');
+    expect(screen.queryByText(/Below 18.5 — Underweight/)).not.toBeVisible();
+    fireEvent.click(summary);
+    expect(screen.getByText(/Below 18.5 — Underweight/)).toBeVisible();
+  });
+
+  it('reveals the genotype/blood group explainer on click', () => {
+    render(<BioDataForm initialProfile={{}} initialBiodata={{}} onSave={jest.fn()} />);
+    const summary = screen.getByText('What are genotype and blood group, and why do they matter?');
+    expect(screen.queryByText(/haemoglobin genes/)).not.toBeVisible();
+    fireEvent.click(summary);
+    expect(screen.getByText(/haemoglobin genes/)).toBeVisible();
+  });
 });

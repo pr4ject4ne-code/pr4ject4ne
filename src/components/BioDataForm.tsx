@@ -146,6 +146,17 @@ export default function BioDataForm({
     return undefined;
   }, [biodata.height_cm, biodata.weight_kg]);
 
+  // Plain-language BMI category, shown alongside the formula so the number
+  // means something to someone reading it for the first time. Standard WHO
+  // adult cutoffs — display only, not medical advice.
+  const bmiCategory = useMemo(() => {
+    if (typeof bmi !== 'number') return undefined;
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi < 25) return 'Normal range';
+    if (bmi < 30) return 'Overweight';
+    return 'Obese';
+  }, [bmi]);
+
   function setP<K extends keyof ProfileLayer>(key: K, value: ProfileLayer[K]) {
     setProfile((p) => ({ ...p, [key]: value }));
   }
@@ -322,6 +333,11 @@ export default function BioDataForm({
         </div>
 
         <h3 className={styles.subheading}>Anthropometric measurements</h3>
+        <p className={styles.sub}>
+          All measurements are in centimetres (cm) and kilograms (kg). Waist: measured at the
+          narrowest point, usually just above the navel. Chest: measured around the fullest part,
+          under the arms. Hip: measured around the widest point of the hips/buttocks.
+        </p>
         <div className={styles.grid}>
           <Input
             label="Height (cm)"
@@ -355,6 +371,31 @@ export default function BioDataForm({
           />
           <Input label="BMI (calculated)" value={bmi ?? ''} readOnly disabled />
         </div>
+        <p className={styles.doctorAid}>
+          BMI = weight (kg) ÷ height (m)². Calculated automatically once height and weight are
+          filled in.
+          {bmiCategory ? (
+            <>
+              {' '}
+              Your current value ({bmi}) falls in the <strong>{bmiCategory}</strong> range.
+            </>
+          ) : null}
+        </p>
+        <details className={styles.why}>
+          <summary className={styles.whySummary}>What do BMI ranges mean?</summary>
+          <div className={styles.whyBody}>
+            <p>
+              BMI is a simple screening number, not a diagnosis — it doesn&apos;t account for
+              muscle mass, frame size, or where fat is carried. The commonly used adult ranges are:
+            </p>
+            <ul className={styles.whyList}>
+              <li>Below 18.5 — Underweight</li>
+              <li>18.5–24.9 — Normal range</li>
+              <li>25–29.9 — Overweight</li>
+              <li>30 and above — Obese</li>
+            </ul>
+          </div>
+        </details>
 
         <h3 className={styles.subheading}>Recommended (from official documents)</h3>
         <div className={styles.grid}>
@@ -383,6 +424,23 @@ export default function BioDataForm({
             onChange={(e) => setB('health_preferences', e.target.value)}
           />
         </div>
+        <details className={styles.why}>
+          <summary className={styles.whySummary}>What are genotype and blood group, and why do they matter?</summary>
+          <div className={styles.whyBody}>
+            <p>
+              <strong>Genotype</strong> (AA, AS, AC, SS, SC) describes which haemoglobin genes you
+              inherited from your parents. It is fixed at birth and never changes. It matters most
+              for genetic-compatibility awareness — for example, before starting a family — and for
+              understanding sickle-cell-related conditions (SS, SC). If you don&apos;t know yours, a
+              simple lab test (haemoglobin electrophoresis) can confirm it.
+            </p>
+            <p>
+              <strong>Blood group</strong> (e.g. O+, A-) identifies which blood types are safe for
+              you to receive in a transfusion. Hospitals need it on file so that, in an emergency,
+              compatible blood can be found immediately instead of being tested for on the spot.
+            </p>
+          </div>
+        </details>
 
         <h3 className={styles.subheading}>Clinical / chronic disease conditions</h3>
         <p className={styles.sub}>
