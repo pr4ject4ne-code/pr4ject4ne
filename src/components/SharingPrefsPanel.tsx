@@ -78,8 +78,8 @@ export default function SharingPrefsPanel({ value, onSave, saving }: SharingPref
       <h3 className={styles.title}>What&apos;s visible via your IHN code</h3>
       <p className={styles.intro}>
         Anyone with the correct IHN code can look up your record, but they can only see the
-        sections you turn on below. Everything starts off — nothing is shared until you choose to
-        share it.
+        sections you turn on below. Everything starts off, and nothing is shared until you choose
+        to share it.
       </p>
       <div className={styles.list}>
         {SHARING_PREF_KEYS.map((key) => (

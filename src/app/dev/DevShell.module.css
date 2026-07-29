@@ -6,6 +6,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   padding: 0.75rem 1.25rem;
   background: var(--color-ink);
   color: var(--color-white);
@@ -26,7 +28,8 @@
 .nav {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
 }
 .nav a {
   color: var(--color-white);
@@ -52,4 +55,23 @@
 }
 .title {
   margin: 0 0 1.25rem;
+}
+
+/* Founder report, 2026-07-29: "the dev page isn't well optimized (sizing)
+ * for mobile" — the nav bar had no wrap/mobile handling at all, so its 6
+ * links + logout button just ran off the right edge of the screen. */
+@media (max-width: 640px) {
+  .bar {
+    padding: 0.6rem 0.9rem;
+  }
+  .nav {
+    gap: 0.4rem 0.75rem;
+  }
+  .nav a,
+  .nav button {
+    font-size: 0.8rem;
+  }
+  .main {
+    padding: 1.1rem 0.9rem 2rem;
+  }
 }

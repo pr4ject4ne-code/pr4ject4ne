@@ -384,6 +384,7 @@ export default function HomeClient() {
             routeGeometry={route}
             onSelectHospital={onSelectMapPin}
             etas={etas}
+            selectedHospitalId={routeTargetId}
           />
         </div>
         <div ref={darkenRef} className={styles.darkenOverlay} aria-hidden="true" />

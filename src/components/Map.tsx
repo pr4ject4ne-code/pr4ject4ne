@@ -22,11 +22,17 @@ interface MapProps {
    * pin popup when present (currently only computed for the active route's
    * target; see HomeClient.tsx's routeTargetId). */
   etas?: Record<string, number>;
+  /** The one hospital pin to render in green (founder ask, 2026-07-29:
+   * "only the selected pin should be colored green") — every other pin stays
+   * the default color regardless of distance/rank. `null`/undefined means no
+   * pin is selected yet. */
+  selectedHospitalId?: string | null;
 }
 
 // Theme colors (kept in sync with globals.css tokens).
 const COLOR_AMETHYST = '#7b5aa6';
-const COLOR_HIGHLIGHT = '#12b5c9';
+const COLOR_HIGHLIGHT = '#12b5c9'; // route polyline
+const COLOR_SELECTED = '#2e7d4f'; // the one pin the user has tapped
 const COLOR_BLUE = '#3f6dc7';
 
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
@@ -102,6 +108,7 @@ export default function Map({
   routeGeometry,
   onSelectHospital,
   etas,
+  selectedHospitalId,
 }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
@@ -155,16 +162,15 @@ export default function Map({
       markersRef.current.push(marker);
     }
 
-    // With the user's location the list is proximity-ordered, so the first
-    // hospital with coordinates is the nearest — highlight it in teal.
-    let highlightedNearest = false;
+    // Only the explicitly-selected pin (a tap, or the auto-routed nearest
+    // once a route exists) is colored differently — no more automatically
+    // highlighting "nearest" just because a location is known.
     hospitals.forEach((h) => {
       if (typeof h.latitude !== 'number' || typeof h.longitude !== 'number') return;
-      const isNearest = Boolean(userLocation) && !highlightedNearest;
-      if (isNearest) highlightedNearest = true;
-      const size = isNearest ? 44 : 36;
-      const el = pinElement(isNearest ? COLOR_HIGHLIGHT : COLOR_AMETHYST, size);
-      if (isNearest) el.style.zIndex = '2';
+      const isSelected = Boolean(selectedHospitalId) && h.id === selectedHospitalId;
+      const size = isSelected ? 44 : 36;
+      const el = pinElement(isSelected ? COLOR_SELECTED : COLOR_AMETHYST, size);
+      if (isSelected) el.style.zIndex = '2';
       const etaSec = etas?.[h.id];
       const etaLine =
         typeof etaSec === 'number' ? `<br/><span>~${Math.round(etaSec / 60)} min away</span>` : '';
@@ -178,7 +184,7 @@ export default function Map({
       if (onSelectHospital) el.addEventListener('click', () => onSelectHospital(h.id));
       markersRef.current.push(marker);
     });
-  }, [hospitals, userLocation, onSelectHospital, etas, ready]);
+  }, [hospitals, userLocation, onSelectHospital, etas, selectedHospitalId, ready]);
 
   // Draw/replace the route polyline and frame the view to it.
   useEffect(() => {

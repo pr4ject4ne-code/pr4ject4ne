@@ -197,6 +197,28 @@ h4 {
   scrollbar-color: var(--color-amethyst) var(--color-blue-light);
 }
 
+/* UI chrome (buttons, nav, controls, map pins/labels) shouldn't be
+ * selectable — a tap-and-hold or drag on these was highlighting text like
+ * any other content (founder report, 2026-07-29: "anything selectable
+ * should be unselectable"). Deliberately scoped to interactive/structural
+ * chrome, NOT a blanket `body { user-select: none }` — actual content text
+ * (biodata values, first-aid instructions, hospital details, form inputs)
+ * must stay selectable/copyable. */
+button,
+nav,
+a[role='button'],
+[role='button'],
+.re-pin,
+label {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Text inside a button/label should still not be selectable, but its own
+ * text INPUT sibling (e.g. a checkbox's label) must remain interactive —
+ * `user-select: none` doesn't affect form control interactivity, only
+ * text selection, so this needs no extra exception. */
+
 /* Layout helpers */
 .page-container {
   max-width: 1100px;

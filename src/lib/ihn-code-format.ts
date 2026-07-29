@@ -40,7 +40,12 @@ const GROUP_COUNT = 3;
 const PREFIX = 'IHN-';
 
 const INVALID_CHAR = new RegExp(`[^${ALPHABET}]`, 'g');
-const LEADING_PREFIX = /^\s*IHN[-\s]*/;
+// `+` (not just one match) — the field already displays "IHN-" before the
+// user types/pastes anything, so pasting a full "IHN-XXXX-..." code at the
+// end produces a DOUBLED "IHN-IHN-XXXX-..." raw value; only stripping one
+// occurrence would leave the second "IHN-" behind (bug found 2026-07-29:
+// "the paste in find IHN should know to remove 'IHN-' while pasting").
+const LEADING_PREFIX = /^(\s*IHN[-\s]*)+/;
 
 /**
  * Normalizes whatever the user has typed/pasted so far into the live

@@ -2,6 +2,7 @@ import { query, queryOne } from '@/lib/db';
 import { apiError, apiOk, readJson, parseLimit, parseOffset } from '@/lib/api';
 import { getDevUser, isPrimary } from '@/lib/dev-auth';
 import { sanitizeText, escapeLikePattern } from '@/lib/sanitize';
+import { isValidEmail } from '@/lib/validation';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { ConsentStatus } from '@/types';
 
@@ -98,14 +99,15 @@ export async function GET(req: Request) {
 
   let consentSelect =
     'NULL::uuid AS consent_id, NULL::text AS consent_status, NULL::text AS contacted_via, ' +
-    'NULL::text AS denial_reason, NULL::timestamptz AS decided_at, NULL::timestamptz AS consent_recorded_at';
+    'NULL::text AS denial_reason, NULL::timestamptz AS decided_at, NULL::timestamptz AS consent_recorded_at, ' +
+    'NULL::text AS doctor_email, NULL::text AS doctor_signature';
   let consentJoin = '';
   if (patientUserId) {
     params.push(patientUserId);
     const patientIdx = params.length;
     consentSelect =
       'c.id AS consent_id, c.consent_status, c.contacted_via, c.denial_reason, c.decided_at, ' +
-      'c.created_at AS consent_recorded_at';
+      'c.created_at AS consent_recorded_at, c.doctor_email, c.doctor_signature';
     consentJoin = `LEFT JOIN LATERAL (
        SELECT * FROM doctor_consent_records r
        WHERE r.doctor_id = d.id AND r.patient_user_id = $${patientIdx}
@@ -137,6 +139,13 @@ interface CreateBody {
   consent_status?: string;
   contacted_via?: string;
   denial_reason?: string;
+  /** Which email the doctor was actually contacted/replied at — captured
+   * per-record since a roster email can change later (see migration 019). */
+  doctor_email?: string;
+  /** Free-text evidence of the doctor's signed confirmation (e.g. a pasted
+   * email reply, a note about a signed form) — not a real e-signature/auth
+   * system, just a place to record what was received. */
+  doctor_signature?: string;
 }
 
 /**
@@ -172,13 +181,19 @@ export async function POST(req: Request) {
   const contactedVia = sanitizeText(body.contacted_via, 200);
   const denialReason = consentStatus === 'denied' ? sanitizeText(body.denial_reason, 2000) : null;
   const decided = consentStatus !== 'pending';
+  const doctorEmail =
+    typeof body.doctor_email === 'string' && isValidEmail(body.doctor_email.trim())
+      ? body.doctor_email.trim()
+      : null;
+  const doctorSignature = sanitizeText(body.doctor_signature, 4000);
 
   const { rows } = await query<{ id: string }>(
     `INSERT INTO doctor_consent_records
-       (doctor_id, patient_user_id, consent_status, contacted_via, denial_reason, recorded_by_dev_id, decided_at)
-     VALUES ($1, $2, $3, $4, $5, $6, ${decided ? 'now()' : 'NULL'})
+       (doctor_id, patient_user_id, consent_status, contacted_via, denial_reason, recorded_by_dev_id,
+        decided_at, doctor_email, doctor_signature)
+     VALUES ($1, $2, $3, $4, $5, $6, ${decided ? 'now()' : 'NULL'}, $7, $8)
      RETURNING id`,
-    [body.doctor_id, body.patient_user_id, consentStatus, contactedVia, denialReason, dev.id],
+    [body.doctor_id, body.patient_user_id, consentStatus, contactedVia, denialReason, dev.id, doctorEmail, doctorSignature],
   );
   const id = rows[0]!.id;
 

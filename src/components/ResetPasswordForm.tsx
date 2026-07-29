@@ -83,8 +83,8 @@ export default function ResetPasswordForm({ token }: { token: string }) {
       <Card variant="plain" className={styles.card}>
         <h1 className={styles.title}>Password changed</h1>
         <p className={styles.subtitle}>
-          Your password has been reset. You&apos;ve been signed out everywhere — log in again with
-          your new password.
+          Your password has been reset. You&apos;ve been signed out everywhere, so log in again
+          with your new password.
         </p>
         <Link
           href="/login"

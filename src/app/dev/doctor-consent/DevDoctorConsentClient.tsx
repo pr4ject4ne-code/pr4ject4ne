@@ -64,6 +64,8 @@ export default function DevDoctorConsentClient() {
   const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
 
   const [contactedVia, setContactedVia] = useState('');
+  const [doctorEmail, setDoctorEmail] = useState('');
+  const [doctorSignature, setDoctorSignature] = useState('');
   const [status, setStatus] = useState<ConsentStatus>('approved');
   const [denialReason, setDenialReason] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +121,15 @@ export default function DevDoctorConsentClient() {
     loadDoctors(doctorQuery, selectedPatient.id);
   }
 
+  function pickDoctor(d: DoctorRow) {
+    setSelectedDoctor(d.id);
+    // Prefill from the roster's own contact email as a starting point — the
+    // dev can still change it to whatever address the doctor actually
+    // replied from (see migration 019's rationale).
+    setDoctorEmail(d.contact_email ?? '');
+    setDoctorSignature('');
+  }
+
   async function recordConsent(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -141,6 +152,8 @@ export default function DevDoctorConsentClient() {
           patient_user_id: selectedPatient.id,
           consent_status: status,
           contacted_via: contactedVia,
+          doctor_email: doctorEmail,
+          doctor_signature: doctorSignature,
           denial_reason: status === 'denied' ? denialReason : undefined,
         }),
       },
@@ -154,6 +167,8 @@ export default function DevDoctorConsentClient() {
     }
     setMessage('Consent outcome recorded.');
     setContactedVia('');
+    setDoctorEmail('');
+    setDoctorSignature('');
     setDenialReason('');
     loadDoctors(doctorQuery, selectedPatient.id);
   }
@@ -180,8 +195,8 @@ export default function DevDoctorConsentClient() {
         <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>
           Record the outcome of contacting a doctor <strong>out-of-band</strong> (phone/email,
           outside this app) about whether they consent to their name/contact appearing in a
-          generated report — <strong>for one specific patient&apos;s record</strong>. A
-          doctor+patient pair with no record here is treated as <strong>not consented</strong> —
+          generated report, <strong>for one specific patient&apos;s record</strong>. A
+          doctor+patient pair with no record here is treated as <strong>not consented</strong>:
           reports never attribute a field to a doctor without an approved record for that exact
           patient.
         </p>
@@ -236,6 +251,7 @@ export default function DevDoctorConsentClient() {
                   <div>
                     <strong>{d.name}</strong>
                     <span className={styles.badge}>{d.hospital_name}</span>
+                    {d.contact_email && <span className={styles.badge}>{d.contact_email}</span>}
                     {d.consent_status ? (
                       <span
                         className={d.consent_status === 'denied' ? styles.revoked : styles.badge}
@@ -252,7 +268,7 @@ export default function DevDoctorConsentClient() {
                     )}
                   </div>
                   <div className={styles.accountActions}>
-                    <button type="button" onClick={() => setSelectedDoctor(d.id)}>
+                    <button type="button" onClick={() => pickDoctor(d)}>
                       {selectedDoctor === d.id ? 'Selected' : 'Record outcome'}
                     </button>
                   </div>
@@ -272,17 +288,32 @@ export default function DevDoctorConsentClient() {
                 onChange={(e) => setContactedVia(e.target.value)}
                 placeholder="e.g. phone call 2026-07-26"
               />
+              <Input
+                label="Doctor's email"
+                type="email"
+                value={doctorEmail}
+                onChange={(e) => setDoctorEmail(e.target.value)}
+                placeholder="the address actually used, if different"
+              />
               <Dropdown
                 label="Outcome"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as ConsentStatus)}
                 options={[
-                  { value: 'pending', label: 'Pending — contacted, awaiting reply' },
-                  { value: 'approved', label: 'Approved — consents to attribution for this patient' },
-                  { value: 'denied', label: 'Denied — declines attribution' },
+                  { value: 'pending', label: 'Pending (contacted, awaiting reply)' },
+                  { value: 'approved', label: 'Approved (consents to attribution for this patient)' },
+                  { value: 'denied', label: 'Denied (declines attribution)' },
                 ]}
               />
               <Button type="submit">Save</Button>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <Input
+                  label="Doctor's signature / attestation (optional)"
+                  value={doctorSignature}
+                  onChange={(e) => setDoctorSignature(e.target.value)}
+                  placeholder="e.g. paste the doctor's signed email reply, or note a signed form on file"
+                />
+              </div>
               {status === 'denied' && (
                 <div style={{ gridColumn: '1 / -1' }}>
                   <Input

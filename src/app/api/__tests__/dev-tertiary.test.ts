@@ -84,6 +84,24 @@ describe('POST /api/dev/tertiary', () => {
     expect(values).toEqual([USER, HOSP]);
   });
 
+  it('uses a dev-chosen password instead of auto-generating one when provided', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'secondary' });
+    mockQueryOne.mockResolvedValue({ id: HOSP });
+    mockQuery.mockResolvedValue({ rows: [{ id: USER }] });
+    const res = await POST(req({ email: 'staff@hosp.co', hospital_id: HOSP, password: 'ChosenPass123!' }));
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.temp_password).toBe('ChosenPass123!');
+  });
+
+  it('400 when the dev-chosen password is weak', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'secondary' });
+    mockQueryOne.mockResolvedValue({ id: HOSP });
+    const res = await POST(req({ email: 'staff@hosp.co', hospital_id: HOSP, password: 'weak' }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('WEAK_PASSWORD');
+  });
+
   it('409 on a duplicate email', async () => {
     mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'secondary' });
     mockQueryOne.mockResolvedValue({ id: HOSP });

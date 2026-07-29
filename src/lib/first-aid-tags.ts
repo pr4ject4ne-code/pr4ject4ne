@@ -19,6 +19,17 @@ export const FIRST_AID_TAGS = [
   'Seizures',
   'Heat & cold',
   'Allergic reaction',
+  'Drowning',
+  'Electric shock',
+  'Fainting',
+  'Diabetic emergency',
+  'Eye injury',
+  'Nosebleed',
+  'Dental injury',
+  'Pregnancy emergency',
+  'Foreign object',
+  'Stroke',
+  'Chest pain',
 ] as const;
 
 export type FirstAidTag = (typeof FIRST_AID_TAGS)[number];

@@ -448,8 +448,8 @@ export default function BioDataForm({
           Each entry is timestamped when added.
         </p>
         <p className={styles.doctorAid}>
-          Recommended: get these details from a doctor or official medical record where possible —
-          duration, progression, and complications are most reliable with clinical input.
+          Recommended: get these details from a doctor or official medical record where possible.
+          Duration, progression, and complications are most reliable with clinical input.
         </p>
         {conditions.length > 0 && (
           <ul className={styles.conditionList}>

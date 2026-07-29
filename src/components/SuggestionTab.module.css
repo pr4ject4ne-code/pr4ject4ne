@@ -43,6 +43,12 @@
   font-size: 0.85rem;
 }
 
+.returnEmailNote {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  margin: 0 0 0.9rem;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

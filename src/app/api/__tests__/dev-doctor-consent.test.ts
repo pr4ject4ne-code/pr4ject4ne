@@ -164,6 +164,41 @@ describe('POST /api/dev/doctor-consent', () => {
     );
   });
 
+  it('stores doctor_email (when valid) and doctor_signature alongside the record', async () => {
+    mockQueryOne.mockResolvedValueOnce({ id: DOCTOR_ID });
+    mockQueryOne.mockResolvedValueOnce({ id: PATIENT_ID });
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: RECORD_ID }] });
+    await POST(
+      postReq({
+        doctor_id: DOCTOR_ID,
+        patient_user_id: PATIENT_ID,
+        consent_status: 'approved',
+        doctor_email: 'dr.ada@hosp.co',
+        doctor_signature: 'Replied by email: "I consent."',
+      }),
+    );
+    const insertParams = mockQuery.mock.calls[0]![1] as unknown[];
+    // params: [doctor_id, patient_user_id, consent_status, contacted_via, denial_reason, dev.id, doctor_email, doctor_signature]
+    expect(insertParams[6]).toBe('dr.ada@hosp.co');
+    expect(insertParams[7]).toBe('Replied by email: "I consent."');
+  });
+
+  it('drops an invalid doctor_email rather than storing garbage', async () => {
+    mockQueryOne.mockResolvedValueOnce({ id: DOCTOR_ID });
+    mockQueryOne.mockResolvedValueOnce({ id: PATIENT_ID });
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: RECORD_ID }] });
+    await POST(
+      postReq({
+        doctor_id: DOCTOR_ID,
+        patient_user_id: PATIENT_ID,
+        consent_status: 'approved',
+        doctor_email: 'not-an-email',
+      }),
+    );
+    const insertParams = mockQuery.mock.calls[0]![1] as unknown[];
+    expect(insertParams[6]).toBeNull();
+  });
+
   it('only stores a denial_reason when consent_status is denied', async () => {
     mockQueryOne.mockResolvedValueOnce({ id: DOCTOR_ID });
     mockQueryOne.mockResolvedValueOnce({ id: PATIENT_ID });

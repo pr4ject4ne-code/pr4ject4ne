@@ -49,6 +49,14 @@ describe('autoFormatIhnInput', () => {
     expect(autoFormatIhnInput('IHN-AB23-CD45-EF67')).not.toMatch(/^IHN-IHN-/);
   });
 
+  it('fully strips a doubled prefix from pasting a full code into a field that already shows "IHN-" (bug found 2026-07-29)', () => {
+    // The input starts pre-filled with "IHN-" (see StringLookupClient); a
+    // real paste at the end of that existing value produces exactly this
+    // doubled-prefix raw string before autoFormatIhnInput ever runs.
+    expect(autoFormatIhnInput('IHN-IHN-AB23-CD45-EF67')).toBe('IHN-AB23-CD45-EF67');
+    expect(isValidIhnCode(autoFormatIhnInput('IHN-IHN-AB23-CD45-EF67'))).toBe(true);
+  });
+
   it('does not fight the user deleting the character right before an auto-inserted dash', () => {
     // User typed a 5th character, which triggers a dash before it...
     expect(autoFormatIhnInput('ABCDE')).toBe('IHN-ABCD-E');

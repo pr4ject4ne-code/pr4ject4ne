@@ -187,17 +187,15 @@ export default function DashboardClient() {
     <Layout page="dashboard">
       <div className={styles.wrap}>
         <div className={styles.topRow}>
-          <h1 className={styles.title}>Dashboard</h1>
+          <h1 className={styles.title}>
+            {data
+              ? `Hello, ${data.profile_layer.full_name || data.profile_layer.email || 'there'}`
+              : 'Dashboard'}
+          </h1>
           <Button variant="ghost" onClick={logout}>
             Log out
           </Button>
         </div>
-
-        {data && (
-          <p className={styles.saved} style={{ marginTop: '-0.5rem' }}>
-            Signed in as {data.profile_layer.email ?? '—'}
-          </p>
-        )}
 
         {data && data.email_verified === false && (
           <Card variant="plain" className={styles.verifyBanner} role="status">

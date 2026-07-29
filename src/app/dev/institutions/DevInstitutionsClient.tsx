@@ -35,6 +35,7 @@ export default function DevInstitutionsClient() {
   const [accounts, setAccounts] = useState<TertiaryAccount[]>([]);
   const [hospitals, setHospitals] = useState<HospitalOption[]>([]);
   const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [newHospitalId, setNewHospitalId] = useState('');
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +81,7 @@ export default function DevInstitutionsClient() {
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: newEmail, hospital_id: newHospitalId }),
+        body: JSON.stringify({ email: newEmail, hospital_id: newHospitalId, password: newPassword }),
       },
       { onUnauthenticated: setError },
     );
@@ -92,6 +93,7 @@ export default function DevInstitutionsClient() {
     }
     setTempPassword(data.temp_password);
     setNewEmail('');
+    setNewPassword('');
     loadAccounts();
   }
 
@@ -136,6 +138,13 @@ export default function DevInstitutionsClient() {
               onChange={(e) => setNewEmail(e.target.value)}
               required
             />
+            <Input
+              label="Password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+            />
             <Dropdown
               label="Hospital"
               options={hospitals.map((h) => ({ value: h.id, label: h.name }))}
@@ -149,7 +158,7 @@ export default function DevInstitutionsClient() {
           {error && <p className={styles.error}>{error}</p>}
           {tempPassword && (
             <p className={styles.temp}>
-              Temporary password (shown once — save it now): <code>{tempPassword}</code>
+              Password (shown once, save it now): <code>{tempPassword}</code>
             </p>
           )}
         </Card>

@@ -61,6 +61,16 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  /* Founder report, 2026-07-29: still scrollable horizontally on mobile.
+   * Same flex/grid min-width:auto gotcha as Input.module.css's .field — a
+   * native file input's default "Choose file" control has real min-content
+   * width, and without this it forced the whole .photoRow wider than the
+   * viewport instead of shrinking to fit. */
+  min-width: 0;
+  max-width: 100%;
+}
+.photoControls input[type='file'] {
+  max-width: 100%;
 }
 .photoLabel {
   font-size: 0.85rem;

@@ -49,9 +49,9 @@ export default function AnnouncementForm({ initial, onSubmit, submitting }: Anno
       <Dropdown
         label="Color code"
         options={[
-          { value: 'green', label: 'Green — light' },
-          { value: 'yellow', label: 'Yellow — intermediate' },
-          { value: 'red', label: 'Red — urgent' },
+          { value: 'green', label: 'Green (light)' },
+          { value: 'yellow', label: 'Yellow (intermediate)' },
+          { value: 'red', label: 'Red (urgent)' },
         ]}
         value={color}
         onChange={(e) => setColor(e.target.value as AnnouncementColor)}

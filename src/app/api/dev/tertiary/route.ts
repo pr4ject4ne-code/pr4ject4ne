@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { query, queryOne } from '@/lib/db';
 import { apiError, apiOk, readJson, parseLimit, parseOffset } from '@/lib/api';
 import { getDevUser } from '@/lib/dev-auth';
-import { hashPassword } from '@/lib/auth';
+import { hashPassword, validatePasswordStrength } from '@/lib/auth';
 import { isValidEmail } from '@/lib/validation';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import { logger } from '@/lib/logger';
@@ -57,11 +57,17 @@ export async function GET(req: Request) {
 interface CreateBody {
   email?: string;
   hospital_id?: string;
+  /** Founder ask, 2026-07-29: let the dev set the account's password directly
+   * at creation time, rather than only ever handing back an auto-generated
+   * one-time password. Optional — omitting it falls back to the original
+   * auto-generate behavior (kept for any existing API-only caller). */
+  password?: string;
 }
 
 /**
  * POST — create a tertiary (hospital_staff) account for a hospital. Any dev.
- * Returns a one-time temp password; the tertiary sets their own afterward.
+ * Returns the password used (either dev-chosen or a one-time auto-generated
+ * one) so it can be shared with the tertiary out of band.
  */
 export async function POST(req: Request) {
   const dev = await getDevUser();
@@ -76,13 +82,19 @@ export async function POST(req: Request) {
     return apiError('A valid hospital_id is required.', 'BAD_REQUEST', 400);
   }
 
+  const chosenPassword = typeof body.password === 'string' ? body.password : '';
+  if (chosenPassword) {
+    const strength = validatePasswordStrength(chosenPassword);
+    if (!strength.ok) return apiError(strength.reason!, 'WEAK_PASSWORD', 400);
+  }
+
   // The target institution must exist.
   const hospital = await queryOne<{ id: string }>(`SELECT id FROM hospitals WHERE id = $1`, [
     body.hospital_id,
   ]);
   if (!hospital) return apiError('Hospital not found.', 'NOT_FOUND', 404);
 
-  const tempPassword = randomBytes(12).toString('base64url');
+  const tempPassword = chosenPassword || randomBytes(12).toString('base64url');
   const passwordHash = await hashPassword(tempPassword);
 
   try {
