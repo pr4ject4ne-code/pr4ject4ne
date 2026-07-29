@@ -73,5 +73,6 @@ export function resolveSheetSnap(
     ['expanded', Math.abs(currentHeightPx - expandedPx)],
   ];
   distances.sort((a, b) => a[1] - b[1]);
-  return distances[0][0];
+  // distances always has exactly 3 entries (one per snap state) — never empty.
+  return distances[0]![0];
 }
