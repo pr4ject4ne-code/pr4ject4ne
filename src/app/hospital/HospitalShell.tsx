@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styles from './HospitalShell.module.css';
 
@@ -34,6 +35,9 @@ export default function HospitalShell({
           <span className={styles.brand}>Racoon Eye · Hospital Portal</span>
           {staffEmail && <span className={styles.identity}>Signed in as {staffEmail}</span>}
         </div>
+        <nav className={styles.nav} aria-label="Sections">
+          <Link href="/hospital/dashboard?tab=announcements">Institution updates</Link>
+        </nav>
         {showLogout && (
           <button type="button" onClick={logout} className={styles.logout}>
             Log out

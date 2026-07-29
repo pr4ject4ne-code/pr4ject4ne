@@ -33,9 +33,15 @@ export async function GET(req: Request) {
   const [totalRow, { rows }] = await Promise.all([
     query<{ count: string }>(`SELECT count(*)::text AS count FROM audit_logs ${where}`, params),
     query(
-      `SELECT id, user_id, action_type, resource_type, resource_id, details, ip_address, created_at
-       FROM audit_logs ${where}
-       ORDER BY created_at DESC
+      // Joins users.email so the dashboard can group/label entries by who
+      // actually did them (founder ask, 2026-07-29: "neatly organized based
+      // on user") instead of an unreadable truncated user_id.
+      `SELECT a.id, a.user_id, u.email AS user_email, a.action_type, a.resource_type, a.resource_id,
+              a.details, a.ip_address, a.created_at
+       FROM audit_logs a
+       LEFT JOIN users u ON u.id = a.user_id
+       ${where.replace(/\b(action_type|resource_type)\b/g, 'a.$1')}
+       ORDER BY a.created_at DESC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       [...params, limit, offset],
     ),

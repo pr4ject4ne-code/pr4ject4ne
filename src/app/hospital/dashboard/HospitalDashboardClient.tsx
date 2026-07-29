@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import HospitalShell from '../HospitalShell';
 import Card from '@/components/Card';
 import Input from '@/components/Input';
@@ -18,6 +18,7 @@ import type { Hospital, Doctor, Announcement, HospitalPhoto, HospitalDepartment 
 import styles from './HospitalDashboard.module.css';
 
 type Tab = 'info' | 'media' | 'hours' | 'departments' | 'announcements' | 'personnel';
+const TABS: Tab[] = ['info', 'media', 'hours', 'departments', 'announcements', 'personnel'];
 const DAYS: Array<[string, string]> = [
   ['mon', 'Monday'],
   ['tue', 'Tuesday'],
@@ -37,9 +38,15 @@ interface SessionData {
 
 export default function HospitalDashboardClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Founder ask, 2026-07-29: a top-level nav link (added in HospitalShell)
+  // deep-links straight to the Announcements tab via `?tab=announcements` —
+  // this is the one place that query param is read.
+  const requestedTab = searchParams.get('tab');
+  const initialTab: Tab = TABS.includes(requestedTab as Tab) ? (requestedTab as Tab) : 'info';
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<SessionData | null>(null);
-  const [tab, setTab] = useState<Tab>('info');
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');

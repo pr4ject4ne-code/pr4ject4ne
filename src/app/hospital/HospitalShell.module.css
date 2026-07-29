@@ -6,9 +6,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   padding: 0.75rem 1.25rem;
   background: var(--color-blue-dark);
   color: var(--color-white);
+}
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.nav a {
+  color: var(--color-white);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.nav a:hover {
+  text-decoration: underline;
 }
 .brandGroup {
   display: flex;
@@ -39,4 +55,16 @@
 }
 .title {
   margin: 0 0 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .bar {
+    padding: 0.6rem 0.9rem;
+  }
+  .nav a {
+    font-size: 0.8rem;
+  }
+  .main {
+    padding: 1.1rem 0.9rem 2rem;
+  }
 }

@@ -96,6 +96,16 @@
 .mono {
   font-family: ui-monospace, monospace;
 }
+.logUserGroup {
+  margin-bottom: 1.25rem;
+}
+.logUserHeading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+}
 
 @media (max-width: 700px) {
   .createForm {

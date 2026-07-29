@@ -25,10 +25,33 @@ interface DevAccount {
 interface AuditRow {
   id: string;
   user_id: string | null;
+  user_email: string | null;
   action_type: string;
   resource_type: string | null;
   resource_id: string | null;
   created_at: string;
+}
+
+/** Groups audit rows by user (founder ask, 2026-07-29: "neatly organized
+ * based on user, so each user, their own log") — each group keeps its rows
+ * in the API's own most-recent-first order; groups themselves are ordered
+ * by their most recent entry, so whoever has been active most recently
+ * appears first. Rows with no user_id (system-level entries, e.g. a
+ * rate_limited action logged before any session existed) are grouped under
+ * a single "System / unknown" bucket rather than one bucket per null. */
+function groupLogsByUser(logs: AuditRow[]): Array<{ key: string; label: string; rows: AuditRow[] }> {
+  const groups = new Map<string, { key: string; label: string; rows: AuditRow[] }>();
+  for (const row of logs) {
+    const key = row.user_id ?? 'system';
+    const label = row.user_id ? (row.user_email ?? row.user_id.slice(0, 8)) : 'System / unknown';
+    if (!groups.has(key)) groups.set(key, { key, label, rows: [] });
+    groups.get(key)!.rows.push(row);
+  }
+  // logs is already created_at DESC, so each group's first row is its most
+  // recent — sort groups by that to surface the most recently active user first.
+  return Array.from(groups.values()).sort(
+    (a, b) => new Date(b.rows[0]!.created_at).getTime() - new Date(a.rows[0]!.created_at).getTime(),
+  );
 }
 
 export default function DevPrimaryClient() {
@@ -267,28 +290,37 @@ export default function DevPrimaryClient() {
 
       <section className={styles.section}>
         <h2>Audit log</h2>
-        <div className={styles.logTable}>
-          <table>
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Action</th>
-                <th>Resource</th>
-                <th>User</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((l) => (
-                <tr key={l.id}>
-                  <td>{new Date(l.created_at).toLocaleString()}</td>
-                  <td>{l.action_type}</td>
-                  <td>{[l.resource_type, l.resource_id].filter(Boolean).join(' / ')}</td>
-                  <td className={styles.mono}>{l.user_id?.slice(0, 8) ?? '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>
+          Grouped by user — most recently active first.
+        </p>
+        {groupLogsByUser(logs).map((group) => (
+          <div key={group.key} className={styles.logUserGroup}>
+            <h3 className={styles.logUserHeading}>
+              {group.label} <span className={styles.badge}>{group.rows.length}</span>
+            </h3>
+            <div className={styles.logTable}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Action</th>
+                    <th>Resource</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.rows.map((l) => (
+                    <tr key={l.id}>
+                      <td>{new Date(l.created_at).toLocaleString()}</td>
+                      <td>{l.action_type}</td>
+                      <td>{[l.resource_type, l.resource_id].filter(Boolean).join(' / ')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+        {logs.length === 0 && <p className={styles.mono}>No audit log entries yet.</p>}
       </section>
     </DevShell>
   );
