@@ -132,7 +132,9 @@ export default function HomeClient() {
     [nameQuery, symptomTags, filters, userLocation],
   );
 
-  // Ask for geolocation when the user requests "nearest".
+  // Ask for geolocation when the user requests "nearest" — shows the
+  // geoError banner (with its manual-location fallback) on failure, since an
+  // explicit "Nearest" search is actively blocked without it.
   useEffect(() => {
     if (!wantNearest) return;
     getCurrentPosition()
@@ -143,6 +145,27 @@ export default function HomeClient() {
       })
       .catch((err: Error) => setGeoError(err.message));
   }, [wantNearest]);
+
+  // Also ask proactively on every homepage visit, even without an explicit
+  // "Nearest" search (founder ask, 2026-07-29: "show current location with a
+  // blue pin"). Deliberately silent on failure (denied/unsupported/timeout)
+  // — this is ambient, so a failure just means no blue dot appears, not a
+  // banner nagging the user. Skipped when `wantNearest` is already true at
+  // mount (e.g. a direct `?nearest=1` link) so the browser's permission
+  // prompt doesn't fire twice for the same request.
+  useEffect(() => {
+    if (wantNearest) return;
+    getCurrentPosition()
+      .then((coords) => {
+        setUserLocation(coords);
+        setCenter(coords);
+      })
+      .catch(() => {
+        // Ambient — no error UI.
+      });
+    // Deliberately mount-only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Manual-location fallback: when geolocation is denied/unavailable, let the
   // user type an area/landmark and geocode it so "nearest" + routing still work.
@@ -315,20 +338,33 @@ export default function HomeClient() {
     });
   }, [hospitals, userLocation, symptomTags]);
 
-  // Route + ETA to the nearest hospital when we have a user location.
+  // Route + ETA to a target hospital when we have a user location. Defaults
+  // to the nearest result; tapping a different pin on the map (see
+  // `onSelectMapPin` below) overrides the target so the route actually
+  // updates to show directions to THAT hospital instead of staying stuck on
+  // whichever one was nearest (founder report, 2026-07-29: tapping a pin
+  // "doesn't change ever after use").
+  const [routeTargetId, setRouteTargetId] = useState<string | null>(null);
   useEffect(() => {
     if (!userLocation) return;
-    const nearest = orderedHospitals.find(
-      (h) => typeof h.latitude === 'number' && typeof h.longitude === 'number',
-    );
-    if (!nearest || nearest.latitude == null || nearest.longitude == null) return;
-    fetchRoute(userLocation, { lat: nearest.latitude, lng: nearest.longitude }).then((r) => {
+    const target =
+      (routeTargetId ? orderedHospitals.find((h) => h.id === routeTargetId) : null) ??
+      orderedHospitals.find((h) => typeof h.latitude === 'number' && typeof h.longitude === 'number');
+    if (!target || target.latitude == null || target.longitude == null) return;
+    fetchRoute(userLocation, { lat: target.latitude, lng: target.longitude }).then((r) => {
       if (r) {
         setRoute(r.geometry);
-        setEtas((prev) => ({ ...prev, [nearest.id]: r.durationSec }));
+        setEtas((prev) => ({ ...prev, [target.id]: r.durationSec }));
       }
     });
-  }, [userLocation, orderedHospitals]);
+  }, [userLocation, orderedHospitals, routeTargetId]);
+
+  // Tapping a hospital's pin on the map (re)requests directions to that
+  // specific hospital, rather than leaving the route pinned to whichever one
+  // was nearest at the time of the last search.
+  const onSelectMapPin = useCallback((id: string) => {
+    setRouteTargetId(id);
+  }, []);
 
   const canLoadMore = hospitals.length < total;
 
@@ -346,6 +382,8 @@ export default function HomeClient() {
             userLocation={userLocation}
             hospitals={orderedHospitals}
             routeGeometry={route}
+            onSelectHospital={onSelectMapPin}
+            etas={etas}
           />
         </div>
         <div ref={darkenRef} className={styles.darkenOverlay} aria-hidden="true" />

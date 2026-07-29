@@ -20,6 +20,8 @@ interface BiodataResponse {
   profile_layer: ProfileLayer;
   biodata_layer: BiodataLayer;
   ihn_code: string;
+  ihn_code_regenerated_at?: string | null;
+  created_at?: string;
   /** Worklist #23 — default-deny sharing preferences for the IHN cross-user
    * read path; always present/normalized by the API. */
   sharing_prefs?: SharingPrefs;
@@ -209,9 +211,9 @@ export default function DashboardClient() {
         {showIhnNotice && (
           <Card variant="plain" className={styles.ihnBanner} role="status">
             <p>
-              A quick heads-up: your <strong>IHN access code</strong> below is a static emergency
-              key that never changes. Keep it private and only share it with people you trust to
-              view your medical information.
+              A quick heads-up: your <strong>IHN access code</strong> below is a stable emergency
+              key that stays the same until you choose to regenerate it. Keep it private and only
+              share it with people you trust to view your medical information.
             </p>
             <Button variant="ghost" onClick={dismissIhnNotice}>
               Got it
@@ -267,7 +269,14 @@ export default function DashboardClient() {
         </section>
 
         <h2 className={styles.sectionTitle}>Biodata</h2>
-        {data && <IHNCodeDisplay code={data.ihn_code} />}
+        {data && (
+          <IHNCodeDisplay
+            code={data.ihn_code}
+            regeneratedAt={data.ihn_code_regenerated_at ?? null}
+            createdAt={data.created_at ?? null}
+            onRegenerated={(newCode) => setData((prev) => (prev ? { ...prev, ihn_code: newCode } : prev))}
+          />
+        )}
         {data && (
           <SharingPrefsPanel
             value={data.sharing_prefs ?? DEFAULT_SHARING_PREFS}

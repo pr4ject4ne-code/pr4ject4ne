@@ -3,6 +3,14 @@
   flex-direction: column;
   gap: 0.25rem;
   margin-bottom: 0.9rem;
+  /* Founder report, 2026-07-29: content bled past the viewport on mobile
+   * wherever two Input fields sit in a flex/grid row (e.g. the hospital
+   * register page's Latitude/Longitude row). Flex/grid children default to
+   * `min-width: auto`, which floors their shrink size at their own content's
+   * min-content width — a row of two such fields can force the whole row
+   * wider than its container. `min-width: 0` lets this field shrink to fit
+   * whatever space its parent actually gives it. */
+  min-width: 0;
 }
 
 .label {
@@ -33,6 +41,36 @@
   outline: none;
   border-color: var(--color-amethyst);
   box-shadow: 0 0 0 3px var(--color-amethyst-light);
+}
+
+.passwordWrap {
+  position: relative;
+  display: flex;
+}
+.inputWithToggle {
+  flex: 1;
+  padding-right: 3.4rem;
+}
+.peekToggle {
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.peekToggle:hover {
+  color: var(--color-amethyst-dark, var(--color-amethyst));
+}
+.peekToggle:focus-visible {
+  outline: 2px solid var(--color-amethyst);
+  outline-offset: 1px;
 }
 
 .inputError {

@@ -83,6 +83,6 @@ describe('LoginForm', () => {
     fireEvent.click(screen.getByLabelText(/I agree/i));
     fireEvent.click(screen.getByText('Create account'));
     expect(await screen.findByText('IHN-ABCD-EFGH-JKMN')).toBeInTheDocument();
-    expect(screen.getByText(/never changes/i)).toBeInTheDocument();
+    expect(screen.getByText(/stable emergency access key/i)).toBeInTheDocument();
   });
 });

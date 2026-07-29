@@ -29,7 +29,13 @@ export const HELP_CONTENT: HelpEntry[] = [
     section: 'Understanding your IHN code',
     topic: 'What it is',
     answer:
-      'Your IHN (Integrated Hospital Network) code is your emergency access key. It is static and never changes. It sits next to your Biodata on your dashboard.',
+      'Your IHN (Integrated Hospital Network) code is your emergency access key. It stays the same until you choose to regenerate it, and it sits next to your Biodata on your dashboard.',
+  },
+  {
+    section: 'Understanding your IHN code',
+    topic: 'Regenerating your code',
+    answer:
+      'If you have shared your code more widely than you meant to, you can generate a new one from your dashboard by confirming your current password. This immediately invalidates the old code, so anyone you previously shared it with will need the new one. To keep it a stable, memorable key rather than one that changes on a whim, you can only regenerate it once every 30 days.',
   },
   {
     section: 'Understanding your IHN code',
@@ -41,7 +47,7 @@ export const HELP_CONTENT: HelpEntry[] = [
     section: 'Understanding your IHN code',
     topic: 'Why it matters',
     answer:
-      'In an emergency, every minute spent tracking down your medical history is a minute a hospital is not treating you. Your biodata — blood group, genotype, chronic conditions, allergies, next of kin — lets a partner hospital pull up the essentials the moment your IHN code is shared, which means faster triage and safer treatment.',
+      'In an emergency, every minute spent tracking down your medical history is a minute a hospital is not treating you. Your biodata (blood group, genotype, chronic conditions, allergies, next of kin) lets a partner hospital pull up the essentials the moment your IHN code is shared, which means faster triage and safer treatment.',
   },
   {
     section: 'Filling in your Biodata',
@@ -53,7 +59,19 @@ export const HELP_CONTENT: HelpEntry[] = [
     section: 'Filling in your Biodata',
     topic: 'Profile vs. Biodata — the two-layer split',
     answer:
-      'Your dashboard has two layers. "Profile" is basic identity info (name, alias, gender, phone, email, date of birth, next of kin) and is always visible to you. "Biodata" is the deeper medical layer (chronic conditions, height/weight and other measurements, occupation, marital/religious status, genotype, blood group, disabilities, health preferences) — this is the part shared via your IHN code. Clinical fields are unverified for now; official documents (lab reports, medical records) are recommended but not required.',
+      'Your dashboard has two layers. "Profile" is basic identity info (name, alias, gender, phone, email, date of birth, next of kin) and is always visible to you. "Biodata" is the deeper medical layer (chronic conditions, height/weight and other measurements, occupation, marital/religious status, genotype, blood group, disabilities, health preferences), and this is the part shared via your IHN code. Clinical fields are unverified for now; official documents (lab reports, medical records) are recommended but not required.',
+  },
+  {
+    section: 'Filling in your Biodata',
+    topic: 'BMI, genotype, and blood group',
+    answer:
+      'The Biodata form calculates your BMI automatically from height and weight, and shows what each range means (underweight, normal, overweight, obese). It also explains what genotype and blood group are and why hospitals ask for them (genotype compatibility matters for conditions like sickle cell disease, and blood group matters for transfusions). Tap "What do these mean?" next to each field for the full explanation.',
+  },
+  {
+    section: 'Setting reminders',
+    topic: 'Personal calendar reminders',
+    answer:
+      'Your dashboard calendar lets you set personal reminders (e.g. a medication schedule, a follow-up appointment). Tap a date to add a title, an optional time, and an optional note. These reminders are only visible to you; they are not shared with hospitals and do not send notifications, so check your calendar to see what is coming up.',
   },
   {
     section: 'Using First Aid',
@@ -66,6 +84,12 @@ export const HELP_CONTENT: HelpEntry[] = [
     topic: 'Not a diagnosis',
     answer:
       'First Aid content is educational reference material only — it is not medical advice and is not a substitute for professional care. Always back-check with a qualified professional and seek emergency help for serious situations.',
+  },
+  {
+    section: 'Listing a hospital',
+    topic: 'Registering your facility',
+    answer:
+      'Hospitals, clinics, pharmacies, and other facilities can be added via the "List your hospital" link in the footer. Fill in the basics (name, service type, address, contact details) and set your exact location by clicking or dragging the pin on the map. Submissions are reviewed by our team before appearing in search, and a facility can be updated any time by the developer or hospital staff account managing it.',
   },
   {
     section: 'Reporting an issue',

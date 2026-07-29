@@ -25,6 +25,7 @@ export type AuditAction =
   | 'dev_account_change'
   | 'tertiary_account_change'
   | 'reminder_change'
+  | 'ihn_code_regenerate'
   | 'doctor_consent_recorded'
   | 'doctor_consent_updated'
   | 'suggestion_submit'

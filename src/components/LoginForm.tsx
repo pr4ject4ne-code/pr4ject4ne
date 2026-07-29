@@ -79,8 +79,9 @@ export default function LoginForm() {
         <h1 className={styles.title}>Account created</h1>
         <p>
           Your personal IHN access code is below. It is a{' '}
-          <strong>static emergency access key</strong> — it never changes. Save it somewhere safe
-          and share it only with people you trust to access your biodata in an emergency.
+          <strong>stable emergency access key</strong> that stays the same until you choose to
+          regenerate it. Save it somewhere safe and share it only with people you trust to access
+          your biodata in an emergency.
         </p>
         <p className={styles.ihn}>{ihn}</p>
         <Button onClick={() => router.push('/dashboard')}>Continue to dashboard</Button>

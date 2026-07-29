@@ -23,13 +23,12 @@ export function buildResetPasswordUrl(token: string): string {
 }
 
 /**
- * Combined welcome + "confirm your email" message. Sent once, at signup.
- * Deliberately ONE email (not two) — a brand-new user gets a single inbox
+ * Combined welcome and "confirm your email" message. Sent once, at signup.
+ * Deliberately ONE email (not two): a brand-new user gets a single inbox
  * item rather than two near-simultaneous ones. Worklist #19 adds a brief
- * IHN-security line here (this was previously deferred to #19 explicitly) —
- * kept short and consistent with IHNCodeDisplay.tsx's existing "why does this
- * matter" copy: never call the code "changeable"/"rotatable" (it's static by
- * design), just remind the reader to keep it private.
+ * IHN-security line here (this was previously deferred to #19 explicitly),
+ * kept short and consistent with IHNCodeDisplay.tsx's own "why does this
+ * matter" copy.
  */
 export function buildWelcomeVerificationEmail(verifyUrl: string): { subject: string; html: string; text: string } {
   const subject = 'Confirm your Racoon Eye account';
@@ -37,7 +36,7 @@ export function buildWelcomeVerificationEmail(verifyUrl: string): { subject: str
     'Welcome to Racoon Eye!',
     '',
     'Your account has been created, along with a personal IHN code you can view any time from your dashboard.',
-    "Keep it private: your IHN code is a static emergency-access key that never changes, so only share it with people you trust to see your medical information in an emergency.",
+    'Keep it private: your IHN code is your emergency-access key, so only share it with people you trust to see your medical information in an emergency.',
     '',
     `Please confirm your email address to finish setting up your account: ${verifyUrl}`,
     '',
@@ -48,7 +47,7 @@ export function buildWelcomeVerificationEmail(verifyUrl: string): { subject: str
   const html = `
     <p>Welcome to Racoon Eye!</p>
     <p>Your account has been created, along with a personal IHN code you can view any time from your dashboard.</p>
-    <p>Keep it private: your IHN code is a static emergency-access key that never changes, so only share it with people you trust to see your medical information in an emergency.</p>
+    <p>Keep it private: your IHN code is your emergency-access key, so only share it with people you trust to see your medical information in an emergency.</p>
     <p><a href="${verifyUrl}">Confirm your email address</a> to finish setting up your account.</p>
     <p style="color:#666;font-size:0.9em;">This link expires in 48 hours. If you didn't create this account, you can safely ignore this email.</p>
   `.trim();

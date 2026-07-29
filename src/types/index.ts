@@ -223,6 +223,10 @@ export interface Biodata {
   profile_layer: ProfileLayer;
   biodata_layer: BiodataLayer;
   ihn_code: string;
+  /** `null` until the owner's first regeneration (see
+   * /api/biodata/ihn-code/regenerate) — the 30-day cooldown falls back to
+   * `created_at` when this is null. */
+  ihn_code_regenerated_at?: string | null;
   /** Stored as JSONB; may be `{}` or missing keys for pre-existing rows —
    * always run through `normalizeSharingPrefs` before trusting it. */
   sharing_prefs: SharingPrefs | Record<string, unknown>;

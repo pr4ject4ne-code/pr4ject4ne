@@ -119,7 +119,7 @@ export default function HospitalRegisterClient() {
               lng={Number.isFinite(parsedLng) ? (parsedLng as number) : null}
               onChange={handlePin}
             />
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
               <Input
                 label="Latitude"
                 type="number"

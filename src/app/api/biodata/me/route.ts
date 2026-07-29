@@ -27,8 +27,8 @@ export async function GET(req: Request) {
   // Joins users.email_verified so the dashboard can show a non-blocking
   // "please verify your email" nudge (worklist #18) without a second request.
   const record = await queryOne<Biodata & { email_verified: boolean }>(
-    `SELECT b.user_id, b.profile_layer, b.biodata_layer, b.ihn_code, b.sharing_prefs,
-            b.last_modified_at, b.created_at, u.email_verified
+    `SELECT b.user_id, b.profile_layer, b.biodata_layer, b.ihn_code, b.ihn_code_regenerated_at,
+            b.sharing_prefs, b.last_modified_at, b.created_at, u.email_verified
      FROM biodata b
      JOIN users u ON u.id = b.user_id
      WHERE b.user_id = $1`,
@@ -50,6 +50,8 @@ export async function GET(req: Request) {
     profile_layer: record.profile_layer,
     biodata_layer: record.biodata_layer,
     ihn_code: record.ihn_code,
+    ihn_code_regenerated_at: record.ihn_code_regenerated_at,
+    created_at: record.created_at,
     // Always normalized here — the owner's dashboard toggle UI needs a
     // complete, well-formed object even for rows created before migration 013.
     sharing_prefs: normalizeSharingPrefs(record.sharing_prefs),

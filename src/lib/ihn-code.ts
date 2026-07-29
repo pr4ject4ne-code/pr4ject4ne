@@ -1,11 +1,15 @@
 import { randomInt } from 'node:crypto';
 
 /**
- * IHN code — the patient's static, shareable emergency access key.
+ * IHN code — the patient's shareable emergency access key.
  *
  * Format: `IHN-XXXX-XXXX-XXXX` where X is an unambiguous alphanumeric char.
- * It NEVER rotates: once generated at signup it stays with the account so it can
- * be memorised/shared with close relatives for emergency biodata access.
+ * Stable by design: generated once at signup and meant to stay with the
+ * account so it can be memorised/shared with close relatives for emergency
+ * biodata access. The owner can still regenerate it themselves (password
+ * required, at most once every 30 days — see
+ * /api/biodata/ihn-code/regenerate) if a code needs to be invalidated, e.g.
+ * after over-sharing it.
  *
  * Ambiguous characters (0/O, 1/I/L) are excluded so it can be read aloud/copied
  * reliably in an emergency.
