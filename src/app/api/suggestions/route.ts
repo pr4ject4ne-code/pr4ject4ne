@@ -4,6 +4,7 @@ import { checkRateLimit } from '@/lib/auth';
 import { isValidEmail } from '@/lib/validation';
 import { sanitizeText } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
+import { notifyDevsOfSuggestion } from '@/lib/suggestion-notify';
 
 /**
  * General site feedback ("suggestion tab", present on every page).
@@ -50,6 +51,11 @@ export async function POST(req: Request) {
     details: { has_email: Boolean(email), page },
     ip: clientIpFrom(req.headers),
   });
+
+  // Awaited (not fire-and-forget) — Vercel's serverless functions can freeze
+  // or kill background work the instant a response is returned, same reason
+  // signup/forgot-password already await sendEmail() rather than detaching it.
+  await notifyDevsOfSuggestion(safeContent);
 
   return apiOk({ success: true }, 201);
 }

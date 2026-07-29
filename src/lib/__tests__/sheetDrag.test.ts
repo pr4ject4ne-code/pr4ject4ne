@@ -2,6 +2,7 @@ import {
   clampSheetHeightPx,
   resolveSheetSnap,
   sheetVhToPx,
+  MINIMIZED_SHEET_VH,
   COLLAPSED_SHEET_VH,
   EXPANDED_SHEET_VH,
   FLICK_VELOCITY_PX_PER_MS,
@@ -14,7 +15,7 @@ import {
 // pointer-drag behavior is a DOM/gesture concern best caught by a real
 // browser check, not jsdom. This covers the part that's actually meaningful
 // to pin down: clamping and snap-point selection, i.e. "does a simulated
-// pointer sequence land in the right expanded/collapsed state".
+// pointer sequence land in the right minimized/collapsed/expanded state".
 describe('sheetDrag', () => {
   const viewportHeight = 800;
 
@@ -23,10 +24,10 @@ describe('sheetDrag', () => {
     expect(sheetVhToPx(COLLAPSED_SHEET_VH, 1000)).toBeCloseTo(460);
   });
 
-  it('clamps a candidate height to the collapsed floor', () => {
-    const collapsedPx = sheetVhToPx(COLLAPSED_SHEET_VH, viewportHeight);
-    expect(clampSheetHeightPx(0, viewportHeight)).toBe(collapsedPx);
-    expect(clampSheetHeightPx(-500, viewportHeight)).toBe(collapsedPx);
+  it('clamps a candidate height to the minimized floor', () => {
+    const minimizedPx = sheetVhToPx(MINIMIZED_SHEET_VH, viewportHeight);
+    expect(clampSheetHeightPx(0, viewportHeight)).toBe(minimizedPx);
+    expect(clampSheetHeightPx(-500, viewportHeight)).toBe(minimizedPx);
   });
 
   it('clamps a candidate height to the expanded ceiling', () => {
@@ -39,15 +40,26 @@ describe('sheetDrag', () => {
     expect(clampSheetHeightPx(midway, viewportHeight)).toBe(midway);
   });
 
-  it('snaps to collapsed when dragged only slightly past the floor', () => {
-    const nearCollapsed = sheetVhToPx(COLLAPSED_SHEET_VH + 2, viewportHeight);
-    expect(resolveSheetSnap(nearCollapsed, viewportHeight)).toBe(false);
+  it('snaps to minimized when dragged only slightly past the floor', () => {
+    const nearMinimized = sheetVhToPx(MINIMIZED_SHEET_VH + 1, viewportHeight);
+    expect(resolveSheetSnap(nearMinimized, viewportHeight)).toBe('minimized');
   });
 
-  it('snaps to expanded once dragged past the midpoint', () => {
-    const midpointVh = (COLLAPSED_SHEET_VH + EXPANDED_SHEET_VH) / 2;
-    const justPastMidpoint = sheetVhToPx(midpointVh + 1, viewportHeight);
-    expect(resolveSheetSnap(justPastMidpoint, viewportHeight)).toBe(true);
+  it('snaps to collapsed when released near the collapsed snap point', () => {
+    const nearCollapsed = sheetVhToPx(COLLAPSED_SHEET_VH + 1, viewportHeight);
+    expect(resolveSheetSnap(nearCollapsed, viewportHeight)).toBe('collapsed');
+  });
+
+  it('snaps to expanded once dragged near the ceiling', () => {
+    const nearExpanded = sheetVhToPx(EXPANDED_SHEET_VH - 1, viewportHeight);
+    expect(resolveSheetSnap(nearExpanded, viewportHeight)).toBe('expanded');
+  });
+
+  it('snaps to whichever of the three points is nearest at a midway height', () => {
+    const midwayCollapsedExpanded = sheetVhToPx((COLLAPSED_SHEET_VH + EXPANDED_SHEET_VH) / 2 + 2, viewportHeight);
+    expect(resolveSheetSnap(midwayCollapsedExpanded, viewportHeight)).toBe('expanded');
+    const midwayMinimizedCollapsed = sheetVhToPx((MINIMIZED_SHEET_VH + COLLAPSED_SHEET_VH) / 2 + 2, viewportHeight);
+    expect(resolveSheetSnap(midwayMinimizedCollapsed, viewportHeight)).toBe('collapsed');
   });
 
   it('simulates a full pointer drag sequence landing in the expanded state', () => {
@@ -58,41 +70,40 @@ describe('sheetDrag', () => {
     const dragUpBy = 250; // moving the pointer up by 250px
     const endY = startY - dragUpBy;
     const candidateDuringDrag = clampSheetHeightPx(collapsedPx + (startY - endY), viewportHeight);
-    expect(resolveSheetSnap(candidateDuringDrag, viewportHeight)).toBe(true);
+    expect(resolveSheetSnap(candidateDuringDrag, viewportHeight)).toBe('expanded');
   });
 
   // Velocity-aware release (worklist item #1's "make the sheet drag
   // velocity-aware" testbed): a fast flick wins even when the pointer never
-  // crossed the midpoint, and a fast flick the "wrong" way overrides a
+  // crossed a snap point, and a fast flick the "wrong" way overrides a
   // position that would otherwise resolve the other way.
   describe('velocity-aware snap', () => {
-    it('snaps expanded on a fast upward flick even near the collapsed floor', () => {
-      const nearCollapsed = sheetVhToPx(COLLAPSED_SHEET_VH + 2, viewportHeight);
+    it('snaps expanded on a fast upward flick even near the minimized floor', () => {
+      const nearMinimized = sheetVhToPx(MINIMIZED_SHEET_VH + 2, viewportHeight);
       expect(
-        resolveSheetSnap(nearCollapsed, viewportHeight, undefined, undefined, FLICK_VELOCITY_PX_PER_MS + 0.1),
-      ).toBe(true);
+        resolveSheetSnap(nearMinimized, viewportHeight, undefined, undefined, FLICK_VELOCITY_PX_PER_MS + 0.1),
+      ).toBe('expanded');
     });
 
-    it('snaps collapsed on a fast downward flick even past the midpoint', () => {
+    it('snaps minimized on a fast downward flick even past the midpoint', () => {
       const midpointVh = (COLLAPSED_SHEET_VH + EXPANDED_SHEET_VH) / 2;
       const pastMidpoint = sheetVhToPx(midpointVh + 5, viewportHeight);
       expect(
         resolveSheetSnap(pastMidpoint, viewportHeight, undefined, undefined, -(FLICK_VELOCITY_PX_PER_MS + 0.1)),
-      ).toBe(false);
+      ).toBe('minimized');
     });
 
     it('falls back to position when velocity is below the flick threshold', () => {
-      const nearCollapsed = sheetVhToPx(COLLAPSED_SHEET_VH + 2, viewportHeight);
+      const nearMinimized = sheetVhToPx(MINIMIZED_SHEET_VH + 1, viewportHeight);
       // A slow drift, well under the threshold — should NOT override position.
       expect(
-        resolveSheetSnap(nearCollapsed, viewportHeight, undefined, undefined, FLICK_VELOCITY_PX_PER_MS - 0.3),
-      ).toBe(false);
+        resolveSheetSnap(nearMinimized, viewportHeight, undefined, undefined, FLICK_VELOCITY_PX_PER_MS - 0.3),
+      ).toBe('minimized');
     });
 
     it('defaults to 0 velocity (pure position) when the param is omitted', () => {
-      const midpointVh = (COLLAPSED_SHEET_VH + EXPANDED_SHEET_VH) / 2;
-      const justPastMidpoint = sheetVhToPx(midpointVh + 1, viewportHeight);
-      expect(resolveSheetSnap(justPastMidpoint, viewportHeight)).toBe(true);
+      const nearExpanded = sheetVhToPx(EXPANDED_SHEET_VH - 1, viewportHeight);
+      expect(resolveSheetSnap(nearExpanded, viewportHeight)).toBe('expanded');
     });
   });
 });

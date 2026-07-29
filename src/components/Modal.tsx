@@ -21,9 +21,19 @@ export default function Modal({ open, onClose, title, children, footer }: ModalP
       if (e.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', onKey);
-    panelRef.current?.focus();
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
+
+  // Focus the panel only on the closed->open transition, not on every
+  // re-render while open. Bug fix (founder report, 2026-07-28): callers pass
+  // an inline `onClose` (a new function every render), and that used to sit
+  // in this same effect's deps — so a parent re-render caused by typing in a
+  // form field inside the modal (a new keystroke = new state = new inline
+  // onClose) re-ran the effect and yanked focus from the field back onto the
+  // panel after every character, reading as "retracting on every key tapped."
+  useEffect(() => {
+    if (open) panelRef.current?.focus();
+  }, [open]);
 
   if (!open) return null;
 

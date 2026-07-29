@@ -5,6 +5,7 @@ import { getSession, DEV_SESSION_COOKIE, checkRateLimit } from '@/lib/auth';
 import { isValidEmail } from '@/lib/validation';
 import { sanitizeText } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
+import { notifyDevsOfSuggestion } from '@/lib/suggestion-notify';
 import type { Suggestion, SuggestionCategory } from '@/types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -38,8 +39,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const allowed = await checkRateLimit(`suggestion:${ip}`, 20, 3600);
   if (!allowed) return apiError('Too many suggestions. Try again later.', 'RATE_LIMITED', 429);
 
-  const hospital = await queryOne<{ id: string }>(
-    `SELECT id FROM hospitals WHERE id = $1 AND status = 'approved'`,
+  const hospital = await queryOne<{ id: string; name: string }>(
+    `SELECT id, name FROM hospitals WHERE id = $1 AND status = 'approved'`,
     [(await params).id],
   );
   if (!hospital) return apiError('Hospital not found.', 'NOT_FOUND', 404);
@@ -67,6 +68,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     details: { hospital_id: (await params).id, category, has_email: Boolean(email) },
     ip: clientIpFrom(req.headers),
   });
+
+  await notifyDevsOfSuggestion(safeContent, hospital.name);
 
   return apiOk({ success: true, id: rows[0]!.id }, 201);
 }

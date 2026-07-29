@@ -100,6 +100,14 @@ html[data-gfx-tier='low'] .panel {
   .panel.expanded {
     height: 88vh;
   }
+  /* Minimized: just the grabber + heading strip, so the map underneath is
+     almost entirely visible (founder ask, 2026-07-28 — "minimizable to be
+     able to see the full map"). Reachable by dragging the sheet down past
+     the collapsed floor, or by cycling the grabber with keyboard/Enter. */
+  .panel.minimized {
+    height: 12vh;
+    overflow: hidden;
+  }
 }
 
 /* While actively dragging, height is written imperatively per pointermove —

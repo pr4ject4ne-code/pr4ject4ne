@@ -2,7 +2,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 40vh;
+  /* Full-viewport centering (not a partial 40vh box) so the mark sits dead
+   * center of the screen during a route transition regardless of where the
+   * replaced content would otherwise have started (founder ask, 2026-07-28:
+   * "centralize the loading icon"). `100dvh` accounts for mobile browser
+   * chrome; `100vh` is the fallback for browsers without dvh support. */
+  min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
 }
 

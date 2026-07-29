@@ -22,6 +22,20 @@ export default function SuggestionTab({ hospitalId, page }: SuggestionTabProps) 
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
+  // Bug fix (founder report, 2026-07-28: "the slot is not auto refreshing to
+  // permit new suggestions") — this component stays mounted for the whole
+  // page lifetime (rendered once by Layout), so `status` never reset back to
+  // 'idle' on its own: after one successful submission, reopening the modal
+  // kept showing the "Thank you" message forever, with no way to send a
+  // second suggestion short of a full page reload. Resetting on close means
+  // every fresh open starts a clean form.
+  function closeAndReset() {
+    setOpen(false);
+    setStatus('idle');
+    setContent('');
+    setEmail('');
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!content.trim()) return;
@@ -45,7 +59,7 @@ export default function SuggestionTab({ hospitalId, page }: SuggestionTabProps) 
       <button type="button" className={styles.tab} onClick={() => setOpen(true)}>
         Suggestions
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Send a suggestion">
+      <Modal open={open} onClose={closeAndReset} title="Send a suggestion">
         {status === 'sent' ? (
           <p>Thank you — your feedback was received.</p>
         ) : (

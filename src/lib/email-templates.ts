@@ -61,6 +61,36 @@ export function buildWelcomeVerificationEmail(verifyUrl: string): { subject: str
  * route (POST /api/auth/forgot-password), never here; this template just
  * renders the message once a real recipient/token pair has been decided.
  */
+/**
+ * New-suggestion notification, sent to every active primary developer
+ * (worklist follow-up, founder report 2026-07-28: "I'm not receiving
+ * suggestions" — submissions were only ever visible by manually opening the
+ * dev dashboard; there was no push notification at all). `hospitalName` is
+ * set for a hospital-scoped suggestion, omitted for general site feedback.
+ */
+export function buildSuggestionNotificationEmail(
+  content: string,
+  hospitalName?: string | null,
+): { subject: string; html: string; text: string } {
+  const boardUrl = new URL('/dev/dashboard', getSiteUrl()).toString();
+  const subject = hospitalName
+    ? `New suggestion for ${hospitalName}`
+    : 'New site suggestion received';
+  const text = [
+    hospitalName ? `A new suggestion was submitted for ${hospitalName}:` : 'A new site suggestion was submitted:',
+    '',
+    content,
+    '',
+    `Review it on the dev dashboard: ${boardUrl}`,
+  ].join('\n');
+  const html = `
+    <p>${hospitalName ? `A new suggestion was submitted for <strong>${hospitalName}</strong>:` : 'A new site suggestion was submitted:'}</p>
+    <blockquote style="border-left:3px solid #ccc;margin:0.5em 0;padding-left:1em;color:#333;">${content}</blockquote>
+    <p><a href="${boardUrl}">Review it on the dev dashboard</a>.</p>
+  `.trim();
+  return { subject, html, text };
+}
+
 export function buildPasswordResetEmail(resetUrl: string): { subject: string; html: string; text: string } {
   const subject = 'Reset your Racoon Eye password';
   const text = [

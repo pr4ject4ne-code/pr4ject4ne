@@ -12,7 +12,7 @@ interface LogoLoaderProps {
  * visible, non-animated) logo under prefers-reduced-motion via the blanket
  * animation-duration override in globals.css — no extra JS needed here.
  */
-export default function LogoLoader({ size = 56, label = 'Loading…' }: LogoLoaderProps) {
+export default function LogoLoader({ size = 96, label = 'Loading…' }: LogoLoaderProps) {
   return (
     <div className={styles.wrap} role="status" aria-live="polite">
       <div className={styles.pulse}>

@@ -12,7 +12,7 @@ import HospitalFilters, {
 } from '@/components/HospitalFilters';
 import { getCurrentPosition, DEFAULT_CENTER, type Coords } from '@/lib/geolocation';
 import { fetchRoute, distanceKm, geocode } from '@/lib/map';
-import { clampSheetHeightPx, resolveSheetSnap } from '@/lib/sheetDrag';
+import { clampSheetHeightPx, resolveSheetSnap, type SheetSnapState } from '@/lib/sheetDrag';
 import { buildHospitalsQuery } from '@/lib/filter-search';
 import { specialtyLabelsForSymptomIds } from '@/lib/symptom-specialty-map';
 import { prefersReducedMotion } from '@/lib/reducedMotion';
@@ -69,7 +69,7 @@ export default function HomeClient() {
     lastT: number;
     velocityPxPerMs: number;
   } | null>(null);
-  const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [sheetState, setSheetState] = useState<SheetSnapState>('collapsed');
   const [isDraggingSheet, setIsDraggingSheet] = useState(false);
   const [filters, setFilters] = useState<HomeFilterValue>(DEFAULT_HOME_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -278,15 +278,22 @@ export default function HomeClient() {
     if (!panel) return;
     const currentHeightPx = panel.getBoundingClientRect().height;
     panel.style.height = ''; // hand back to the CSS class + transition for the snap animation
-    setSheetExpanded(
+    setSheetState(
       resolveSheetSnap(currentHeightPx, window.innerHeight, undefined, undefined, drag.velocityPxPerMs),
     );
   }, []);
 
+  // Keyboard equivalent of the drag gesture (worklist #1's grabber a11y
+  // requirement, extended for the minimized state added 2026-07-28): cycles
+  // collapsed -> expanded -> minimized -> collapsed so every snap point,
+  // including "minimized" (used to reveal the full map), is reachable
+  // without a pointer.
   const onGrabberKeyDown = useCallback((e: React.KeyboardEvent<HTMLSpanElement>) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
-    setSheetExpanded((prev) => !prev);
+    setSheetState((prev) =>
+      prev === 'collapsed' ? 'expanded' : prev === 'expanded' ? 'minimized' : 'collapsed',
+    );
   }, []);
 
   // Sort by proximity when we have the user's location — EXCEPT for a symptom
@@ -347,7 +354,8 @@ export default function HomeClient() {
           ref={panelRef}
           className={[
             styles.panel,
-            sheetExpanded && styles.expanded,
+            sheetState === 'expanded' && styles.expanded,
+            sheetState === 'minimized' && styles.minimized,
             isDraggingSheet && styles.dragging,
           ]
             .filter(Boolean)
@@ -358,8 +366,14 @@ export default function HomeClient() {
             className={styles.grabber}
             role="button"
             tabIndex={0}
-            aria-expanded={sheetExpanded}
-            aria-label={sheetExpanded ? 'Collapse results' : 'Expand results'}
+            aria-expanded={sheetState === 'expanded'}
+            aria-label={
+              sheetState === 'expanded'
+                ? 'Minimize results to see the full map'
+                : sheetState === 'minimized'
+                  ? 'Restore results'
+                  : 'Expand results, or minimize to see the full map'
+            }
             onPointerDown={onGrabberPointerDown}
             onPointerMove={onGrabberPointerMove}
             onPointerUp={endGrabberDrag}

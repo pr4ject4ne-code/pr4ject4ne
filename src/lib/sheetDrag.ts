@@ -3,27 +3,35 @@
 // math can be unit-tested without rendering the full page (which pulls in
 // Leaflet, geolocation, and fetch).
 
-/** Sheet height as a fraction of the viewport when collapsed (default) vs.
- * expanded (dragged/toggled open). Fixed viewport-relative values rather
- * than a percentage of `.stage` — `.stage`'s own height changed once
- * already (100vh -> 80vh), and pinning the sheet's collapsed height to a
- * fraction of `.stage` would have silently re-shrunk it again. Deliberately
- * short of 100vh so a sliver of map stays visible while expanded. */
+/** Sheet height as a fraction of the viewport for each snap state: minimized
+ * (just the grabber + heading strip, so the map behind it is almost fully
+ * visible — founder ask, 2026-07-28: "minimizable to be able to see the full
+ * map"), collapsed (the default resting state), and expanded (dragged/
+ * toggled open). Fixed viewport-relative values rather than a percentage of
+ * `.stage` — `.stage`'s own height changed once already (100vh -> 80vh), and
+ * pinning the sheet's collapsed height to a fraction of `.stage` would have
+ * silently re-shrunk it again. Expanded is deliberately short of 100vh so a
+ * sliver of map stays visible while expanded. */
+export const MINIMIZED_SHEET_VH = 12;
 export const COLLAPSED_SHEET_VH = 46;
 export const EXPANDED_SHEET_VH = 88;
+
+export type SheetSnapState = 'minimized' | 'collapsed' | 'expanded';
 
 export function sheetVhToPx(vh: number, viewportHeightPx: number): number {
   return (vh / 100) * viewportHeightPx;
 }
 
-/** Clamp a candidate sheet height (px) to the collapsed/expanded range. */
+/** Clamp a candidate sheet height (px) to the minimized/expanded range —
+ * the full drag travel now spans minimized..expanded, with collapsed as a
+ * snap point in between rather than the floor. */
 export function clampSheetHeightPx(
   candidatePx: number,
   viewportHeightPx: number,
-  collapsedVh: number = COLLAPSED_SHEET_VH,
+  minimizedVh: number = MINIMIZED_SHEET_VH,
   expandedVh: number = EXPANDED_SHEET_VH,
 ): number {
-  const min = sheetVhToPx(collapsedVh, viewportHeightPx);
+  const min = sheetVhToPx(minimizedVh, viewportHeightPx);
   const max = sheetVhToPx(expandedVh, viewportHeightPx);
   return Math.min(max, Math.max(min, candidatePx));
 }
@@ -34,26 +42,36 @@ export function clampSheetHeightPx(
  * a slow/considered drag won't reach but a real flick easily will. */
 export const FLICK_VELOCITY_PX_PER_MS = 0.5;
 
-/** Given the sheet's current height on pointer-release, decide which snap
- * point (collapsed/expanded) it should animate to. Velocity-aware: a fast
- * flick in either direction wins outright (matches the "grabbed and flicked"
- * gesture people actually use, not just "dragged past the midpoint") —
- * falls back to whichever snap point is nearer by position when the release
- * velocity is too small to count as a flick. `velocityPxPerMs` is signed the
- * same way height itself is: positive = growing (dragging toward expanded),
- * negative = shrinking (toward collapsed). Optional + defaulted to 0 so
- * existing position-only callers/tests keep working unchanged. */
+/** Given the sheet's current height on pointer-release, decide which of the
+ * three snap points (minimized/collapsed/expanded) it should animate to.
+ * Velocity-aware: a fast flick wins outright in its direction (matches the
+ * "grabbed and flicked" gesture people actually use, not just "dragged past
+ * the midpoint") — an upward flick always resolves to expanded, a downward
+ * flick always resolves to minimized (a flick's whole point is skipping past
+ * the middle snap point in one gesture). Below the flick threshold, falls
+ * back to whichever of the three snap points is nearest by position.
+ * `velocityPxPerMs` is signed the same way height itself is: positive =
+ * growing (dragging toward expanded), negative = shrinking (toward
+ * minimized). Optional + defaulted to 0 so position-only callers keep
+ * working unchanged. */
 export function resolveSheetSnap(
   currentHeightPx: number,
   viewportHeightPx: number,
-  collapsedVh: number = COLLAPSED_SHEET_VH,
+  minimizedVh: number = MINIMIZED_SHEET_VH,
   expandedVh: number = EXPANDED_SHEET_VH,
   velocityPxPerMs: number = 0,
-): boolean {
-  if (velocityPxPerMs >= FLICK_VELOCITY_PX_PER_MS) return true;
-  if (velocityPxPerMs <= -FLICK_VELOCITY_PX_PER_MS) return false;
+  collapsedVh: number = COLLAPSED_SHEET_VH,
+): SheetSnapState {
+  if (velocityPxPerMs >= FLICK_VELOCITY_PX_PER_MS) return 'expanded';
+  if (velocityPxPerMs <= -FLICK_VELOCITY_PX_PER_MS) return 'minimized';
+  const minimizedPx = sheetVhToPx(minimizedVh, viewportHeightPx);
   const collapsedPx = sheetVhToPx(collapsedVh, viewportHeightPx);
   const expandedPx = sheetVhToPx(expandedVh, viewportHeightPx);
-  const midpoint = (collapsedPx + expandedPx) / 2;
-  return currentHeightPx >= midpoint;
+  const distances: Array<[SheetSnapState, number]> = [
+    ['minimized', Math.abs(currentHeightPx - minimizedPx)],
+    ['collapsed', Math.abs(currentHeightPx - collapsedPx)],
+    ['expanded', Math.abs(currentHeightPx - expandedPx)],
+  ];
+  distances.sort((a, b) => a[1] - b[1]);
+  return distances[0][0];
 }

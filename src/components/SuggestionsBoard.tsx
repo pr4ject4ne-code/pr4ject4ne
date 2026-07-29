@@ -30,6 +30,13 @@ export default function SuggestionsBoard() {
 
   useEffect(() => {
     load();
+    // Poll for new suggestions (founder report, 2026-07-28: "the slot is not
+    // auto refreshing to permit new suggestions") — this board previously
+    // only reloaded on mount or when the status filter changed, so a
+    // suggestion submitted while a dev had it open wouldn't appear until a
+    // manual page reload.
+    const interval = setInterval(load, 30_000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 

@@ -87,8 +87,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   flex-shrink: 0;
 }
 
@@ -435,6 +435,23 @@
 @media (max-width: 640px) {
   .brandName,
   .hospitalName {
+    display: none;
+  }
+}
+
+/* Phone landscape (founder ask, 2026-07-28: "on mobile landscape the header
+   shouldn't need the dropdown menu style") — a phone rotated to landscape is
+   short on height but has plenty of width (typically 650-930px), enough to
+   fit the nav links inline without the hamburger's extra tap. Bounded above
+   by the existing 1180px breakpoint so it never overlaps that rule, and
+   tightened from the desktop 1.5rem gap since this range is narrower. */
+@media (orientation: landscape) and (min-width: 640px) and (max-width: 1179px) {
+  .inlineNav {
+    display: flex;
+    gap: 1rem;
+  }
+  .hamburger,
+  .menu {
     display: none;
   }
 }
