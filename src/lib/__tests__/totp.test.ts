@@ -6,6 +6,11 @@
  */
 process.env.TOTP_ENCRYPTION_KEY = 'test-only-key-not-a-real-secret';
 
+const mockDbQuery = jest.fn().mockResolvedValue({ rows: [], rowCount: 0 });
+jest.mock('@/lib/db', () => ({
+  query: (...a: unknown[]) => mockDbQuery(...a),
+}));
+
 import { authenticator } from 'otplib';
 import {
   generateTotpSecret,
@@ -17,6 +22,8 @@ import {
   matchRecoveryCode,
   encryptTotpSecret,
   decryptTotpSecret,
+  requiresLoginMfa,
+  createLoginMfaChallenge,
 } from '@/lib/totp';
 
 describe('TOTP secret + URI', () => {
@@ -93,6 +100,62 @@ describe('generateChallengeToken', () => {
     const b = generateChallengeToken();
     expect(a).not.toBe(b);
     expect(a).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe('requiresLoginMfa', () => {
+  beforeEach(() => mockDbQuery.mockClear());
+
+  it('is true only for a primary developer with totp_enabled', () => {
+    expect(
+      requiresLoginMfa({ account_type: 'developer', access_level: 'primary', totp_enabled: true }),
+    ).toBe(true);
+  });
+
+  it('is false for a secondary developer even with totp_enabled', () => {
+    expect(
+      requiresLoginMfa({ account_type: 'developer', access_level: 'secondary', totp_enabled: true }),
+    ).toBe(false);
+  });
+
+  it('is false for a primary developer without totp_enabled', () => {
+    expect(
+      requiresLoginMfa({ account_type: 'developer', access_level: 'primary', totp_enabled: false }),
+    ).toBe(false);
+  });
+
+  it('is false for non-developer account types regardless of the other fields', () => {
+    expect(
+      requiresLoginMfa({ account_type: 'patient', access_level: 'primary', totp_enabled: true }),
+    ).toBe(false);
+    expect(
+      requiresLoginMfa({ account_type: 'hospital_staff', access_level: 'primary', totp_enabled: true }),
+    ).toBe(false);
+  });
+});
+
+describe('createLoginMfaChallenge', () => {
+  beforeEach(() => mockDbQuery.mockClear());
+
+  it('clears expired challenges for the user, inserts a fresh hashed row, and returns the raw token', async () => {
+    const token = await createLoginMfaChallenge('user-1');
+    expect(typeof token).toBe('string');
+    expect(token).toMatch(/^[0-9a-f]{64}$/);
+
+    const calls = mockDbQuery.mock.calls;
+    expect(calls.some(([sql]) => String(sql).includes('DELETE FROM mfa_challenges'))).toBe(true);
+    const insertCall = calls.find(([sql]) => String(sql).includes('INSERT INTO mfa_challenges'));
+    expect(insertCall).toBeDefined();
+    const [, params] = insertCall as [string, unknown[]];
+    expect(params[0]).toBe('user-1');
+    // The stored value is a hash, never the raw token.
+    expect(params[1]).not.toBe(token);
+  });
+
+  it('returns a different token on each call (no reuse)', async () => {
+    const a = await createLoginMfaChallenge('user-1');
+    const b = await createLoginMfaChallenge('user-1');
+    expect(a).not.toBe(b);
   });
 });
 

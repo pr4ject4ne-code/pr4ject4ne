@@ -10,17 +10,12 @@ import {
   findUserByEmail,
   checkLoginRateLimit,
   DUMMY_PASSWORD_HASH,
-  hashToken,
 } from '@/lib/auth';
-import { generateChallengeToken } from '@/lib/totp';
+import { requiresLoginMfa, createLoginMfaChallenge } from '@/lib/totp';
 import { query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { AccountType } from '@/types';
-
-/** MFA challenge tokens are short-lived — the second step is meant to happen
- * immediately after the first (see /api/auth/login/totp). */
-const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
 interface Body {
   email?: string;
@@ -81,15 +76,11 @@ export async function POST(req: Request) {
   // branch, even if `totp_enabled` were somehow set on a non-primary/
   // non-developer row. Login is NOT complete yet: no session cookie, no
   // last_login update, no `login` audit row — those all happen once the
-  // second factor is verified, at /api/auth/login/totp.
-  if (user.account_type === 'developer' && user.access_level === 'primary' && user.totp_enabled) {
-    await query('DELETE FROM mfa_challenges WHERE user_id = $1 AND expires_at <= now()', [user.id]);
-    const challengeToken = generateChallengeToken();
-    const expiresAt = new Date(Date.now() + MFA_CHALLENGE_TTL_MS);
-    await query(
-      `INSERT INTO mfa_challenges (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
-      [user.id, hashToken(challengeToken), expiresAt],
-    );
+  // second factor is verified, at /api/auth/login/totp. Shared with
+  // /api/dev/login (see src/lib/totp.ts) so this gate can't drift between
+  // the two login surfaces.
+  if (requiresLoginMfa(user)) {
+    const challengeToken = await createLoginMfaChallenge(user.id);
     return apiOk({ mfa_required: true, challenge_token: challengeToken });
   }
 

@@ -8,6 +8,7 @@ import {
   checkLoginRateLimit,
   DUMMY_PASSWORD_HASH,
 } from '@/lib/auth';
+import { requiresLoginMfa, createLoginMfaChallenge } from '@/lib/totp';
 import { query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { isValidEmail } from '@/lib/validation';
@@ -54,6 +55,20 @@ export async function POST(req: Request) {
       ip,
     });
     return apiError('Invalid email or password.', 'INVALID_CREDENTIALS', 401);
+  }
+
+  // Two-factor authentication is scoped to primary developer accounts only
+  // (migration 021). This segregated portal must gate on the exact same
+  // condition as the unified /api/auth/login — otherwise a totp_enabled
+  // primary's password alone would issue a full session here, bypassing 2FA
+  // entirely (this endpoint is reachable directly by any HTTP client, not just
+  // the app's own login UI). Login is NOT complete yet: no session cookie, no
+  // last_login update, no `login` audit row — those happen once the second
+  // factor is verified, at /api/auth/login/totp (generic over the challenge
+  // token regardless of which route created it).
+  if (requiresLoginMfa(user)) {
+    const challengeToken = await createLoginMfaChallenge(user.id);
+    return apiOk({ mfa_required: true, challenge_token: challengeToken });
   }
 
   const { token, expiresAt } = await createSession(user.id, 'developer');

@@ -30,6 +30,7 @@ const mockGenerateChallengeToken = jest.fn();
 const mockDecryptTotpSecret = jest.fn();
 const mockVerifyTotpCode = jest.fn();
 const mockMatchRecoveryCode = jest.fn();
+const mockCreateLoginMfaChallenge = jest.fn();
 
 jest.mock('next/headers', () => ({
   cookies: () => ({
@@ -55,12 +56,20 @@ jest.mock('@/lib/auth', () => {
   };
 });
 
-jest.mock('@/lib/totp', () => ({
-  generateChallengeToken: (...a: unknown[]) => mockGenerateChallengeToken(...a),
-  decryptTotpSecret: (...a: unknown[]) => mockDecryptTotpSecret(...a),
-  verifyTotpCode: (...a: unknown[]) => mockVerifyTotpCode(...a),
-  matchRecoveryCode: (...a: unknown[]) => mockMatchRecoveryCode(...a),
-}));
+jest.mock('@/lib/totp', () => {
+  const actual = jest.requireActual('@/lib/totp');
+  return {
+    generateChallengeToken: (...a: unknown[]) => mockGenerateChallengeToken(...a),
+    decryptTotpSecret: (...a: unknown[]) => mockDecryptTotpSecret(...a),
+    verifyTotpCode: (...a: unknown[]) => mockVerifyTotpCode(...a),
+    matchRecoveryCode: (...a: unknown[]) => mockMatchRecoveryCode(...a),
+    // requiresLoginMfa is pure (no DB/IO) — use the REAL implementation so both
+    // login routes are checked against the actual gating condition, not a
+    // test-controlled stand-in that could silently diverge from it.
+    requiresLoginMfa: (...a: Parameters<typeof actual.requiresLoginMfa>) => actual.requiresLoginMfa(...a),
+    createLoginMfaChallenge: (...a: unknown[]) => mockCreateLoginMfaChallenge(...a),
+  };
+});
 
 const mockDbQuery = jest.fn().mockResolvedValue({ rows: [], rowCount: 0 });
 const mockDbQueryOne = jest.fn();
@@ -104,6 +113,7 @@ beforeEach(() => {
   mockCreateSession.mockResolvedValue({ token: 'tok', expiresAt: new Date(Date.now() + 60000) });
   mockDbQuery.mockResolvedValue({ rows: [], rowCount: 0 });
   mockGenerateChallengeToken.mockReturnValue('raw-challenge-token');
+  mockCreateLoginMfaChallenge.mockResolvedValue('raw-challenge-token');
 });
 
 /** A failure response must be the generic 401 with no enumeration leak. */
@@ -232,9 +242,7 @@ describe('POST /api/auth/login (unified entry)', () => {
       expect(mockCreateSession).not.toHaveBeenCalled();
       expect(mockCookieSet).not.toHaveBeenCalled();
       expect(mockLogAudit).not.toHaveBeenCalledWith(expect.objectContaining({ action: 'login' }));
-      expect(
-        mockDbQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO mfa_challenges')),
-      ).toBe(true);
+      expect(mockCreateLoginMfaChallenge).toHaveBeenCalledWith('user-1');
       expect(
         mockDbQuery.mock.calls.some(([sql]) => String(sql).includes('UPDATE users SET last_login')),
       ).toBe(false);
@@ -328,6 +336,113 @@ describe('POST /api/dev/login (developer portal)', () => {
     const res = await devLogin(req());
     expect(res.status).toBe(200);
     expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'developer');
+  });
+
+  describe('two-factor authentication (this segregated portal must gate identically to /api/auth/login)', () => {
+    it('a totp-enabled primary developer gets mfa_required here too — no session/cookie/last_login/login-audit', async () => {
+      mockFindUserByEmail.mockResolvedValue(
+        activeUser({ account_type: 'developer', access_level: 'primary', totp_enabled: true }),
+      );
+      mockVerifyPassword.mockResolvedValue(true);
+      const res = await devLogin(req());
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.mfa_required).toBe(true);
+      expect(json.challenge_token).toBe('raw-challenge-token');
+      expect(json.success).toBeUndefined();
+
+      expect(mockCreateSession).not.toHaveBeenCalled();
+      expect(mockCookieSet).not.toHaveBeenCalled();
+      expect(mockLogAudit).not.toHaveBeenCalledWith(expect.objectContaining({ action: 'login' }));
+      expect(mockCreateLoginMfaChallenge).toHaveBeenCalledWith('user-1');
+      expect(
+        mockDbQuery.mock.calls.some(([sql]) => String(sql).includes('UPDATE users SET last_login')),
+      ).toBe(false);
+    });
+
+    it('a SECONDARY developer with totp_enabled set logs in unaffected here too (primary-only gate, no regression)', async () => {
+      mockFindUserByEmail.mockResolvedValue(
+        activeUser({ account_type: 'developer', access_level: 'secondary', totp_enabled: true }),
+      );
+      mockVerifyPassword.mockResolvedValue(true);
+      const res = await devLogin(req());
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.mfa_required).toBeUndefined();
+      expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'developer');
+      expect(mockCreateLoginMfaChallenge).not.toHaveBeenCalled();
+    });
+
+    it('a primary developer WITHOUT totp_enabled logs in unaffected (no regression)', async () => {
+      mockFindUserByEmail.mockResolvedValue(
+        activeUser({ account_type: 'developer', access_level: 'primary', totp_enabled: false }),
+      );
+      mockVerifyPassword.mockResolvedValue(true);
+      const res = await devLogin(req());
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.mfa_required).toBeUndefined();
+      expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'developer');
+    });
+  });
+});
+
+describe('MFA challenge completion is generic across whichever route created it', () => {
+  it('a challenge created via /api/dev/login completes successfully at /api/auth/login/totp', async () => {
+    // Step 1: dev portal login for a totp-enabled primary developer never
+    // issues a session — it hands back a challenge token, same as the unified
+    // /api/auth/login branch.
+    mockFindUserByEmail.mockResolvedValue(
+      activeUser({ account_type: 'developer', access_level: 'primary', totp_enabled: true }),
+    );
+    mockVerifyPassword.mockResolvedValue(true);
+    mockCreateLoginMfaChallenge.mockResolvedValue('dev-portal-challenge-token');
+
+    const devRes = await devLogin(loginReq('http://localhost/api/dev/login', CREDS));
+    expect(devRes.status).toBe(200);
+    const devJson = await devRes.json();
+    expect(devJson.mfa_required).toBe(true);
+    expect(devJson.challenge_token).toBe('dev-portal-challenge-token');
+    expect(mockCreateSession).not.toHaveBeenCalled();
+
+    // Step 2: /api/auth/login/totp has no notion of which route created the
+    // challenge — it looks the token hash up in mfa_challenges and completes
+    // the login the same way regardless of origin.
+    mockDbQueryOne.mockResolvedValue({
+      id: 'chal-1',
+      user_id: 'user-1',
+      consumed_at: null,
+      is_expired: false,
+    });
+    mockFindUserById.mockResolvedValue({
+      id: 'user-1',
+      account_type: 'developer',
+      access_level: 'primary',
+      is_active: true,
+      hospital_id: null,
+      totp_enabled: true,
+      totp_secret_encrypted: 'enc(SECRET)',
+      totp_recovery_codes: [],
+    });
+    mockDecryptTotpSecret.mockReturnValue('SECRET');
+    mockVerifyTotpCode.mockReturnValue(true);
+    mockDbQuery.mockImplementation((sql: string) => {
+      if (String(sql).includes('UPDATE mfa_challenges')) return Promise.resolve({ rows: [{ id: 'chal-1' }] });
+      return Promise.resolve({ rows: [], rowCount: 1 });
+    });
+
+    const totpRes = await totpLogin(
+      new Request('http://localhost/api/auth/login/totp', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ challenge_token: 'dev-portal-challenge-token', code: '123456' }),
+      }),
+    );
+    expect(totpRes.status).toBe(200);
+    const totpJson = await totpRes.json();
+    expect(totpJson.success).toBe(true);
+    expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'developer');
+    expect(mockCookieSet).toHaveBeenCalled();
   });
 });
 

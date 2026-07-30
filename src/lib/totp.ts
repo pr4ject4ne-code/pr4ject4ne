@@ -1,6 +1,8 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomInt } from 'node:crypto';
 import { authenticator } from 'otplib';
 import { hashToken } from '@/lib/auth';
+import { query } from '@/lib/db';
+import type { User } from '@/types';
 
 /**
  * TOTP-based two-factor authentication for primary admin/developer accounts
@@ -41,6 +43,47 @@ export function verifyTotpCode(secret: string, code: string): boolean {
 /** A fresh single-use challenge token for the login MFA step (same shape as a session token). */
 export function generateChallengeToken(): string {
   return randomBytes(32).toString('hex');
+}
+
+/** Challenge rows are short-lived — the second step is meant to happen immediately
+ * after the first (see createLoginMfaChallenge / /api/auth/login/totp). */
+const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * True if this account must complete a second login factor before a session is
+ * issued. Two-factor auth is scoped to primary developer accounts only
+ * (migration 021 — the accounts that can revoke users / read every audit log).
+ * Every login surface (unified /api/auth/login AND the segregated /api/dev/login
+ * kept for API clients) MUST gate on this exact same check, or one of them
+ * silently bypasses 2FA.
+ */
+export function requiresLoginMfa(
+  user: Pick<User, 'account_type' | 'access_level' | 'totp_enabled'>,
+): boolean {
+  return user.account_type === 'developer' && user.access_level === 'primary' && !!user.totp_enabled;
+}
+
+/**
+ * Create (and persist) a fresh single-use MFA challenge for a login that passed
+ * password verification but still needs a second factor. Clears this user's
+ * already-expired challenge rows first, then inserts one fresh hashed-token row
+ * with a short expiry. Returns the RAW challenge token to hand back to the
+ * client — only its hash is stored (mirrors session tokens; see src/lib/auth.ts).
+ *
+ * Shared by every login surface that can reach a primary-developer-with-2FA
+ * account (/api/auth/login, /api/dev/login) so the challenge lifecycle can't
+ * drift between them. The completion step, /api/auth/login/totp, is generic
+ * over the challenge row and doesn't care which route created it.
+ */
+export async function createLoginMfaChallenge(userId: string): Promise<string> {
+  await query('DELETE FROM mfa_challenges WHERE user_id = $1 AND expires_at <= now()', [userId]);
+  const challengeToken = generateChallengeToken();
+  const expiresAt = new Date(Date.now() + MFA_CHALLENGE_TTL_MS);
+  await query(
+    `INSERT INTO mfa_challenges (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
+    [userId, hashToken(challengeToken), expiresAt],
+  );
+  return challengeToken;
 }
 
 // ---------------------------------------------------------------------------
