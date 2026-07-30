@@ -37,7 +37,11 @@ export type AuditAction =
   | 'rate_limited'
   | 'login'
   | 'login_failed'
-  | 'logout';
+  | 'logout'
+  | 'totp_enrolled'
+  | 'totp_disabled'
+  | 'totp_reset_by_admin'
+  | 'totp_verify_failed';
 
 export interface AuditEntry {
   userId?: string | null;

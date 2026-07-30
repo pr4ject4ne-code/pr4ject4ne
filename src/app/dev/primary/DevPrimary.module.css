@@ -60,6 +60,42 @@
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
 }
+.statusBadgeOn {
+  margin-left: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--color-green);
+  color: var(--color-white);
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+.totpQr {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin: 0.5rem 0 1rem;
+}
+.totpSecret {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem;
+  background: var(--color-off-white);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  word-break: break-all;
+}
+.recoveryCodes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.95rem;
+  background: var(--color-amethyst-light);
+  color: var(--color-amethyst-dark);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  margin: 0.5rem 0;
+}
 .accountActions {
   display: flex;
   gap: 0.5rem;

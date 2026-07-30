@@ -14,15 +14,29 @@
 import { POST as patientLogin } from '@/app/api/auth/login/route';
 import { POST as devLogin } from '@/app/api/dev/login/route';
 import { POST as hospitalLogin } from '@/app/api/hospital/login/route';
+import { POST as totpLogin } from '@/app/api/auth/login/totp/route';
 
 const mockFindUserByEmail = jest.fn();
+const mockFindUserById = jest.fn();
 const mockVerifyPassword = jest.fn();
 const mockCreateSession = jest.fn();
 const mockCheckRateLimit = jest.fn();
+/** Raw `checkRateLimit` (as opposed to the `checkLoginRateLimit` wrapper) — used
+ * directly by /api/auth/login/totp for its IP + challenge-owning-user buckets. */
+const mockCheckRateLimitDirect = jest.fn();
 const mockLogAudit = jest.fn().mockResolvedValue(undefined);
+const mockCookieSet = jest.fn();
+const mockGenerateChallengeToken = jest.fn();
+const mockDecryptTotpSecret = jest.fn();
+const mockVerifyTotpCode = jest.fn();
+const mockMatchRecoveryCode = jest.fn();
 
 jest.mock('next/headers', () => ({
-  cookies: () => ({ set: jest.fn(), get: () => undefined, delete: jest.fn() }),
+  cookies: () => ({
+    set: (...a: unknown[]) => mockCookieSet(...a),
+    get: () => undefined,
+    delete: jest.fn(),
+  }),
 }));
 
 jest.mock('@/lib/auth', () => {
@@ -30,18 +44,32 @@ jest.mock('@/lib/auth', () => {
   return {
     ...actual,
     findUserByEmail: (...a: unknown[]) => mockFindUserByEmail(...a),
+    findUserById: (...a: unknown[]) => mockFindUserById(...a),
     verifyPassword: (...a: unknown[]) => mockVerifyPassword(...a),
     createSession: (...a: unknown[]) => mockCreateSession(...a),
     // All three login routes gate on the shared checkLoginRateLimit (one bucket per
     // email across every login endpoint); mock it directly since its internal call
     // to checkRateLimit doesn't go through the module export.
     checkLoginRateLimit: (...a: unknown[]) => mockCheckRateLimit(...a),
+    checkRateLimit: (...a: unknown[]) => mockCheckRateLimitDirect(...a),
   };
 });
 
+jest.mock('@/lib/totp', () => ({
+  generateChallengeToken: (...a: unknown[]) => mockGenerateChallengeToken(...a),
+  decryptTotpSecret: (...a: unknown[]) => mockDecryptTotpSecret(...a),
+  verifyTotpCode: (...a: unknown[]) => mockVerifyTotpCode(...a),
+  matchRecoveryCode: (...a: unknown[]) => mockMatchRecoveryCode(...a),
+}));
+
+const mockDbQuery = jest.fn().mockResolvedValue({ rows: [], rowCount: 0 });
+const mockDbQueryOne = jest.fn();
+
 jest.mock('@/lib/db', () => ({
-  query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
-  queryOne: jest.fn(),
+  query: (...a: unknown[]) => mockDbQuery(...a),
+  queryOne: (...a: unknown[]) => mockDbQueryOne(...a),
+  withTransaction: (fn: (tx: { query: (...a: unknown[]) => unknown }) => unknown) =>
+    fn({ query: (...a: unknown[]) => mockDbQuery(...a) }),
 }));
 
 jest.mock('@/lib/audit', () => ({
@@ -72,7 +100,10 @@ function activeUser(overrides: Record<string, unknown>) {
 beforeEach(() => {
   jest.clearAllMocks();
   mockCheckRateLimit.mockResolvedValue(true);
+  mockCheckRateLimitDirect.mockResolvedValue(true);
   mockCreateSession.mockResolvedValue({ token: 'tok', expiresAt: new Date(Date.now() + 60000) });
+  mockDbQuery.mockResolvedValue({ rows: [], rowCount: 0 });
+  mockGenerateChallengeToken.mockReturnValue('raw-challenge-token');
 });
 
 /** A failure response must be the generic 401 with no enumeration leak. */
@@ -178,6 +209,74 @@ describe('POST /api/auth/login (unified entry)', () => {
   it('400 when the email is invalid', async () => {
     const res = await patientLogin(loginReq('http://localhost/api/auth/login', { email: 'nope', password: 'x' }));
     expect(res.status).toBe(400);
+  });
+
+  describe('two-factor authentication (migration 021 — primary developers only)', () => {
+    it('a totp-enabled primary developer gets mfa_required — no session/cookie/last_login/login-audit yet', async () => {
+      mockFindUserByEmail.mockResolvedValue(
+        activeUser({
+          account_type: 'developer',
+          access_level: 'primary',
+          hospital_id: null,
+          totp_enabled: true,
+        }),
+      );
+      mockVerifyPassword.mockResolvedValue(true);
+      const res = await patientLogin(req());
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.mfa_required).toBe(true);
+      expect(json.challenge_token).toBe('raw-challenge-token');
+      expect(json.redirect).toBeUndefined();
+
+      expect(mockCreateSession).not.toHaveBeenCalled();
+      expect(mockCookieSet).not.toHaveBeenCalled();
+      expect(mockLogAudit).not.toHaveBeenCalledWith(expect.objectContaining({ action: 'login' }));
+      expect(
+        mockDbQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO mfa_challenges')),
+      ).toBe(true);
+      expect(
+        mockDbQuery.mock.calls.some(([sql]) => String(sql).includes('UPDATE users SET last_login')),
+      ).toBe(false);
+    });
+
+    it('a patient with a totp_enabled-like flag set NEVER receives mfa_required (structurally impossible)', async () => {
+      mockFindUserByEmail.mockResolvedValue(
+        activeUser({ account_type: 'patient', hospital_id: null, totp_enabled: true }),
+      );
+      mockVerifyPassword.mockResolvedValue(true);
+      const res = await patientLogin(req());
+      const json = await res.json();
+      expect(json.mfa_required).toBeUndefined();
+      expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'patient');
+    });
+
+    it('hospital_staff with a totp_enabled-like flag set NEVER receives mfa_required (structurally impossible)', async () => {
+      mockFindUserByEmail.mockResolvedValue(
+        activeUser({ account_type: 'hospital_staff', hospital_id: 'h1', totp_enabled: true }),
+      );
+      mockVerifyPassword.mockResolvedValue(true);
+      const res = await patientLogin(req());
+      const json = await res.json();
+      expect(json.mfa_required).toBeUndefined();
+      expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'hospital_staff');
+    });
+
+    it('a SECONDARY developer with totp_enabled set NEVER receives mfa_required (structurally impossible — primary-only)', async () => {
+      mockFindUserByEmail.mockResolvedValue(
+        activeUser({
+          account_type: 'developer',
+          access_level: 'secondary',
+          hospital_id: null,
+          totp_enabled: true,
+        }),
+      );
+      mockVerifyPassword.mockResolvedValue(true);
+      const res = await patientLogin(req());
+      const json = await res.json();
+      expect(json.mfa_required).toBeUndefined();
+      expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'developer');
+    });
   });
 });
 
@@ -288,5 +387,162 @@ describe('POST /api/hospital/login (hospital-staff portal)', () => {
     const json = await res.json();
     expect(json.hospital_id).toBe('h1');
     expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'hospital_staff');
+  });
+});
+
+describe('POST /api/auth/login/totp (second factor)', () => {
+  function mfaReq(challengeToken: string, code: string): Request {
+    return new Request('http://localhost/api/auth/login/totp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ challenge_token: challengeToken, code }),
+    });
+  }
+
+  function pendingChallenge(overrides: Record<string, unknown> = {}) {
+    return { id: 'chal-1', user_id: 'user-1', consumed_at: null, is_expired: false, ...overrides };
+  }
+
+  function primaryTotpUser(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'user-1',
+      account_type: 'developer',
+      access_level: 'primary',
+      is_active: true,
+      hospital_id: null,
+      totp_enabled: true,
+      totp_secret_encrypted: 'enc(SECRET)',
+      totp_recovery_codes: [],
+      ...overrides,
+    };
+  }
+
+  it('completes login with a valid TOTP code — creates a real session and matches the normal success shape', async () => {
+    mockDbQueryOne.mockResolvedValue(pendingChallenge());
+    mockFindUserById.mockResolvedValue(primaryTotpUser());
+    mockDecryptTotpSecret.mockReturnValue('SECRET');
+    mockVerifyTotpCode.mockReturnValue(true);
+    mockDbQuery.mockImplementation((sql: string) => {
+      if (String(sql).includes('UPDATE mfa_challenges')) return Promise.resolve({ rows: [{ id: 'chal-1' }] });
+      return Promise.resolve({ rows: [], rowCount: 1 });
+    });
+
+    const res = await totpLogin(mfaReq('raw-token', '123456'));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual(
+      expect.objectContaining({
+        success: true,
+        user_id: 'user-1',
+        account_type: 'developer',
+        access_level: 'primary',
+        hospital_id: null,
+        redirect: '/dev/dashboard',
+      }),
+    );
+    expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'developer');
+    expect(mockCookieSet).toHaveBeenCalled();
+    expect(
+      mockDbQuery.mock.calls.some(([sql]) => String(sql).includes('UPDATE users SET last_login')),
+    ).toBe(true);
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'login', userId: 'user-1', details: { via: 'totp' } }),
+    );
+  });
+
+  it('401 on a wrong code — no session created, logs totp_verify_failed', async () => {
+    mockDbQueryOne.mockResolvedValue(pendingChallenge());
+    mockFindUserById.mockResolvedValue(primaryTotpUser());
+    mockDecryptTotpSecret.mockReturnValue('SECRET');
+    mockVerifyTotpCode.mockReturnValue(false);
+    mockMatchRecoveryCode.mockReturnValue(null);
+
+    const res = await totpLogin(mfaReq('raw-token', '000000'));
+    expect(res.status).toBe(401);
+    expect(mockCreateSession).not.toHaveBeenCalled();
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'totp_verify_failed', userId: 'user-1' }),
+    );
+  });
+
+  it('429 when the IP bucket is rate-limited (before touching the challenge)', async () => {
+    mockCheckRateLimitDirect.mockImplementation((bucket: string) =>
+      Promise.resolve(!bucket.startsWith('login_totp_ip:')),
+    );
+    const res = await totpLogin(mfaReq('raw-token', '000000'));
+    expect(res.status).toBe(429);
+    expect(mockDbQueryOne).not.toHaveBeenCalled();
+  });
+
+  it('429 when the challenge-owning user\'s bucket is rate-limited', async () => {
+    mockDbQueryOne.mockResolvedValue(pendingChallenge());
+    mockCheckRateLimitDirect.mockImplementation((bucket: string) =>
+      Promise.resolve(!bucket.startsWith('login_totp_user:')),
+    );
+    const res = await totpLogin(mfaReq('raw-token', '000000'));
+    expect(res.status).toBe(429);
+    expect(mockCreateSession).not.toHaveBeenCalled();
+  });
+
+  it('rejects an expired challenge token', async () => {
+    mockDbQueryOne.mockResolvedValue(pendingChallenge({ is_expired: true }));
+    const res = await totpLogin(mfaReq('raw-token', '123456'));
+    expect(res.status).toBe(401);
+    expect(mockCreateSession).not.toHaveBeenCalled();
+  });
+
+  it('rejects an already-consumed challenge token', async () => {
+    mockDbQueryOne.mockResolvedValue(pendingChallenge({ consumed_at: new Date().toISOString() }));
+    const res = await totpLogin(mfaReq('raw-token', '123456'));
+    expect(res.status).toBe(401);
+    expect(mockCreateSession).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unknown challenge token (no matching row)', async () => {
+    mockDbQueryOne.mockResolvedValue(null);
+    const res = await totpLogin(mfaReq('bogus-token', '123456'));
+    expect(res.status).toBe(401);
+    expect(mockCreateSession).not.toHaveBeenCalled();
+  });
+
+  it('logs in successfully via a valid, unused recovery code', async () => {
+    mockDbQueryOne.mockResolvedValue(pendingChallenge());
+    mockFindUserById.mockResolvedValue(primaryTotpUser({ totp_recovery_codes: ['hash(AAAA)'] }));
+    mockDecryptTotpSecret.mockReturnValue('SECRET');
+    mockVerifyTotpCode.mockReturnValue(false);
+    mockMatchRecoveryCode.mockReturnValue('hash(AAAA)');
+    mockDbQuery.mockImplementation((sql: string) => {
+      if (String(sql).includes('UPDATE mfa_challenges')) return Promise.resolve({ rows: [{ id: 'chal-1' }] });
+      if (String(sql).includes('array_remove')) return Promise.resolve({ rows: [{ id: 'user-1' }] });
+      return Promise.resolve({ rows: [], rowCount: 1 });
+    });
+
+    const res = await totpLogin(mfaReq('raw-token', 'AAAA-AAAA-AAAA-AAAA'));
+    expect(res.status).toBe(200);
+    expect(mockCreateSession).toHaveBeenCalledWith('user-1', 'developer');
+  });
+
+  it('rejects reusing the SAME recovery code (already removed -> the atomic array_remove finds 0 rows)', async () => {
+    mockDbQueryOne.mockResolvedValue(pendingChallenge());
+    mockFindUserById.mockResolvedValue(primaryTotpUser({ totp_recovery_codes: [] }));
+    mockDecryptTotpSecret.mockReturnValue('SECRET');
+    mockVerifyTotpCode.mockReturnValue(false);
+    // The code still LOOKS like a match at the app layer (e.g. a stale in-memory
+    // read), but the DB-level atomic removal loses the race — 0 rows affected.
+    mockMatchRecoveryCode.mockReturnValue('hash(AAAA)');
+    mockDbQuery.mockImplementation((sql: string) => {
+      if (String(sql).includes('UPDATE mfa_challenges')) return Promise.resolve({ rows: [{ id: 'chal-1' }] });
+      if (String(sql).includes('array_remove')) return Promise.resolve({ rows: [] });
+      return Promise.resolve({ rows: [], rowCount: 1 });
+    });
+
+    const res = await totpLogin(mfaReq('raw-token', 'AAAA-AAAA-AAAA-AAAA'));
+    expect(res.status).toBe(401);
+    expect(mockCreateSession).not.toHaveBeenCalled();
+  });
+
+  it('400 without a challenge_token or code', async () => {
+    const res = await totpLogin(mfaReq('', ''));
+    expect(res.status).toBe(400);
   });
 });

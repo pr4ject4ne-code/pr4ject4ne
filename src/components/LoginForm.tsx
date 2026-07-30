@@ -25,6 +25,11 @@ export default function LoginForm() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [ihn, setIhn] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [mfaChallengeToken, setMfaChallengeToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
+  const [mfaSubmitting, setMfaSubmitting] = useState(false);
+  const [mfaError, setMfaError] = useState<string | null>(null);
 
   function validate(): boolean {
     const next: Record<string, string> = {};
@@ -58,6 +63,12 @@ export default function LoginForm() {
         setServerError(data.error ?? 'Something went wrong.');
         return;
       }
+      if (mode === 'login' && data.mfa_required && data.challenge_token) {
+        // Password step passed but this account requires a second factor —
+        // switch to the code-entry step instead of routing anywhere yet.
+        setMfaChallengeToken(data.challenge_token);
+        return;
+      }
       if (mode === 'signup' && data.ihn_code) {
         // Show the IHN once, then continue to the dashboard.
         setIhn(data.ihn_code);
@@ -71,6 +82,76 @@ export default function LoginForm() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function submitMfa(e: React.FormEvent) {
+    e.preventDefault();
+    setMfaError(null);
+    if (!mfaChallengeToken || !mfaCode) return;
+    setMfaSubmitting(true);
+    try {
+      const res = await fetch('/api/auth/login/totp', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ challenge_token: mfaChallengeToken, code: mfaCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMfaError(data.error ?? 'Invalid code.');
+        return;
+      }
+      // Same success routing as the primary login step above.
+      router.push(data.redirect ?? '/dashboard');
+    } catch {
+      setMfaError('Network error. Please try again.');
+    } finally {
+      setMfaSubmitting(false);
+    }
+  }
+
+  if (mfaChallengeToken) {
+    return (
+      <Card variant="plain" className={styles.card}>
+        <h1 className={styles.title}>Two-factor authentication</h1>
+        <p className={styles.subtitle}>
+          {useRecoveryCode
+            ? 'Enter one of your unused recovery codes.'
+            : 'Enter the 6-digit code from your authenticator app.'}
+        </p>
+        <form onSubmit={submitMfa} noValidate>
+          <Input
+            label={useRecoveryCode ? 'Recovery code' : 'Authentication code'}
+            value={mfaCode}
+            onChange={(e) => setMfaCode(e.target.value)}
+            inputMode={useRecoveryCode ? 'text' : 'numeric'}
+            autoComplete="one-time-code"
+            autoFocus
+            required
+          />
+          {mfaError && (
+            <p role="alert" className={styles.error}>
+              {mfaError}
+            </p>
+          )}
+          <Button type="submit" disabled={mfaSubmitting || !mfaCode} className={styles.submit}>
+            {mfaSubmitting ? 'Verifying…' : 'Verify'}
+          </Button>
+        </form>
+        <p className={styles.backLink}>
+          <button
+            type="button"
+            className={styles.linkButton}
+            onClick={() => {
+              setUseRecoveryCode((v) => !v);
+              setMfaCode('');
+              setMfaError(null);
+            }}
+          >
+            {useRecoveryCode ? 'Use an authenticator code instead' : 'Use a recovery code instead'}
+          </button>
+        </p>
+      </Card>
+    );
   }
 
   if (ihn) {

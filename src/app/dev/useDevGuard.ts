@@ -9,6 +9,7 @@ interface DevInfo {
   access_level: string | null;
   is_primary: boolean;
   is_secondary: boolean;
+  totp_enabled: boolean;
 }
 
 /** Redirects to the unified /login if there is no active developer session. */

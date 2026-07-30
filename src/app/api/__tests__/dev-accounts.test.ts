@@ -110,3 +110,44 @@ describe('last-primary guard (PATCH /api/dev/accounts)', () => {
     expect(mockQuery.mock.calls.some(([s]) => String(s).includes('COUNT(*)'))).toBe(false);
   });
 });
+
+describe('reset_totp (PATCH /api/dev/accounts)', () => {
+  it('blocks resetting your OWN 2FA via this route (self-target guard)', async () => {
+    const res = await PATCH(req({ id: ACTOR, action: 'reset_totp' }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('SELF_CHANGE');
+    // Must never have reached the UPDATE.
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('403 when the caller is not a primary developer', async () => {
+    mockIsPrimary.mockReturnValue(false);
+    const res = await PATCH(req({ id: TARGET, action: 'reset_totp' }));
+    expect(res.status).toBe(403);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('clears the TARGET (a different developer)\'s TOTP state and audits totp_reset_by_admin', async () => {
+    mockQuery.mockResolvedValue({ rowCount: 1 });
+    const res = await PATCH(req({ id: TARGET, action: 'reset_totp' }));
+    expect(res.status).toBe(200);
+    const updateCall = mockQuery.mock.calls.find(([sql]) => String(sql).includes('UPDATE users'));
+    expect(updateCall).toBeDefined();
+    const [sql, values] = updateCall as [string, unknown[]];
+    expect(sql).toContain('totp_enabled = false');
+    expect(sql).toContain('totp_secret_encrypted = NULL');
+    expect(sql).toContain('totp_recovery_codes = NULL');
+    expect(values).toEqual([TARGET]);
+
+    const { logAudit } = jest.requireMock('@/lib/audit') as { logAudit: jest.Mock };
+    expect(logAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'totp_reset_by_admin', userId: ACTOR, resourceId: TARGET }),
+    );
+  });
+
+  it('404 when the target developer does not exist', async () => {
+    mockQuery.mockResolvedValue({ rowCount: 0 });
+    const res = await PATCH(req({ id: TARGET, action: 'reset_totp' }));
+    expect(res.status).toBe(404);
+  });
+});

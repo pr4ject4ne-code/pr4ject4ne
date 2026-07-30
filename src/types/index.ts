@@ -29,8 +29,31 @@ export interface User {
    * pre-feature accounts are backfilled true; new signups start false. Unverified
    * accounts are NOT blocked from using the app — this is a nudge, not a gate. */
   email_verified: boolean;
+  /** AES-256-GCM-encrypted TOTP shared secret (never plaintext); null until enrolled. See src/lib/totp.ts. */
+  totp_secret_encrypted: string | null;
+  /** Two-factor auth is scoped to primary developer accounts only (migration 021). */
+  totp_enabled: boolean;
+  /** SHA-256 hashes of unused one-time recovery codes; plaintext is shown exactly once at enrollment. */
+  totp_recovery_codes: string[] | null;
+  totp_enrolled_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * A hashed, single-use, expiring token proving a login has passed the
+ * password step and is waiting on the second factor. Deliberately separate
+ * from `sessions` — no session-reading code path in src/lib/auth.ts or
+ * dev-auth.ts ever queries this table, so a pending challenge can never be
+ * mistaken for a completed login.
+ */
+export interface MfaChallenge {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  expires_at: string;
+  consumed_at: string | null;
+  created_at: string;
 }
 
 /** A hashed, single-use, expiring token proving control of a signup email address. */

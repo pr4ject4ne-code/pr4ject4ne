@@ -15,6 +15,7 @@ export async function GET() {
       is_secondary: isSecondary(user),
       // Back-compat for any client still reading is_admin.
       is_admin: isPrimary(user),
+      totp_enabled: user.totp_enabled,
     },
   });
 }

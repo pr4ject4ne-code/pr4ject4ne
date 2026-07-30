@@ -10,11 +10,17 @@ import {
   findUserByEmail,
   checkLoginRateLimit,
   DUMMY_PASSWORD_HASH,
+  hashToken,
 } from '@/lib/auth';
+import { generateChallengeToken } from '@/lib/totp';
 import { query } from '@/lib/db';
 import { apiError, apiOk, readJson } from '@/lib/api';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { AccountType } from '@/types';
+
+/** MFA challenge tokens are short-lived — the second step is meant to happen
+ * immediately after the first (see /api/auth/login/totp). */
+const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
 interface Body {
   email?: string;
@@ -66,6 +72,25 @@ export async function POST(req: Request) {
     await logAudit({ userId: user?.id ?? null, action: 'login_failed', details: { email }, ip });
     // Generic message — don't reveal whether the email exists.
     return apiError('Invalid email or password.', 'INVALID_CREDENTIALS', 401);
+  }
+
+  // Two-factor authentication is scoped to primary developer accounts only
+  // (migration 021 — the accounts that can revoke users / read every audit
+  // log). Every other account_type/access_level combination is structurally
+  // excluded by this exact condition and can never reach the mfa_required
+  // branch, even if `totp_enabled` were somehow set on a non-primary/
+  // non-developer row. Login is NOT complete yet: no session cookie, no
+  // last_login update, no `login` audit row — those all happen once the
+  // second factor is verified, at /api/auth/login/totp.
+  if (user.account_type === 'developer' && user.access_level === 'primary' && user.totp_enabled) {
+    await query('DELETE FROM mfa_challenges WHERE user_id = $1 AND expires_at <= now()', [user.id]);
+    const challengeToken = generateChallengeToken();
+    const expiresAt = new Date(Date.now() + MFA_CHALLENGE_TTL_MS);
+    await query(
+      `INSERT INTO mfa_challenges (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
+      [user.id, hashToken(challengeToken), expiresAt],
+    );
+    return apiOk({ mfa_required: true, challenge_token: challengeToken });
   }
 
   const route = ROUTING[user.account_type];

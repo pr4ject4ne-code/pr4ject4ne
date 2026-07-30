@@ -13,7 +13,7 @@ export async function GET() {
   if (!dev || !isPrimary(dev)) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const { rows } = await query(
-    `SELECT id, email, access_level, is_active, last_login, created_at
+    `SELECT id, email, access_level, is_active, last_login, created_at, totp_enabled
      FROM users WHERE account_type = 'developer' ORDER BY created_at DESC`,
   );
   return apiOk({ accounts: rows });
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
 
 interface PatchBody {
   id?: string;
-  action?: 'suspend' | 'reactivate' | 'revoke' | 'promote' | 'reset_password';
+  action?: 'suspend' | 'reactivate' | 'revoke' | 'promote' | 'reset_password' | 'reset_totp';
   /** For 'promote': the target access level to set. */
   level?: 'primary' | 'secondary';
 }
@@ -102,7 +102,11 @@ async function otherActivePrimaries(excludeId: string): Promise<number> {
  *   promote      — change access level (secondary <-> primary) via `level`
  *   revoke       — permanently delete the developer account (FKs cascade/null)
  *   reset_password — issue a new one-time temp password
- * A primary can never suspend/revoke/promote their own account.
+ *   reset_totp   — clear another developer's 2FA enrollment (migration 021's
+ *                   "one primary rescues a different locked-out primary" path
+ *                   — a primary who lost their authenticator app + recovery
+ *                   codes can't clear their OWN enrollment via this route)
+ * A primary can never suspend/revoke/promote/reset_totp their own account.
  */
 export async function PATCH(req: Request) {
   const dev = await getDevUser();
@@ -114,7 +118,13 @@ export async function PATCH(req: Request) {
     return apiError('Invalid request.', 'BAD_REQUEST', 400);
   }
   const selfChanging = body.id === dev.id;
-  if (selfChanging && (body.action === 'revoke' || body.action === 'suspend' || body.action === 'promote')) {
+  if (
+    selfChanging &&
+    (body.action === 'revoke' ||
+      body.action === 'suspend' ||
+      body.action === 'promote' ||
+      body.action === 'reset_totp')
+  ) {
     return apiError('You cannot change your own account here.', 'SELF_CHANGE', 400);
   }
 
@@ -197,6 +207,24 @@ export async function PATCH(req: Request) {
       resourceType: 'user',
       resourceId: body.id,
       details: { op: 'revoke' },
+      ip: clientIpFrom(req.headers),
+    });
+    return apiOk({ success: true });
+  }
+
+  if (body.action === 'reset_totp') {
+    const { rowCount } = await query(
+      `UPDATE users
+       SET totp_secret_encrypted = NULL, totp_enabled = false, totp_recovery_codes = NULL, totp_enrolled_at = NULL
+       WHERE id = $1 AND account_type = 'developer'`,
+      [body.id],
+    );
+    if (!rowCount) return apiError('Developer account not found.', 'NOT_FOUND', 404);
+    await logAudit({
+      userId: dev.id,
+      action: 'totp_reset_by_admin',
+      resourceType: 'user',
+      resourceId: body.id,
       ip: clientIpFrom(req.headers),
     });
     return apiOk({ success: true });
