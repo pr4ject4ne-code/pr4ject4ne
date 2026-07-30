@@ -12,19 +12,23 @@ import type { Biodata, BiodataLayer, ProfileLayer } from '@/types';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Biodata READ access is gated by BOTH:
- *  1. A valid patient session (cookie) — of ANY patient, not just the owner, AND
- *  2. The correct IHN code (X-IHN-Code header) for the TARGET row.
+ * Biodata READ access is gated by the correct IHN code (X-IHN-Code header)
+ * for the TARGET row. A session is OPTIONAL, not required — this is the
+ * genuinely anonymous emergency-access path (fix #1): the whole point of an
+ * IHN code is that a stranger/first responder with no account can hand it
+ * over and get a filtered read, so requiring a login here would defeat the
+ * feature entirely.
  *
  * The owner reading their own row via this route behaves exactly as before
  * (full profile_layer + biodata_layer, unaffected by sharing_prefs — that only
- * gates the OTHER-user path). A DIFFERENT authenticated patient may now also
- * read the target's row if they supply the correct IHN code, but the response
- * is filtered through `filterBiodataBySharingPrefs` against the OWNER's own
- * `sharing_prefs` (worklist #23) — nothing is shared until the owner opts a
- * section in from their dashboard. This is the fix for the long-flagged
- * "IHN sharing is a dead path" gap: the IHN code parameter was previously
- * unreachable because ownership was required BEFORE the code was ever checked.
+ * gates the OTHER-user path). Anyone else — an anonymous caller with no
+ * session, OR a different authenticated patient — may read the target's row
+ * if they supply the correct IHN code, but the response is filtered through
+ * `filterBiodataBySharingPrefs` against the OWNER's own `sharing_prefs`
+ * (worklist #23) — nothing is shared until the owner opts a section in from
+ * their dashboard. The distinction between anonymous and authenticated
+ * cross-user requesters is preserved ONLY in the audit log's `details.requester`
+ * field ('anonymous' | 'authenticated_patient'), never in what's returned.
  *
  * WRITE access (PATCH) is unchanged and stays strictly owner-only — see
  * authorizeWrite below.
@@ -36,7 +40,7 @@ const SHARED_READ_IP_MAX = 30;
 const SHARED_READ_IP_WINDOW_SECONDS = 60 * 60; // 1 hour
 
 interface ReadAuthorized {
-  requesterId: string;
+  requesterId: string | null;
   targetUserId: string;
   isOwner: boolean;
   record: Biodata;
@@ -53,8 +57,9 @@ async function loadSession(headers: Headers) {
 }
 
 /**
- * READ authorization: owner (same session.user_id) OR any other authenticated
- * patient session presenting the correct IHN code for the target.
+ * READ authorization: owner (same session.user_id) OR ANY OTHER caller —
+ * authenticated as a different patient, or with no session at all —
+ * presenting the correct IHN code for the target.
  *
  * Rate limiting uses DISTINCT buckets per threat model:
  *  - owner reading their own data: `biodata:<userId>` (unchanged, 10/min) — a
@@ -82,14 +87,19 @@ export async function authorizeRead(
   }
 
   const session = await loadSession(headers);
-  if (!session) {
-    return { ok: false, response: apiError('Not authenticated.', 'UNAUTHENTICATED', 401) };
-  }
 
-  const isOwner = session.user_id === paramUserId;
+  // NOTE: session is intentionally optional here, not required — this is the
+  // genuinely anonymous emergency-access path (worklist fix #1). A caller
+  // with no session at all is always treated as a cross-user requester
+  // (never the owner), so `isOwner` uses optional chaining (never `??`) —
+  // getting this wrong in either direction would either 401 legitimate
+  // anonymous first-responder lookups or, far worse, let a null session
+  // satisfy `isOwner` and leak the full unfiltered record.
+  const isOwner = session?.user_id === paramUserId;
+  const requesterId = session?.user_id ?? null;
 
   if (isOwner) {
-    const allowed = await checkRateLimit(`biodata:${session.user_id}`, 10, 60);
+    const allowed = await checkRateLimit(`biodata:${session!.user_id}`, 10, 60);
     if (!allowed) {
       return { ok: false, response: apiError('Too many attempts.', 'RATE_LIMITED', 429) };
     }
@@ -110,7 +120,7 @@ export async function authorizeRead(
       // exactly the brute-force signal to watch for — same reasoning as
       // logging IHN mismatches below, not just successful reads.
       await logAudit({
-        userId: session.user_id,
+        userId: requesterId,
         action: 'rate_limited',
         resourceType: 'biodata',
         resourceId: paramUserId,
@@ -138,17 +148,21 @@ export async function authorizeRead(
     // Logged even on failure — a wrong-code attempt against a real target is
     // exactly the abuse signal this needs to catch, not just successful reads.
     await logAudit({
-      userId: session.user_id,
+      userId: requesterId,
       action: isOwner ? 'biodata_read' : 'biodata_shared_read',
       resourceType: 'biodata',
       resourceId: paramUserId,
-      details: { result: 'ihn_mismatch', via: isOwner ? 'owner' : 'cross_user' },
+      details: {
+        result: 'ihn_mismatch',
+        via: isOwner ? 'owner' : 'cross_user',
+        requester: requesterId ? 'authenticated_patient' : 'anonymous',
+      },
       ip: clientIpFrom(headers),
     });
     return { ok: false, response: apiError('Invalid IHN code.', 'IHN_INVALID', 401) };
   }
 
-  return { ok: true, data: { requesterId: session.user_id, targetUserId: paramUserId, isOwner, record } };
+  return { ok: true, data: { requesterId, targetUserId: paramUserId, isOwner, record } };
 }
 
 /**
@@ -254,7 +268,11 @@ export async function buildReadResult(data: ReadAuthorized, headers: Headers): P
     action: 'biodata_shared_read',
     resourceType: 'biodata',
     resourceId: targetUserId,
-    details: { via: 'ihn_code', fields_returned: fieldsReturned },
+    details: {
+      via: 'ihn_code',
+      fields_returned: fieldsReturned,
+      requester: requesterId ? 'authenticated_patient' : 'anonymous',
+    },
     ip: clientIpFrom(headers),
   });
 

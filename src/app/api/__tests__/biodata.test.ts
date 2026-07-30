@@ -1,6 +1,8 @@
 /**
- * Integration tests for biodata GET authorization: session required, row
- * isolation (own data only), and IHN-code second factor.
+ * Integration tests for biodata GET authorization: owner-only session gate
+ * for the own-row path, row isolation, and IHN-code second factor. The
+ * cross-user path is SESSION-OPTIONAL (fix #1: genuinely anonymous
+ * emergency access) — see the describe block below.
  */
 import { GET, PATCH } from '@/app/api/biodata/[userId]/route';
 
@@ -45,12 +47,6 @@ function req(ihn?: string, targetId = OWN_ID): Request {
 
 describe('GET /api/biodata/[userId]', () => {
   beforeEach(() => jest.clearAllMocks());
-
-  it('401 when there is no session', async () => {
-    mockGetPatientSession.mockResolvedValue(null);
-    const res = await GET(req(IHN), { params: Promise.resolve({ userId: OWN_ID }) });
-    expect(res.status).toBe(401);
-  });
 
   it('401 when the IHN header is missing', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: OWN_ID, account_type: 'patient' });
@@ -97,8 +93,60 @@ describe('GET /api/biodata/[userId]', () => {
   });
 });
 
-describe('GET /api/biodata/[userId] — cross-user IHN-authenticated read (worklist #23)', () => {
+describe('GET /api/biodata/[userId] — cross-user IHN read, session-optional (fix #1: anonymous emergency access)', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it('200 for a fully anonymous request (no session at all) — filtered through sharing_prefs, audit-logged as anonymous', async () => {
+    mockGetPatientSession.mockResolvedValue(null);
+    mockQueryOne.mockResolvedValue({
+      user_id: OWN_ID,
+      ihn_code: IHN,
+      profile_layer: { full_name: 'Ada' },
+      biodata_layer: { blood_group: 'O+', genotype: 'AA' },
+      sharing_prefs: { blood_group: true }, // genotype deliberately NOT opted in
+      last_modified_at: '2026-07-05T00:00:00Z',
+    });
+    const res = await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.biodata_layer.blood_group).toBe('O+');
+    expect(json.biodata_layer.genotype).toBeUndefined();
+    expect(json.profile_layer).toEqual({}); // profile section never opted in
+    expect(json.ihn_code).toBeUndefined(); // still never leaked on the cross-user path
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'biodata_shared_read',
+        userId: null,
+        resourceId: OWN_ID,
+        details: expect.objectContaining({ requester: 'anonymous' }),
+      }),
+    );
+  });
+
+  it('200 for an authenticated different-patient session — same filtered result, audit-logged as authenticated_patient', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });
+    mockQueryOne.mockResolvedValue({
+      user_id: OWN_ID,
+      ihn_code: IHN,
+      profile_layer: { full_name: 'Ada' },
+      biodata_layer: { blood_group: 'O+', genotype: 'AA' },
+      sharing_prefs: { blood_group: true },
+      last_modified_at: '2026-07-05T00:00:00Z',
+    });
+    const res = await GET(req(IHN, OWN_ID), { params: Promise.resolve({ userId: OWN_ID }) });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.biodata_layer.blood_group).toBe('O+');
+    expect(json.biodata_layer.genotype).toBeUndefined();
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'biodata_shared_read',
+        userId: OTHER_ID,
+        resourceId: OWN_ID,
+        details: expect.objectContaining({ requester: 'authenticated_patient' }),
+      }),
+    );
+  });
 
   it('is no longer 403 for a different authenticated patient session (the fixed dead path)', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: OTHER_ID, account_type: 'patient' });

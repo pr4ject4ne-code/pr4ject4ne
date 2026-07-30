@@ -4,11 +4,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import StringLookupClient from '@/components/StringLookupClient';
 
-const mockUseSession = jest.fn();
-jest.mock('@/lib/useSession', () => ({
-  useSession: () => mockUseSession(),
-}));
-
 const mockSearchParams = jest.fn(() => new URLSearchParams(''));
 jest.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams(),
@@ -21,15 +16,14 @@ describe('StringLookupClient', () => {
     global.fetch = jest.fn();
   });
 
-  it('gates behind sign-in when there is no session', () => {
-    mockUseSession.mockReturnValue({ loading: false, user: null });
+  it('renders the lookup form when logged out — no sign-in required (fix #1: anonymous emergency access)', () => {
     render(<StringLookupClient />);
-    expect(screen.getByText('Sign in')).toBeInTheDocument();
-    expect(screen.queryByLabelText('IHN code')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('IHN code')).toBeInTheDocument();
+    expect(screen.getByText('Look up')).toBeInTheDocument();
+    expect(screen.queryByText('Sign in')).not.toBeInTheDocument();
   });
 
   it('rejects a malformed IHN code client-side without calling the API', async () => {
-    mockUseSession.mockReturnValue({ loading: false, user: { id: 'u1' } });
     render(<StringLookupClient />);
     fireEvent.change(screen.getByLabelText('IHN code'), { target: { value: 'not-a-code' } });
     fireEvent.click(screen.getByText('Look up'));
@@ -38,7 +32,6 @@ describe('StringLookupClient', () => {
   });
 
   it('auto-formats a lowercase, dash-free typed value before calling the API (founder ask, not a numbered worklist item)', async () => {
-    mockUseSession.mockReturnValue({ loading: false, user: { id: 'u1' } });
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => ({ available: false, profile_layer: {}, biodata_layer: {} }),
@@ -56,7 +49,6 @@ describe('StringLookupClient', () => {
   });
 
   it('shows "no shareable record" when the lookup returns available:false', async () => {
-    mockUseSession.mockReturnValue({ loading: false, user: { id: 'u1' } });
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => ({ available: false, profile_layer: {}, biodata_layer: {} }),
@@ -68,7 +60,6 @@ describe('StringLookupClient', () => {
   });
 
   it('renders the filtered result as an organized report, grouped by section', async () => {
-    mockUseSession.mockReturnValue({ loading: false, user: { id: 'u1' } });
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -100,7 +91,6 @@ describe('StringLookupClient', () => {
   });
 
   it('shows a doctor signature block only when the report includes one (approved consent)', async () => {
-    mockUseSession.mockReturnValue({ loading: false, user: { id: 'u1' } });
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -130,14 +120,12 @@ describe('StringLookupClient', () => {
   });
 
   it('pre-fills the code from a ?ihn= query param (the QR deep-link path)', () => {
-    mockUseSession.mockReturnValue({ loading: false, user: { id: 'u1' } });
     mockSearchParams.mockReturnValue(new URLSearchParams('ihn=ihn-abcd-efgh-jkmn'));
     render(<StringLookupClient />);
     expect(screen.getByLabelText('IHN code')).toHaveValue('IHN-ABCD-EFGH-JKMN');
   });
 
   it('surfaces a server error message', async () => {
-    mockUseSession.mockReturnValue({ loading: false, user: { id: 'u1' } });
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
       json: async () => ({ error: 'Too many attempts.' }),

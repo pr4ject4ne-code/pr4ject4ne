@@ -1,12 +1,10 @@
 'use client';
 
 import { Fragment, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Card from './Card';
 import Input from './Input';
 import Button from './Button';
-import { useSession } from '@/lib/useSession';
 import { isValidIhnCode } from '@/lib/ihn-code-validate';
 import { autoFormatIhnInput } from '@/lib/ihn-code-format';
 import { safeHttpUrl } from '@/lib/sanitize';
@@ -35,12 +33,14 @@ interface LookupResponse {
  * `GET /api/biodata/lookup` — it can never show anything the account holder
  * hasn't explicitly opted into sharing.
  *
- * Requires being signed in as a patient, same as the underlying API (the
- * cross-user IHN read path was deliberately scoped to authenticated patient
- * sessions in #23 — this page doesn't loosen that, it's the UI on top of it).
+ * No sign-in required (fix #1). An IHN code exists specifically so a
+ * stranger or first responder with no account can be handed the code in an
+ * emergency and look someone up right here — gating this form behind login
+ * defeated the entire point of the feature. The underlying API
+ * (`GET /api/biodata/lookup`) is genuinely anonymous-capable now too, and
+ * the form below renders unconditionally regardless of auth state.
  */
 export default function StringLookupClient() {
-  const { loading: sessionLoading, user } = useSession();
   const searchParams = useSearchParams();
   const [code, setCode] = useState('IHN-');
   const [error, setError] = useState<string | null>(null);
@@ -81,25 +81,6 @@ export default function StringLookupClient() {
     }
   }
 
-  if (sessionLoading) {
-    return <p>Loading…</p>;
-  }
-
-  if (!user) {
-    return (
-      <Card variant="plain" className={styles.gate}>
-        <h1 className={styles.title}>Find by IHN</h1>
-        <p className={styles.subtitle}>
-          Sign in to look someone up by their IHN code — this keeps every lookup tied to an
-          accountable, logged requester.
-        </p>
-        <Link href="/login" className={styles.gateLink}>
-          <Button type="button">Sign in</Button>
-        </Link>
-      </Card>
-    );
-  }
-
   const report = result?.available ? result.report : null;
   const sections = report?.sections ?? [];
 
@@ -109,8 +90,9 @@ export default function StringLookupClient() {
         <h1 className={styles.title}>Find by IHN</h1>
         <p className={styles.subtitle}>
           Enter someone&apos;s IHN code to view whatever biodata they&apos;ve chosen to share — an
-          organized summary, not raw data. Only fields the account holder has explicitly opted in
-          to share will ever appear here.
+          organized summary, not raw data. No sign-in required, so anyone handed the code in an
+          emergency — a relative, a bystander, a first responder — can use it right away. Only
+          fields the account holder has explicitly opted in to share will ever appear here.
         </p>
       </div>
 

@@ -47,10 +47,46 @@ function req(ihn: string): Request {
 describe('GET /api/biodata/lookup', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('401 when there is no session', async () => {
+  it('200 with no session at all — anonymous callers go through the full report-generation path when sharing prefs allow it', async () => {
     mockGetPatientSession.mockResolvedValue(null);
+    const DOCTOR_ID = '22222222-2222-4222-8222-222222222222';
+    mockQueryOne
+      .mockResolvedValueOnce({ user_id: TARGET_ID })
+      .mockResolvedValueOnce({
+        user_id: TARGET_ID,
+        ihn_code: IHN,
+        profile_layer: { full_name: 'Ada' },
+        biodata_layer: {
+          blood_group: 'O+',
+          clinical_conditions: [{ condition: 'Hypertension', doctor_id: DOCTOR_ID }],
+        },
+        sharing_prefs: { blood_group: true, clinical_conditions: true },
+      });
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: DOCTOR_ID,
+          name: 'Ada Obi',
+          contact_phone: '0800-000-0000',
+          contact_email: null,
+          consent_status: 'approved',
+          denial_reason: null,
+        },
+      ],
+    });
     const res = await GET(req(IHN));
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.available).toBe(true);
+    expect(json.biodata_layer.blood_group).toBe('O+');
+    expect(json.report.signatures).toEqual([{ doctorId: DOCTOR_ID, name: 'Ada Obi', contact: '0800-000-0000' }]);
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'biodata_shared_read',
+        userId: null,
+        details: expect.objectContaining({ requester: 'anonymous' }),
+      }),
+    );
   });
 
   it('400 on a malformed code, before ever touching the DB', async () => {

@@ -52,15 +52,6 @@
   margin: 0;
 }
 
-.gate {
-  text-align: center;
-}
-
-.gateLink {
-  display: inline-block;
-  margin-top: 0.75rem;
-}
-
 .notFound {
   text-align: center;
   color: var(--color-muted);

@@ -18,6 +18,12 @@ import { stripDoctorIdsFromClinicalConditions } from '@/lib/biodata-response';
  * `authorizeRead`/`buildReadResult` pipeline `[userId]/route.ts` uses — no
  * parallel/weaker read path, no bypass of sharing_prefs.
  *
+ * A session is OPTIONAL here (fix #1) — genuinely anonymous callers (a
+ * stranger/first responder with the code but no account) can complete this
+ * whole flow. `session?.user_id ?? null` is only used for audit-log
+ * attribution below; `authorizeRead` (called further down) makes its own,
+ * independent, correctly-optional-chained ownership decision.
+ *
  * Rate limiting: the resolution step (code -> user id) happens BEFORE we know
  * which user_id bucket to use, so it gets its own sibling buckets
  * (`biodata_lookup_code`/`biodata_lookup_ip`, same limits as the existing
@@ -42,9 +48,6 @@ const LOOKUP_IP_WINDOW_SECONDS = 60 * 60; // 1 hour
 export async function GET(req: Request) {
   const store = await cookies();
   const session = await getPatientSession((n) => store.get(n)?.value);
-  if (!session) {
-    return apiError('Not authenticated.', 'UNAUTHENTICATED', 401);
-  }
 
   const url = new URL(req.url);
   const rawCode = (url.searchParams.get('ihn') ?? '').trim().toUpperCase();
@@ -57,7 +60,7 @@ export async function GET(req: Request) {
   const ipAllowed = await checkRateLimit(`biodata_lookup_ip:${ip}`, LOOKUP_IP_MAX, LOOKUP_IP_WINDOW_SECONDS);
   if (!codeAllowed || !ipAllowed) {
     await logAudit({
-      userId: session.user_id,
+      userId: session?.user_id ?? null,
       action: 'rate_limited',
       resourceType: 'biodata',
       details: { endpoint: 'biodata_lookup' },
@@ -76,7 +79,7 @@ export async function GET(req: Request) {
     // distinct, useful signal from "matched but nothing shared") — but the
     // CLIENT response below is identical to the nothing-shared case.
     await logAudit({
-      userId: session.user_id,
+      userId: session?.user_id ?? null,
       action: 'biodata_lookup_no_match',
       resourceType: 'biodata',
       details: { ihn_code: rawCode },
