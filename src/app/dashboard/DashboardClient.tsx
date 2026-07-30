@@ -10,6 +10,7 @@ import Calendar from '@/components/Calendar';
 import BioDataForm from '@/components/BioDataForm';
 import IHNCodeDisplay from '@/components/IHNCodeDisplay';
 import SharingPrefsPanel from '@/components/SharingPrefsPanel';
+import AccessLogPanel from '@/components/AccessLogPanel';
 import { DEFAULT_SHARING_PREFS } from '@/lib/sharing-prefs';
 import { authFetch } from '@/lib/authFetch';
 import type { ProfileLayer, BiodataLayer, SharingPrefs } from '@/types';
@@ -282,6 +283,7 @@ export default function DashboardClient() {
             saving={sharingSaving}
           />
         )}
+        {data && <AccessLogPanel />}
         {savedAt && (
           <p className={styles.saved} role="status">
             Saved.
