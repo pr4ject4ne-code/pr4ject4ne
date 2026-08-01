@@ -72,7 +72,7 @@ export default function SuggestionTab({ hospitalId, page }: SuggestionTabProps) 
       </button>
       <Modal open={open} onClose={closeAndReset} title="Send a suggestion">
         {status === 'sent' ? (
-          <p>Thank you — your feedback was received.</p>
+          <p>Thank you, your feedback was received.</p>
         ) : (
           <form onSubmit={submit}>
             <label htmlFor="suggestion-content" className={styles.label}>
@@ -98,7 +98,7 @@ export default function SuggestionTab({ hospitalId, page }: SuggestionTabProps) 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="so we can follow up"
-                hint="Required so we have a way to reach you — or sign in and we'll use your account email."
+                hint="Required so we have a way to reach you, or sign in and we'll use your account email."
                 required
               />
             )}

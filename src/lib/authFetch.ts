@@ -15,7 +15,7 @@
  * a full navigation and works from anywhere.
  */
 
-export const SESSION_EXPIRED_MESSAGE = 'Your session has expired — redirecting to sign in…';
+export const SESSION_EXPIRED_MESSAGE = 'Your session has expired, redirecting to sign in…';
 
 const DEFAULT_REDIRECT_DELAY_MS = 1200;
 

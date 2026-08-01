@@ -4,7 +4,7 @@ import Card from '@/components/Card';
 import buttonStyles from '@/components/Button.module.css';
 import styles from './VerifyEmail.module.css';
 
-export const metadata = { title: 'Confirm your email — Racoon Eye' };
+export const metadata = { title: 'Confirm your email | Racoon Eye' };
 
 type Status = 'success' | 'expired' | 'used' | 'invalid' | 'rate_limited';
 

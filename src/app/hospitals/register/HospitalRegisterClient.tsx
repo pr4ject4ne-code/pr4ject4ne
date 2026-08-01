@@ -80,7 +80,7 @@ export default function HospitalRegisterClient() {
     return (
       <div style={{ maxWidth: 640, margin: '2rem auto', padding: '0 1rem' }}>
         <Card>
-          <h1>Thanks — your hospital was submitted</h1>
+          <h1>Thanks, your hospital was submitted</h1>
           <p>
             It&apos;s now awaiting review by our team before it appears in search. We&apos;ll be in
             touch about next steps for verifying your listing.
@@ -113,7 +113,7 @@ export default function HospitalRegisterClient() {
 
           <div>
             <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
-              Location — click or drag the pin, or type exact coordinates if you have them
+              Location: click or drag the pin, or type exact coordinates if you have them
             </span>
             <LocationPicker
               lat={Number.isFinite(parsedLat) ? (parsedLat as number) : null}

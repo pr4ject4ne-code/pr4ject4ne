@@ -70,14 +70,14 @@ export function resolveDoctorAttribution(
   const entry = lookup[doctorId];
   if (!entry || entry.consentStatus == null) {
     // (a) no consent record exists at all -> no attribution shown.
-    return { attributed: false, note: 'Doctor input requested — not yet confirmed.' };
+    return { attributed: false, note: 'Doctor input requested, not yet confirmed.' };
   }
   if (entry.consentStatus === 'denied') {
     // (b) denied -> no attribution shown; denial is surfaced, not silently dropped.
     return { attributed: false, note: 'A doctor was asked to confirm this but declined to be credited.' };
   }
   if (entry.consentStatus === 'pending') {
-    return { attributed: false, note: 'Doctor contacted — awaiting a consent decision.' };
+    return { attributed: false, note: 'Doctor contacted, awaiting a consent decision.' };
   }
   // (c) approved -> attribution correctly shown with that doctor's name/contact.
   return {
@@ -140,7 +140,7 @@ function annotateClinicalConditions(
             contact: resolution.doctorContact ?? null,
           });
         }
-        return { ...row, value: `${row.value} — confirmed by Dr. ${resolution.doctorName}` };
+        return { ...row, value: `${row.value}, confirmed by Dr. ${resolution.doctorName}` };
       }
       if (resolution.note) {
         return { ...row, value: `${row.value} (${resolution.note})` };

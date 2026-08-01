@@ -165,7 +165,7 @@ export default function HospitalProfileClient({ id }: { id: string }) {
                   <li key={i}>
                     <span className={styles.matchSection}>{m.section}</span>
                     <strong>{m.label}</strong>
-                    {m.detail && <span className={styles.matchDetail}> — {m.detail}</span>}
+                    {m.detail && <span className={styles.matchDetail}>: {m.detail}</span>}
                   </li>
                 ))}
               </ul>

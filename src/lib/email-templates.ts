@@ -99,12 +99,12 @@ export function buildPasswordResetEmail(resetUrl: string): { subject: string; ht
     '',
     'This link expires in 45 minutes and can only be used once.',
     '',
-    "If you didn't request this, you can safely ignore this email — your password will not change.",
+    "If you didn't request this, you can safely ignore this email, your password will not change.",
   ].join('\n');
   const html = `
     <p>We received a request to reset the password for your Racoon Eye account.</p>
     <p><a href="${resetUrl}">Choose a new password</a>.</p>
-    <p style="color:#666;font-size:0.9em;">This link expires in 45 minutes and can only be used once. If you didn't request this, you can safely ignore this email — your password will not change.</p>
+    <p style="color:#666;font-size:0.9em;">This link expires in 45 minutes and can only be used once. If you didn't request this, you can safely ignore this email, your password will not change.</p>
   `.trim();
   return { subject, html, text };
 }

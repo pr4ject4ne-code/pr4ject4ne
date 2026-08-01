@@ -59,7 +59,7 @@ export default function AnnouncementCalendar({ announcements }: { announcements:
       {barAnnouncement && (
         <div className={`${styles.bar} ${styles[`bar_${barAnnouncement.color}`]}`} role="status">
           <strong>{barAnnouncement.title}</strong>
-          {barAnnouncement.body ? ` — ${barAnnouncement.body}` : ''}
+          {barAnnouncement.body ? `: ${barAnnouncement.body}` : ''}
         </div>
       )}
 

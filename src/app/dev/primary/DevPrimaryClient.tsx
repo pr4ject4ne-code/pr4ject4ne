@@ -309,14 +309,14 @@ export default function DevPrimaryClient() {
         </h2>
         <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>
           Adds a second factor (an authenticator app code) to your own sign-in, since this account
-          can revoke other developers and read every audit log. Opt-in — enabling it only affects
+          can revoke other developers and read every audit log. Opt-in, enabling it only affects
           your own account.
         </p>
         <Card variant="plain" style={{ marginBottom: '1rem' }}>
           {recoveryCodes ? (
             <>
               <p>
-                <strong>Save these recovery codes now — they will not be shown again.</strong> Each
+                <strong>Save these recovery codes now, they will not be shown again.</strong> Each
                 one can be used once in place of a 6-digit code if you lose access to your
                 authenticator app.
               </p>
@@ -399,7 +399,7 @@ export default function DevPrimaryClient() {
           <ErrorBubble message={accountError} />
           {tempPassword && (
             <p className={styles.temp}>
-              Temporary password (shown once — save it now): <code>{tempPassword}</code>
+              Temporary password (shown once, save it now): <code>{tempPassword}</code>
             </p>
           )}
         </Card>
@@ -464,7 +464,7 @@ export default function DevPrimaryClient() {
       <section className={styles.section}>
         <h2>Audit log</h2>
         <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>
-          Grouped by user — most recently active first.
+          Grouped by user, most recently active first.
         </p>
         {groupLogsByUser(logs).map((group) => (
           <div key={group.key} className={styles.logUserGroup}>

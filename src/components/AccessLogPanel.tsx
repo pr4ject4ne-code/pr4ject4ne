@@ -89,7 +89,7 @@ export default function AccessLogPanel() {
     <Card variant="plain" as="section" className={styles.card}>
       <h2 className={styles.title}>Who has accessed your biodata</h2>
       <p className={styles.intro}>
-        Every time your IHN code is used to look up your biodata — successfully or not — it shows
+        Every time your IHN code is used to look up your biodata (successfully or not), it shows
         up here, newest first.
       </p>
 

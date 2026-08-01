@@ -101,7 +101,7 @@ export default function DevHospitalsClient() {
         <h2>Pending review</h2>
         <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>
           Hospitals self-registered from the public site, awaiting moderation. Approving here
-          does NOT grant verified status by itself — create the institution&apos;s first tertiary
+          does NOT grant verified status by itself, create the institution&apos;s first tertiary
           account at{' '}
           <Link href="/dev/institutions">Institutions</Link> to hand that over.
         </p>
@@ -232,7 +232,7 @@ function CreateHospitalForm({ onCreated }: { onCreated: (id: string) => void }) 
 
         <div>
           <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
-            Location — click or drag the pin, or type exact coordinates
+            Location: click or drag the pin, or type exact coordinates
           </span>
           <LocationPicker
             lat={Number.isFinite(parsedLat) ? (parsedLat as number) : null}

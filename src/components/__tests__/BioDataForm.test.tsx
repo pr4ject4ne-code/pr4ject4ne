@@ -219,9 +219,9 @@ describe('BioDataForm', () => {
     render(<BioDataForm initialProfile={{}} initialBiodata={{}} onSave={jest.fn()} />);
     expect(screen.getByText(/BMI = weight \(kg\) ÷ height \(m\)²/)).toBeInTheDocument();
     const summary = screen.getByText('What do BMI ranges mean?');
-    expect(screen.queryByText(/Below 18.5 — Underweight/)).not.toBeVisible();
+    expect(screen.queryByText(/Below 18.5: Underweight/)).not.toBeVisible();
     fireEvent.click(summary);
-    expect(screen.getByText(/Below 18.5 — Underweight/)).toBeVisible();
+    expect(screen.getByText(/Below 18.5: Underweight/)).toBeVisible();
   });
 
   it('reveals the genotype/blood group explainer on click', () => {

@@ -335,7 +335,7 @@ function InfoTab({
         <Input label="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <div>
           <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
-            Location — click or drag the pin, or type exact coordinates
+            Location: click or drag the pin, or type exact coordinates
           </span>
           <LocationPicker
             lat={Number.isFinite(parsedLat) ? (parsedLat as number) : null}

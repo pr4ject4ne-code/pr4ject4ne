@@ -1,6 +1,6 @@
 import Layout from '@/components/Layout';
 
-export const metadata = { title: 'Privacy Policy — Racoon Eye' };
+export const metadata = { title: 'Privacy Policy | Racoon Eye' };
 
 export default function PrivacyPage() {
   return (

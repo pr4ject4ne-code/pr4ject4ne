@@ -17,7 +17,7 @@ export const HELP_CONTENT: HelpEntry[] = [
     section: 'Finding a hospital',
     topic: 'The three search modes',
     answer:
-      'The homepage search bar supports three ways to find care: "Nearest" uses your location (or a place you type in) to sort hospitals by distance and draw a route on the map; "By name" searches for a specific hospital you already know; and "By symptom" suggests hospitals based on what you describe. Symptom search recommends where to go — it does not diagnose you.',
+      'The homepage search bar supports three ways to find care: "Nearest" uses your location (or a place you type in) to sort hospitals by distance and draw a route on the map; "By name" searches for a specific hospital you already know; and "By symptom" suggests hospitals based on what you describe. Symptom search recommends where to go, it does not diagnose you.',
   },
   {
     section: 'Finding a hospital',
@@ -41,7 +41,7 @@ export const HELP_CONTENT: HelpEntry[] = [
     section: 'Understanding your IHN code',
     topic: 'Who to share it with',
     answer:
-      'Share your IHN code with close relatives or friends so they — or a partner hospital — can pull up your biodata in an emergency, even if you cannot speak for yourself. You stay in control: the code only unlocks what you have chosen to fill in, and it is yours to share only with who you choose.',
+      'Share your IHN code with close relatives or friends so they (or a partner hospital) can pull up your biodata in an emergency, even if you cannot speak for yourself. You stay in control: the code only unlocks what you have chosen to fill in, and it is yours to share only with who you choose.',
   },
   {
     section: 'Understanding your IHN code',
@@ -53,11 +53,11 @@ export const HELP_CONTENT: HelpEntry[] = [
     section: 'Filling in your Biodata',
     topic: 'Why it matters',
     answer:
-      'Filling in your Biodata makes emergencies faster and safer to handle — it is one of the core trust features of Racoon Eye. It is optional to fill in, but the more complete it is, the more useful it is in a crisis.',
+      'Filling in your Biodata makes emergencies faster and safer to handle, it is one of the core trust features of Racoon Eye. It is optional to fill in, but the more complete it is, the more useful it is in a crisis.',
   },
   {
     section: 'Filling in your Biodata',
-    topic: 'Profile vs. Biodata — the two-layer split',
+    topic: 'Profile vs. Biodata: the two-layer split',
     answer:
       'Your dashboard has two layers. "Profile" is basic identity info (name, alias, gender, phone, email, date of birth, next of kin) and is always visible to you. "Biodata" is the deeper medical layer (chronic conditions, height/weight and other measurements, occupation, marital/religious status, genotype, blood group, disabilities, health preferences), and this is the part shared via your IHN code. Clinical fields are unverified for now; official documents (lab reports, medical records) are recommended but not required.',
   },
@@ -83,7 +83,7 @@ export const HELP_CONTENT: HelpEntry[] = [
     section: 'Using First Aid',
     topic: 'Not a diagnosis',
     answer:
-      'First Aid content is educational reference material only — it is not medical advice and is not a substitute for professional care. Always back-check with a qualified professional and seek emergency help for serious situations.',
+      'First Aid content is educational reference material only, it is not medical advice and is not a substitute for professional care. Always back-check with a qualified professional and seek emergency help for serious situations.',
   },
   {
     section: 'Listing a hospital',
@@ -95,6 +95,6 @@ export const HELP_CONTENT: HelpEntry[] = [
     section: 'Reporting an issue',
     topic: 'The suggestion tab',
     answer:
-      'Every page has a "Suggestions" tab (usually floating near a corner of the screen). Use it to report incorrect hospital information, suggest a correction, or send general feedback — your message is routed to the support team, with an optional email if you want a reply.',
+      'Every page has a "Suggestions" tab (usually floating near a corner of the screen). Use it to report incorrect hospital information, suggest a correction, or send general feedback, your message is routed to the support team, with an optional email if you want a reply.',
   },
 ];

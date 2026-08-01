@@ -157,7 +157,7 @@ export default function Header({
                 onClick={() => setSymptomPickerOpen((o) => !o)}
               >
                 {redFlagGate.isEmergency
-                  ? 'Emergency — tap Search'
+                  ? 'Emergency, tap Search'
                   : totalSymptomSelections > 0
                     ? `${totalSymptomSelections} selected`
                     : 'Describe your symptoms…'}
@@ -220,7 +220,7 @@ export default function Header({
               </div>
               {redFlagGate.isEmergency ? (
                 <p className={styles.emergencyHint} role="alert">
-                  This may be an emergency. Press Search for urgent guidance — or call 112 / go to
+                  This may be an emergency. Press Search for urgent guidance, or call 112 / go to
                   the nearest hospital now.
                 </p>
               ) : (
@@ -248,7 +248,7 @@ export default function Header({
                   ))}
                   <p className={styles.symptomHint} aria-live="polite">
                     This is based on which services hospitals list, not an assessment of your
-                    condition — never a diagnosis. If you think this is an emergency, call 112 or
+                    condition, never a diagnosis. If you think this is an emergency, call 112 or
                     go to the nearest hospital now.
                   </p>
                 </>

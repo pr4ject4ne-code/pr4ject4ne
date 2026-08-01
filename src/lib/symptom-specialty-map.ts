@@ -118,7 +118,7 @@ export const SYMPTOM_ITEMS: SymptomItem[] = [
   },
   {
     id: 'neuro-epilepsy-review',
-    label: 'Known, controlled epilepsy — routine review',
+    label: 'Known, controlled epilepsy: routine review',
     region: 'Neurological',
   },
   { id: 'skin-rash', label: 'Rash, without fever or feeling unwell', region: 'Skin' },

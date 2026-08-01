@@ -90,9 +90,9 @@ export default function StringLookupClient() {
       <div className={styles.intro}>
         <h1 className={styles.title}>Find by IHN</h1>
         <p className={styles.subtitle}>
-          Enter someone&apos;s IHN code to view whatever biodata they&apos;ve chosen to share — an
+          Enter someone&apos;s IHN code to view whatever biodata they&apos;ve chosen to share, an
           organized summary, not raw data. No sign-in required, so anyone handed the code in an
-          emergency — a relative, a bystander, a first responder — can use it right away. Only
+          emergency (a relative, a bystander, a first responder) can use it right away. Only
           fields the account holder has explicitly opted in to share will ever appear here.
         </p>
       </div>
@@ -126,7 +126,7 @@ export default function StringLookupClient() {
         <Card variant="plain" className={styles.docCard} as="section">
           <div className={styles.docHeader}>
             <div>
-              <h2 className={styles.docTitle}>Biodata report — {searchedCode}</h2>
+              <h2 className={styles.docTitle}>Biodata report: {searchedCode}</h2>
               <p className={styles.docSubtitle}>
                 Generated {new Date(report.generatedAt).toLocaleString()}
               </p>
@@ -174,7 +174,7 @@ export default function StringLookupClient() {
           )}
 
           <p className={styles.disclaimer}>
-            Educational/emergency reference only — always confirm critical details with the
+            Educational/emergency reference only, always confirm critical details with the
             person or a medical professional where possible.
           </p>
         </Card>

@@ -1,7 +1,7 @@
 import Layout from '@/components/Layout';
 import ResetPasswordForm from '@/components/ResetPasswordForm';
 
-export const metadata = { title: 'Reset password — Racoon Eye' };
+export const metadata = { title: 'Reset password | Racoon Eye' };
 
 export default async function ResetPasswordPage({
   searchParams,

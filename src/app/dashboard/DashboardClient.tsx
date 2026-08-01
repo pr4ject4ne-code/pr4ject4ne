@@ -202,7 +202,7 @@ export default function DashboardClient() {
         {data && data.email_verified === false && (
           <Card variant="plain" className={styles.verifyBanner} role="status">
             <p>
-              Please verify your email address — check your inbox for a confirmation link we sent
+              Please verify your email address, check your inbox for a confirmation link we sent
               when you signed up.
             </p>
           </Card>

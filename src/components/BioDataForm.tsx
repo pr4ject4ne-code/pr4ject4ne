@@ -387,14 +387,14 @@ export default function BioDataForm({
           <summary className={styles.whySummary}>What do BMI ranges mean?</summary>
           <div className={styles.whyBody}>
             <p>
-              BMI is a simple screening number, not a diagnosis — it doesn&apos;t account for
+              BMI is a simple screening number, not a diagnosis. It doesn&apos;t account for
               muscle mass, frame size, or where fat is carried. The commonly used adult ranges are:
             </p>
             <ul className={styles.whyList}>
-              <li>Below 18.5 — Underweight</li>
-              <li>18.5–24.9 — Normal range</li>
-              <li>25–29.9 — Overweight</li>
-              <li>30 and above — Obese</li>
+              <li>Below 18.5: Underweight</li>
+              <li>18.5–24.9: Normal range</li>
+              <li>25–29.9: Overweight</li>
+              <li>30 and above: Obese</li>
             </ul>
           </div>
         </details>
@@ -432,7 +432,7 @@ export default function BioDataForm({
             <p>
               <strong>Genotype</strong> (AA, AS, AC, SS, SC) describes which haemoglobin genes you
               inherited from your parents. It is fixed at birth and never changes. It matters most
-              for genetic-compatibility awareness — for example, before starting a family — and for
+              for genetic-compatibility awareness (for example, before starting a family) and for
               understanding sickle-cell-related conditions (SS, SC). If you don&apos;t know yours, a
               simple lab test (haemoglobin electrophoresis) can confirm it.
             </p>
@@ -459,15 +459,15 @@ export default function BioDataForm({
               <li key={`${c.condition}-${c.timestamp ?? i}`} className={styles.conditionItem}>
                 <div>
                   <strong>{c.condition}</strong>
-                  {c.cause ? <span className={styles.conditionCause}> — cause: {c.cause}</span> : null}
-                  {c.duration ? <span className={styles.conditionCause}> — duration: {c.duration}</span> : null}
+                  {c.cause ? <span className={styles.conditionCause}> cause: {c.cause}</span> : null}
+                  {c.duration ? <span className={styles.conditionCause}> duration: {c.duration}</span> : null}
                   {c.progression ? (
-                    <span className={styles.conditionCause}> — progression: {c.progression}</span>
+                    <span className={styles.conditionCause}> progression: {c.progression}</span>
                   ) : null}
                   {c.complication ? (
-                    <span className={styles.conditionCause}> — complication: {c.complication}</span>
+                    <span className={styles.conditionCause}> complication: {c.complication}</span>
                   ) : null}
-                  {c.care ? <span className={styles.conditionCause}> — care: {c.care}</span> : null}
+                  {c.care ? <span className={styles.conditionCause}> care: {c.care}</span> : null}
                   {c.timestamp ? (
                     <span className={styles.conditionTime}>
                       {new Date(c.timestamp).toLocaleDateString()}

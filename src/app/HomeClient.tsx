@@ -421,7 +421,7 @@ export default function HomeClient() {
         {isEmergency && (
           <div className={styles.emergencyBanner} role="alert">
             <p className={styles.emergencyBannerText}>
-              This may be an emergency — go to the nearest hospital or emergency department now,
+              This may be an emergency, go to the nearest hospital or emergency department now,
               or call 112.
             </p>
             <a className={styles.emergencyCallBtn} href="tel:112">

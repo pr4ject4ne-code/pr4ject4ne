@@ -1,6 +1,6 @@
 import Layout from '@/components/Layout';
 
-export const metadata = { title: 'Terms & Conditions — Racoon Eye' };
+export const metadata = { title: 'Terms & Conditions | Racoon Eye' };
 
 export default function TermsPage() {
   return (
