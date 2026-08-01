@@ -4,6 +4,7 @@ import { checkRateLimit } from '@/lib/auth';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
 import { buildHospitalFilters } from '@/lib/hospital-filters';
+import { VERIFIED_STATS_QUERY, toVerifiedStats, type VerifiedStatsRow } from '@/lib/hospital-stats';
 import type { Hospital, ServiceType } from '@/types';
 
 const SERVICE_TYPES: ServiceType[] = ['hospital', 'clinic', 'pharmacy', 'radiology', 'other'];
@@ -63,9 +64,12 @@ export async function GET(req: Request) {
   // exists in the schema; see WORKLIST.md #8).
   const orderClause = orderBy ?? 'verified DESC, rating_avg DESC, name ASC';
 
-  // Count and page fetch are independent — run them in parallel. The count is
-  // bounded by COUNT_CAP (see above) via a LIMITed subquery.
-  const [totalRow, { rows }] = await Promise.all([
+  // Count, page fetch, and the homepage trust stats are independent — run
+  // them in parallel. The count is bounded by COUNT_CAP (see above) via a
+  // LIMITed subquery. The trust stats are a genuinely separate, unfiltered
+  // aggregate (see hospital-stats.ts) — a symptom/name search must never
+  // make "N verified hospitals · N cities" wrong or missing.
+  const [totalRow, { rows }, statsRow] = await Promise.all([
     query<{ count: string }>(
       `SELECT count(*)::text AS count
        FROM (SELECT 1 FROM hospitals ${where} LIMIT ${COUNT_CAP}) t`,
@@ -81,10 +85,12 @@ export async function GET(req: Request) {
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       [...params, limit, offset],
     ),
+    query<VerifiedStatsRow>(VERIFIED_STATS_QUERY, []),
   ]);
   const total = Number(totalRow.rows[0]?.count ?? '0');
+  const { verified_count, city_count } = toVerifiedStats(statsRow.rows[0]);
 
-  return apiOk({ hospitals: rows, total, limit, offset });
+  return apiOk({ hospitals: rows, total, limit, offset, verified_count, city_count });
 }
 
 interface RegisterBody {

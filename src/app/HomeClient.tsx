@@ -15,7 +15,7 @@ import { getCurrentPosition, DEFAULT_CENTER, type Coords } from '@/lib/geolocati
 import { fetchRoute, distanceKm, geocode } from '@/lib/map';
 import { buildHospitalsQuery } from '@/lib/filter-search';
 import { specialtyLabelsForSymptomIds } from '@/lib/symptom-specialty-map';
-import type { Hospital } from '@/types';
+import type { Hospital, HospitalsListResponse } from '@/types';
 import styles from './HomeClient.module.css';
 
 // Map is client-only (MapLibre touches window); load without SSR.
@@ -30,6 +30,12 @@ export default function HomeClient() {
   const [geoError, setGeoError] = useState<string | null>(null);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [total, setTotal] = useState(0);
+  // Homepage trust stats — a separate, unfiltered aggregate from `total`
+  // (which reflects the CURRENT search/filter). null until the first
+  // successful load resolves, so the trust line never briefly renders "0
+  // verified hospitals · 0 cities" as if that were real.
+  const [verifiedCount, setVerifiedCount] = useState<number | null>(null);
+  const [cityCount, setCityCount] = useState<number | null>(null);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -80,9 +86,15 @@ export default function HomeClient() {
       try {
         const res = await fetch(`/api/hospitals?${qs}`);
         if (!res.ok) throw new Error(`Request failed (${res.status})`);
-        const data = await res.json();
+        const data: HospitalsListResponse = await res.json();
         const list: Hospital[] = data.hospitals ?? [];
         setTotal(data.total ?? 0);
+        // Always unfiltered/true regardless of the current search — set on
+        // every successful load (including "load more" pages), never reset
+        // on failure so a later error doesn't blank out a stat we already
+        // know was correct.
+        setVerifiedCount(data.verified_count ?? 0);
+        setCityCount(data.city_count ?? 0);
         setHospitals((prev) => (append ? [...prev, ...list] : list));
       } catch {
         // A failed load must not leave the page silently empty forever — surface
@@ -229,9 +241,10 @@ export default function HomeClient() {
           <div className={styles.searchGlass}>
             <SearchBar />
           </div>
-          {!loading && total > 0 && (
+          {!loading && verifiedCount !== null && cityCount !== null && verifiedCount > 0 && (
             <p className={styles.trust}>
-              {total} hospital{total === 1 ? '' : 's'} in the directory
+              {verifiedCount} verified hospital{verifiedCount === 1 ? '' : 's'} ·{' '}
+              {cityCount} {cityCount === 1 ? 'city' : 'cities'}
             </p>
           )}
         </div>

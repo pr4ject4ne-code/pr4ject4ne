@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { query, closePool } from '@/lib/db';
 import { checkRateLimit, createSession, getSession, destroySession } from '@/lib/auth';
 import { fetchDoctorAttributionLookup } from '@/lib/doctor-consent-db';
+import { VERIFIED_STATS_QUERY, toVerifiedStats, type VerifiedStatsRow } from '@/lib/hospital-stats';
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 const d = hasDb ? describe : describe.skip;
@@ -120,6 +121,68 @@ d('doctor consent is scoped to a (doctor, patient) pair — real regression test
     const lookupForPatientA = await fetchDoctorAttributionLookup([doctorId], patientAId);
     expect(lookupForPatientA[doctorId]?.consentStatus).toBe('approved');
     expect(lookupForPatientA[doctorId]?.doctor.name).toBe('Dr. Itest');
+  });
+});
+
+d('homepage trust stats (hospital-stats.ts VERIFIED_STATS_QUERY) — the SQL a mocked route test can\'t prove', () => {
+  // The query text is fixed (no filter params), so the real proof this
+  // module works — unverified/non-approved excluded, null/empty city not
+  // miscounted, shared cities deduped — is a before/after delta against a
+  // real Postgres, not a mocked route test. Uses a unique random city so it
+  // can never collide with pre-existing seed/dev data.
+  const uniqueCity = `Itest-City-${randomUUID()}`;
+  const ids = {
+    verifiedApproved1: randomUUID(), // counts: verified + city
+    verifiedApproved2: randomUUID(), // counts: verified, SAME city as #1 — must dedupe to +1 city, not +2
+    unverifiedApproved: randomUUID(), // must NOT count toward verified_count or city_count
+    verifiedPending: randomUUID(), // status != approved — must NOT count
+    verifiedNullCity: randomUUID(), // counts toward verified_count, must NOT inflate city_count
+    verifiedEmptyCity: randomUUID(), // counts toward verified_count, must NOT inflate city_count
+  };
+  const allIds = Object.values(ids);
+
+  async function fetchStats() {
+    const { rows } = await query<VerifiedStatsRow>(VERIFIED_STATS_QUERY, []);
+    return toVerifiedStats(rows[0]);
+  }
+
+  let before: { verified_count: number; city_count: number };
+
+  beforeAll(async () => {
+    before = await fetchStats();
+    await query(
+      `INSERT INTO hospitals (id, name, service_type, status, verified, city) VALUES
+         ($1, 'Itest VA1', 'hospital', 'approved', TRUE, $7),
+         ($2, 'Itest VA2', 'hospital', 'approved', TRUE, $7),
+         ($3, 'Itest Unverified', 'hospital', 'approved', FALSE, $7),
+         ($4, 'Itest Pending', 'hospital', 'pending', TRUE, $7),
+         ($5, 'Itest NullCity', 'hospital', 'approved', TRUE, NULL),
+         ($6, 'Itest EmptyCity', 'hospital', 'approved', TRUE, '')`,
+      [
+        ids.verifiedApproved1,
+        ids.verifiedApproved2,
+        ids.unverifiedApproved,
+        ids.verifiedPending,
+        ids.verifiedNullCity,
+        ids.verifiedEmptyCity,
+        uniqueCity,
+      ],
+    );
+  });
+
+  afterAll(async () => {
+    await query('DELETE FROM hospitals WHERE id = ANY($1)', [allIds]);
+  });
+
+  it('counts only verified+approved hospitals, dedupes shared cities, and ignores null/empty city', async () => {
+    const after = await fetchStats();
+    // 4 of the 6 inserted rows are verified+approved (the unverified one and
+    // the pending one must be excluded).
+    expect(after.verified_count - before.verified_count).toBe(4);
+    // Of those 4, only ONE distinct non-blank city was introduced — the two
+    // sharing `uniqueCity` collapse to +1, and the null/empty-city rows add
+    // nothing.
+    expect(after.city_count - before.city_count).toBe(1);
   });
 });
 

@@ -7,8 +7,18 @@
  * unauthenticated form (/hospitals/register, worklist #35/#36) the same day
  * the gap was found, raising it from "API-only, low exposure" to a real
  * public-input validation gap.
+ *
+ * Also covers GET /api/hospitals's `verified_count`/`city_count` trust
+ * stats — proving they're wired into the response independent of `total`
+ * (the current search's filtered/paginated count). The actual SQL
+ * correctness (exclude unverified/non-approved, dedupe cities, ignore
+ * null/empty city) is proven against a real Postgres in
+ * src/lib/__tests__/backend.integration.test.ts, since a mocked `query()`
+ * can't validate WHERE-clause logic — this file only proves the route
+ * plumbs the (mocked) stats query result through to the JSON response.
  */
-import { POST } from '@/app/api/hospitals/route';
+import { GET, POST } from '@/app/api/hospitals/route';
+import { VERIFIED_STATS_QUERY } from '@/lib/hospital-stats';
 
 const mockQuery = jest.fn();
 jest.mock('@/lib/db', () => ({
@@ -111,5 +121,52 @@ describe('POST /api/hospitals', () => {
     const [, values] = mockQuery.mock.calls[0] as [string, unknown[]];
     expect(values).toContain(90);
     expect(values).toContain(-180);
+  });
+});
+
+describe('GET /api/hospitals', () => {
+  it('includes verified_count/city_count in the response, independent of the filtered `total`', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql === VERIFIED_STATS_QUERY) {
+        return Promise.resolve({ rows: [{ verified_count: '4', city_count: '2' }] });
+      }
+      if (sql.includes('count(*)::text AS count')) {
+        // A totally different number from verified_count — proves the two
+        // are genuinely separate aggregates, not the same value relabeled.
+        return Promise.resolve({ rows: [{ count: '10' }] });
+      }
+      // The paginated hospitals rows themselves — irrelevant to this test.
+      return Promise.resolve({ rows: [] });
+    });
+
+    const res = await GET(new Request('http://localhost/api/hospitals'));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.verified_count).toBe(4);
+    expect(json.city_count).toBe(2);
+    expect(json.total).toBe(10);
+    // Called with no params — a fixed, unfiltered aggregate, never scoped to
+    // the current search's WHERE clause.
+    expect(mockQuery).toHaveBeenCalledWith(VERIFIED_STATS_QUERY, []);
+  });
+
+  it('a symptom/name search does not blank out or zero the trust stats', async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql === VERIFIED_STATS_QUERY) {
+        return Promise.resolve({ rows: [{ verified_count: '7', city_count: '3' }] });
+      }
+      if (sql.includes('count(*)::text AS count')) {
+        return Promise.resolve({ rows: [{ count: '0' }] });
+      }
+      return Promise.resolve({ rows: [] });
+    });
+
+    // A search that matches nothing in the current filter (total: 0) must
+    // still report the true, unfiltered verified/city stats.
+    const res = await GET(new Request('http://localhost/api/hospitals?q=nonexistent-hospital-xyz'));
+    const json = await res.json();
+    expect(json.total).toBe(0);
+    expect(json.verified_count).toBe(7);
+    expect(json.city_count).toBe(3);
   });
 });

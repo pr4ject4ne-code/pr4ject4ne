@@ -335,3 +335,19 @@ export interface ApiError {
   error: string;
   code: string;
 }
+
+/**
+ * GET /api/hospitals response shape. `verified_count`/`city_count` are the
+ * homepage trust stats (worklist: "N verified hospitals · N cities") — a
+ * genuinely separate, unfiltered aggregate over `verified = TRUE AND status
+ * = 'approved'` hospitals, always present regardless of the current
+ * search/filter/pagination (see src/lib/hospital-stats.ts).
+ */
+export interface HospitalsListResponse {
+  hospitals: Hospital[];
+  total: number;
+  limit: number;
+  offset: number;
+  verified_count: number;
+  city_count: number;
+}
