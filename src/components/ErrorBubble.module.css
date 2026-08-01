@@ -1,0 +1,34 @@
+/* Same visual register as Card's 'plain' variant (off-white-adjacent tinted
+   surface, hairline border, token shadow/radius) — see Card.module.css —
+   just tinted red instead of neutral, with a left accent bar to read as an
+   alert at a glance. */
+.bubble {
+  display: block;
+  background: var(--color-red-light);
+  border: 1px solid var(--color-red-border);
+  border-left: 3px solid var(--color-red);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-red);
+  font-weight: 600;
+}
+
+/* Page/section-level error. Scroll-margin-top guards against Header.tsx's
+   sticky nav (position: sticky; top: 0; z-index: 500) occluding the centered
+   scroll target — the header renders at roughly ~70-80px tall on the
+   non-search (form) pages this variant is used on, so 88px clears it with
+   margin. */
+.banner {
+  padding: 0.85rem 1.1rem;
+  font-size: 0.92rem;
+  scroll-margin-top: 88px;
+}
+
+/* Compact per-field error (Input.tsx / Dropdown.tsx). Sits inline right
+   below a form control, so it stays visually lighter than a page banner. */
+.field {
+  display: inline-block;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.8rem;
+  border-left-width: 2px;
+}

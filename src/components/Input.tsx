@@ -1,4 +1,5 @@
 import { forwardRef, useId, useState } from 'react';
+import ErrorBubble from './ErrorBubble';
 import styles from './Input.module.css';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -66,11 +67,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       ) : (
         input
       )}
-      {error && (
-        <span id={errorId} className={styles.error} role="alert">
-          {error}
-        </span>
-      )}
+      <ErrorBubble as="span" variant="field" id={errorId} message={error} />
     </div>
   );
 });

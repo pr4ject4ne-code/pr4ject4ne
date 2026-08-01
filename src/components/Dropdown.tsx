@@ -1,4 +1,5 @@
 import { forwardRef, useId } from 'react';
+import ErrorBubble from './ErrorBubble';
 import styles from './Input.module.css';
 
 export interface DropdownOption {
@@ -42,11 +43,7 @@ const Dropdown = forwardRef<HTMLSelectElement, DropdownProps>(function Dropdown(
           </option>
         ))}
       </select>
-      {error && (
-        <span id={errorId} className={styles.error} role="alert">
-          {error}
-        </span>
-      )}
+      <ErrorBubble as="span" variant="field" id={errorId} message={error} />
     </div>
   );
 });

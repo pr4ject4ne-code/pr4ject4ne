@@ -51,6 +51,11 @@
   --color-green: #2e7d4f;
   --color-yellow: #b8860b;
   --color-red: #b3261e;
+  /* Error-bubble surface tints — rgba tints of --color-red so they layer
+     cleanly over any background (unlike the flat-hex -light tokens above,
+     which assume a plain-white surface). Used by ErrorBubble.tsx. */
+  --color-red-light: rgba(179, 38, 30, 0.08);
+  --color-red-border: rgba(179, 38, 30, 0.28);
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 

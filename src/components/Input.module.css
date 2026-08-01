@@ -76,10 +76,3 @@
 .inputError {
   border-color: var(--color-red);
 }
-
-/* Red on a tinted surface; the message sits below the input, not on white text rules concern. */
-.error {
-  font-size: 0.8rem;
-  color: var(--color-red);
-  background: transparent;
-}
