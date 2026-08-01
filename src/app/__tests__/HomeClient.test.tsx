@@ -11,7 +11,7 @@
  * the emergency banner and skip specialty-matching entirely — no `symptom`
  * param should ever reach the API fetch in that case.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import HomeClient from '../HomeClient';
 
 jest.mock('@/components/Layout', () => ({
@@ -25,9 +25,11 @@ jest.mock('@/components/Map', () => ({
 }));
 
 let mockSearchParams = new URLSearchParams('symptom=eye-red-itchy,ent-sore-throat');
+const mockPush = jest.fn();
 
 jest.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
+  useRouter: () => ({ push: mockPush }),
 }));
 
 jest.mock('@/lib/geolocation', () => ({
@@ -104,5 +106,39 @@ describe('HomeClient emergency outcome (Stage 1 short-circuit)', () => {
     render(<HomeClient />);
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(screen.queryByText(/usually see/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('HomeClient map section (Phase 2 rebuild: expandable, not a fixed/sheet stage)', () => {
+  beforeEach(() => {
+    mockSearchParams = new URLSearchParams('');
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ hospitals: [], total: 0 }),
+      } as Response),
+    );
+  });
+
+  it('renders the map section collapsed by default (aria-expanded=false, "Expand map" label)', async () => {
+    render(<HomeClient />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const toggle = screen.getByRole('button', { name: /expand map/i });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('clicking the toggle flips aria-expanded to true and swaps the label to "Collapse map"', async () => {
+    render(<HomeClient />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const toggle = screen.getByRole('button', { name: /expand map/i });
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveTextContent(/collapse map/i);
+  });
+
+  it('renders exactly one search UI instance (SearchBar, no duplicate from Header)', async () => {
+    render(<HomeClient />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    expect(screen.getAllByRole('search')).toHaveLength(1);
   });
 });

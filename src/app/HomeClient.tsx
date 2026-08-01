@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import SearchBar from '@/components/SearchBar';
-import HospitalMiniProfile from '@/components/HospitalMiniProfile';
+import HospitalResultCard from '@/components/HospitalResultCard';
 import Button from '@/components/Button';
 import HospitalFilters, {
   DEFAULT_HOME_FILTERS,
@@ -342,7 +342,7 @@ export default function HomeClient() {
         )}
         <div className={styles.list}>
           {orderedHospitals.map((h) => (
-            <HospitalMiniProfile key={h.id} hospital={h} />
+            <HospitalResultCard key={h.id} hospital={h} distanceKm={h.distanceKm ?? null} />
           ))}
           {!loading && loadError && orderedHospitals.length === 0 && (
             <div className={styles.empty} role="alert">

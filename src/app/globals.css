@@ -88,17 +88,17 @@
   );
 }
 
-/* prefers-reduced-motion: springs/parallax/pointer-tracked continuous effects
-   are motion-heavy by design, which is a hard accessibility gap for users who
-   have asked the OS to reduce motion (this app's users may also be stressed/
-   injured/on a shaky connection — reduced motion isn't just a preference
-   here, it can be a real need). --spring collapses to a plain, short,
-   non-bouncy ease everywhere it's referenced, and every CSS transition/
-   animation site-wide collapses to effectively-instant. The imperative-JS
-   effects this can't reach (pointer-tracked sheen in HospitalMiniProfile,
-   the drag parallax + scroll-darken in HomeClient) check
-   `src/lib/reducedMotion.ts`'s `prefersReducedMotion()` directly and skip
-   their own continuous per-event DOM writes when it's true. */
+/* prefers-reduced-motion: springs are motion-heavy by design, which is a hard
+   accessibility gap for users who have asked the OS to reduce motion (this
+   app's users may also be stressed/injured/on a shaky connection — reduced
+   motion isn't just a preference here, it can be a real need). --spring
+   collapses to a plain, short, non-bouncy ease everywhere it's referenced,
+   and every CSS transition/animation site-wide collapses to
+   effectively-instant. `src/lib/reducedMotion.ts`'s `prefersReducedMotion()`
+   remains available for any future imperative-JS continuous-motion effect
+   that CSS alone can't reach (the homepage's earlier pointer-tracked sheen
+   and drag-parallax effects that motivated this were retired in the
+   2026-08-01 homepage rebuild). */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --spring: ease-out;
