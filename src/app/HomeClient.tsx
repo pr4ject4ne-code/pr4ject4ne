@@ -47,7 +47,6 @@ export default function HomeClient() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [route, setRoute] = useState<Array<[number, number]> | null>(null);
-  const [etas, setEtas] = useState<Record<string, number>>({});
   const [manualQuery, setManualQuery] = useState('');
   const [locating, setLocating] = useState(false);
   const [manualError, setManualError] = useState<string | null>(null);
@@ -338,12 +337,16 @@ export default function HomeClient() {
     });
   }, [hospitals, userLocation, symptomTags]);
 
-  // Route + ETA to a target hospital when we have a user location. Defaults
-  // to the nearest result; tapping a different pin on the map (see
-  // `onSelectMapPin` below) overrides the target so the route actually
-  // updates to show directions to THAT hospital instead of staying stuck on
-  // whichever one was nearest (founder report, 2026-07-29: tapping a pin
-  // "doesn't change ever after use").
+  // Route to a target hospital when we have a user location, drawn as a line
+  // on the map (see Map.tsx's routeGeometry). Defaults to the nearest result;
+  // tapping a different pin on the map (see `onSelectMapPin` below) overrides
+  // the target so the route actually updates to show directions to THAT
+  // hospital instead of staying stuck on whichever one was nearest (founder
+  // report, 2026-07-29: tapping a pin "doesn't change ever after use").
+  //
+  // Note: this used to also compute a per-hospital ETA number (shown on cards
+  // and pin popups), removed 2026-08-01 — the founder decided to drop the ETA
+  // display, but the route line itself is a separate, kept feature.
   const [routeTargetId, setRouteTargetId] = useState<string | null>(null);
   useEffect(() => {
     if (!userLocation) return;
@@ -352,10 +355,7 @@ export default function HomeClient() {
       orderedHospitals.find((h) => typeof h.latitude === 'number' && typeof h.longitude === 'number');
     if (!target || target.latitude == null || target.longitude == null) return;
     fetchRoute(userLocation, { lat: target.latitude, lng: target.longitude }).then((r) => {
-      if (r) {
-        setRoute(r.geometry);
-        setEtas((prev) => ({ ...prev, [target.id]: r.durationSec }));
-      }
+      if (r) setRoute(r.geometry);
     });
   }, [userLocation, orderedHospitals, routeTargetId]);
 
@@ -383,7 +383,6 @@ export default function HomeClient() {
             hospitals={orderedHospitals}
             routeGeometry={route}
             onSelectHospital={onSelectMapPin}
-            etas={etas}
             selectedHospitalId={routeTargetId}
           />
         </div>
@@ -480,7 +479,7 @@ export default function HomeClient() {
         )}
         <div className={styles.list}>
           {orderedHospitals.map((h) => (
-            <HospitalMiniProfile key={h.id} hospital={h} etaSec={etas[h.id]} />
+            <HospitalMiniProfile key={h.id} hospital={h} />
           ))}
           {!loading && loadError && orderedHospitals.length === 0 && (
             <div className={styles.empty} role="alert">

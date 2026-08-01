@@ -18,10 +18,6 @@ interface MapProps {
   hospitals: Hospital[];
   routeGeometry?: Array<[number, number]> | null;
   onSelectHospital?: (id: string) => void;
-  /** Travel time in seconds, keyed by hospital id — shown in that hospital's
-   * pin popup when present (currently only computed for the active route's
-   * target; see HomeClient.tsx's routeTargetId). */
-  etas?: Record<string, number>;
   /** The one hospital pin to render in green (founder ask, 2026-07-29:
    * "only the selected pin should be colored green") — every other pin stays
    * the default color regardless of distance/rank. `null`/undefined means no
@@ -107,7 +103,6 @@ export default function Map({
   hospitals,
   routeGeometry,
   onSelectHospital,
-  etas,
   selectedHospitalId,
 }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -171,11 +166,8 @@ export default function Map({
       const size = isSelected ? 44 : 36;
       const el = pinElement(isSelected ? COLOR_SELECTED : COLOR_AMETHYST, size);
       if (isSelected) el.style.zIndex = '2';
-      const etaSec = etas?.[h.id];
-      const etaLine =
-        typeof etaSec === 'number' ? `<br/><span>~${Math.round(etaSec / 60)} min away</span>` : '';
       const popup = new maplibregl.Popup({ offset: [0, -size + 6] }).setHTML(
-        `<strong>${escapeHtml(h.name)}</strong><br/>${escapeHtml(h.address ?? '')}${etaLine}`,
+        `<strong>${escapeHtml(h.name)}</strong><br/>${escapeHtml(h.address ?? '')}`,
       );
       const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
         .setLngLat([h.longitude, h.latitude])
@@ -184,7 +176,7 @@ export default function Map({
       if (onSelectHospital) el.addEventListener('click', () => onSelectHospital(h.id));
       markersRef.current.push(marker);
     });
-  }, [hospitals, userLocation, onSelectHospital, etas, selectedHospitalId, ready]);
+  }, [hospitals, userLocation, onSelectHospital, selectedHospitalId, ready]);
 
   // Draw/replace the route polyline and frame the view to it.
   useEffect(() => {

@@ -101,14 +101,6 @@
   margin-top: 0.35rem;
   flex-wrap: wrap;
 }
-.eta {
-  background: var(--color-highlight-light);
-  color: var(--color-highlight-dark);
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.12rem 0.5rem;
-  border-radius: 999px;
-}
 .badge {
   background: var(--color-amethyst-light);
   color: var(--color-amethyst-dark);

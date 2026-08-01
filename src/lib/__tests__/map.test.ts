@@ -1,17 +1,4 @@
-import { formatEta, distanceKm } from '@/lib/map';
-
-describe('formatEta', () => {
-  it('formats minutes under an hour', () => {
-    expect(formatEta(0)).toBe('0 min');
-    expect(formatEta(90)).toBe('2 min');
-    expect(formatEta(59 * 60)).toBe('59 min');
-  });
-  it('formats hours and minutes', () => {
-    expect(formatEta(60 * 60)).toBe('1h');
-    expect(formatEta(90 * 60)).toBe('1h 30m');
-    expect(formatEta(125 * 60)).toBe('2h 5m');
-  });
-});
+import { distanceKm } from '@/lib/map';
 
 describe('distanceKm', () => {
   it('is ~0 for identical points', () => {

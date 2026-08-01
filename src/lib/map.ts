@@ -12,7 +12,10 @@ export interface RouteResult {
 const OSRM_BASE = process.env.NEXT_PUBLIC_OSRM_URL ?? 'https://router.project-osrm.org';
 
 /**
- * Fetch a driving route + ETA from the public OSRM demo server.
+ * Fetch a driving route (for the map's route line) from the public OSRM demo
+ * server. `durationSec` is returned because OSRM includes it, but nothing
+ * currently displays it — the ETA number was removed 2026-08-01 (founder
+ * decision); only the route geometry is used.
  * OSRM expects lng,lat order. Returns null on any failure so callers degrade
  * gracefully (map still renders without a route line).
  */
@@ -39,15 +42,6 @@ export async function fetchRoute(from: Coords, to: Coords): Promise<RouteResult 
   } catch {
     return null;
   }
-}
-
-/** Format an OSRM duration (seconds) into a compact ETA string. */
-export function formatEta(durationSec: number): string {
-  const mins = Math.round(durationSec / 60);
-  if (mins < 60) return `${mins} min`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
 }
 
 /**

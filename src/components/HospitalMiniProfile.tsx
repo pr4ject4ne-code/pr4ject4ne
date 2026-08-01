@@ -3,21 +3,19 @@
 import Link from 'next/link';
 import Card from './Card';
 import Stars from './Stars';
-import { formatEta } from '@/lib/map';
 import { prefersReducedMotion } from '@/lib/reducedMotion';
 import type { Hospital } from '@/types';
 import styles from './HospitalMiniProfile.module.css';
 
 interface Props {
   hospital: Hospital;
-  etaSec?: number | null;
 }
 
 /**
  * Collapsed hospital card shown below the map. Clicking navigates to the full
  * hospital profile page (per spec, it does not expand inline).
  */
-export default function HospitalMiniProfile({ hospital, etaSec }: Props) {
+export default function HospitalMiniProfile({ hospital }: Props) {
   const photo = hospital.photos?.[0]?.url;
   return (
     <Card
@@ -71,9 +69,6 @@ export default function HospitalMiniProfile({ hospital, etaSec }: Props) {
           <div className={styles.meta}>
             {hospital.rating_count > 0 && (
               <Stars value={hospital.rating_avg} count={hospital.rating_count} />
-            )}
-            {typeof etaSec === 'number' && (
-              <span className={styles.eta}>ETA {formatEta(etaSec)}</span>
             )}
             {hospital.is_24_hour && <span className={styles.badge}>24h</span>}
           </div>
