@@ -1,0 +1,226 @@
+/* Wrapper carries position:relative so the symptom picker popover (below)
+   can anchor under the pill without being clipped by the pill's own
+   overflow:hidden. Layout/placement (grid-area, width) is the caller's job
+   (Header.module.css's .searchWrap positions this within the bar). */
+.searchWrap {
+  position: relative;
+  width: 100%;
+}
+
+.searchPill {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  background: var(--color-white);
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(15, 30, 70, 0.14);
+}
+
+.searchBtn:disabled {
+  background: var(--color-border);
+  cursor: not-allowed;
+}
+
+/* Symptom multi-select (worklist #34 — "requesting min 2 symptoms"). The
+   toggle sits where the plain text input would be; the panel is a popover
+   anchored to .searchWrap (not .searchPill, which clips overflow). */
+.symptomToggle {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.9rem;
+  color: var(--color-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.symptomPanel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.severityBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.severityLabel {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.severitySlider {
+  width: 100%;
+  accent-color: var(--color-amethyst);
+}
+
+.severityValue {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-amethyst-dark, var(--color-amethyst));
+}
+
+.redFlagLabel {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.redFlagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.redFlagChip,
+.redFlagChipOn {
+  border: 1px solid #d94b4b;
+  background: var(--color-white);
+  color: #b02a2a;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.redFlagChipOn {
+  background: #d94b4b;
+  color: var(--color-white);
+  border-color: #d94b4b;
+}
+
+.emergencyHint {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius);
+  background: #fdeaea;
+  color: #8a1f1f;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.symptomRegionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.symptomRegionLabel {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-muted);
+}
+
+.symptomRegionChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.symptomChip,
+.symptomChipOn {
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  color: var(--color-ink);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.symptomChipOn {
+  background: var(--color-amethyst);
+  color: var(--color-white);
+  border-color: var(--color-amethyst);
+}
+
+.symptomHint {
+  width: 100%;
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+/* Segmented pill mode switcher (Nearby / By name / By symptom) — replaces
+   the old native <select>. Real <button>s so each pill sits in natural tab
+   order and works with Enter/Space for free (standard button semantics);
+   `aria-pressed` on each pill communicates the current selection to
+   assistive tech without needing custom roving-tabindex/tablist wiring. */
+.modeGroup {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-blue-light);
+  flex-shrink: 0;
+}
+
+.modePill,
+.modePillOn {
+  border: none;
+  background: transparent;
+  color: var(--color-blue-dark);
+  padding: 0 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.modePillOn {
+  background: var(--color-amethyst);
+  color: var(--color-white);
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.9rem;
+  color: var(--color-ink);
+  min-width: 0;
+}
+.searchInput:focus {
+  outline: none;
+}
+
+.searchBtn {
+  border: none;
+  background: var(--color-amethyst);
+  color: var(--color-white);
+  padding: 0 1.15rem 0 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.searchBtn:hover {
+  background: var(--color-amethyst-dark);
+}

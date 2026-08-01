@@ -21,8 +21,7 @@ jest.mock('@/lib/useSession', () => ({
 }));
 
 function switchToSymptomMode() {
-  const select = screen.getByLabelText('Search mode');
-  fireEvent.change(select, { target: { value: 'symptom' } });
+  fireEvent.click(screen.getByRole('button', { name: 'By symptom' }));
 }
 
 function openPicker() {
