@@ -241,7 +241,7 @@ export default function HomeClient() {
           <div className={styles.searchGlass}>
             <SearchBar />
           </div>
-          {!loading && verifiedCount !== null && cityCount !== null && verifiedCount > 0 && (
+          {verifiedCount !== null && cityCount !== null && verifiedCount > 0 && (
             <p className={styles.trust}>
               {verifiedCount} verified hospital{verifiedCount === 1 ? '' : 's'} ·{' '}
               {cityCount} {cityCount === 1 ? 'city' : 'cities'}

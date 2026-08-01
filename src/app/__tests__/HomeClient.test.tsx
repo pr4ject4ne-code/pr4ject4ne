@@ -11,7 +11,7 @@
  * the emergency banner and skip specialty-matching entirely — no `symptom`
  * param should ever reach the API fetch in that case.
  */
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import HomeClient from '../HomeClient';
 
 jest.mock('@/components/Layout', () => ({
@@ -106,6 +106,74 @@ describe('HomeClient emergency outcome (Stage 1 short-circuit)', () => {
     render(<HomeClient />);
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(screen.queryByText(/usually see/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('HomeClient trust-stat line (verified hospitals · cities)', () => {
+  beforeEach(() => {
+    mockSearchParams = new URLSearchParams('');
+  });
+
+  it('stays visible across a later reload (filter change) instead of disappearing while loading', async () => {
+    // First call: resolves immediately and establishes verifiedCount/cityCount.
+    // Second call (triggered below by a filter change): resolves after a
+    // delay so we can assert the trust line survives the loading window
+    // instead of flickering out because of a stray `!loading` guard.
+    let resolveSecond: (() => void) | undefined;
+    let callCount = 0;
+    global.fetch = jest.fn(() => {
+      callCount += 1;
+      if (callCount === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hospitals: [],
+              total: 0,
+              verified_count: 4,
+              city_count: 2,
+            }),
+        } as Response);
+      }
+      return new Promise<Response>((resolve) => {
+        resolveSecond = () =>
+          resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                hospitals: [],
+                total: 0,
+                verified_count: 4,
+                city_count: 2,
+              }),
+          } as Response);
+      });
+    });
+
+    render(<HomeClient />);
+
+    // First load resolves — trust line appears.
+    await waitFor(() =>
+      expect(screen.getByText(/4 verified hospitals · 2 cities/i)).toBeInTheDocument(),
+    );
+
+    // Open filters and change one to trigger a second `loadHospitals` call.
+    fireEvent.click(screen.getByRole('button', { name: /filters/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^public$/i }));
+
+    await waitFor(() => expect(callCount).toBe(2));
+
+    // Still mid-flight on the second call — the trust line must remain, not
+    // vanish just because `loading` is true again.
+    expect(screen.getByText(/4 verified hospitals · 2 cities/i)).toBeInTheDocument();
+
+    // Let the second call resolve and confirm it's still there afterward too.
+    await act(async () => {
+      resolveSecond?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByText(/4 verified hospitals · 2 cities/i)).toBeInTheDocument();
   });
 });
 
