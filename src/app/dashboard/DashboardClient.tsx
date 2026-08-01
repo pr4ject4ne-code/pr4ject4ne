@@ -11,6 +11,7 @@ import BioDataForm from '@/components/BioDataForm';
 import IHNCodeDisplay from '@/components/IHNCodeDisplay';
 import SharingPrefsPanel from '@/components/SharingPrefsPanel';
 import AccessLogPanel from '@/components/AccessLogPanel';
+import ErrorBubble from '@/components/ErrorBubble';
 import { DEFAULT_SHARING_PREFS } from '@/lib/sharing-prefs';
 import { authFetch } from '@/lib/authFetch';
 import type { ProfileLayer, BiodataLayer, SharingPrefs } from '@/types';
@@ -242,7 +243,7 @@ export default function DashboardClient() {
               />
               <Button type="submit">Change password</Button>
             </form>
-            {pwError && <p style={{ color: 'var(--color-red)', fontSize: '0.85rem', marginTop: '0.75rem' }}>{pwError}</p>}
+            <ErrorBubble variant="banner" message={pwError} />
             {pwSuccess && <p style={{ color: 'var(--color-green)', fontSize: '0.85rem', marginTop: '0.75rem' }}>Password changed. Your other sessions were signed out.</p>}
           </Card>
         </section>

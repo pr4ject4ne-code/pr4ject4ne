@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Button from './Button';
 import Modal from './Modal';
+import ErrorBubble from './ErrorBubble';
 import { uploadFile } from '@/lib/upload-client';
 import type { HospitalPhoto } from '@/types';
 import styles from './PhotoUpload.module.css';
@@ -118,11 +119,7 @@ export default function PhotoUpload({ photos, onSave, saving }: PhotoUploadProps
         </div>
       )}
 
-      {uploadError && (
-        <p role="alert" style={{ color: 'var(--color-danger, #c0392b)', fontSize: '0.85rem' }}>
-          {uploadError}
-        </p>
-      )}
+      <ErrorBubble variant="banner" message={uploadError} />
 
       <div className={styles.saveRow}>
         <Button onClick={() => onSave(items)} disabled={saving}>

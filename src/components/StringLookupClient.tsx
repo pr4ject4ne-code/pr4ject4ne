@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Card from './Card';
 import Input from './Input';
 import Button from './Button';
+import ErrorBubble from './ErrorBubble';
 import { isValidIhnCode } from '@/lib/ihn-code-validate';
 import { autoFormatIhnInput } from '@/lib/ihn-code-format';
 import { safeHttpUrl } from '@/lib/sanitize';
@@ -111,11 +112,7 @@ export default function StringLookupClient() {
               {submitting ? 'Looking up…' : 'Look up'}
             </Button>
           </div>
-          {error && (
-            <p className={styles.error} role="alert">
-              {error}
-            </p>
-          )}
+          <ErrorBubble variant="banner" message={error} />
         </form>
       </Card>
 

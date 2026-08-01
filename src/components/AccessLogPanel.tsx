@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Card from './Card';
 import Button from './Button';
+import ErrorBubble from './ErrorBubble';
 import styles from './AccessLogPanel.module.css';
 
 const PAGE_SIZE = 20;
@@ -93,11 +94,7 @@ export default function AccessLogPanel() {
       </p>
 
       {loading && <p className={styles.muted}>Loading…</p>}
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
+      <ErrorBubble variant="banner" message={error} />
 
       {!loading && !error && entries.length === 0 && (
         <p className={styles.muted}>No one has used your IHN code yet.</p>

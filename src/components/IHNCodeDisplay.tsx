@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Card from './Card';
 import Button from './Button';
 import Input from './Input';
+import ErrorBubble from './ErrorBubble';
 import styles from './IHNCodeDisplay.module.css';
 
 const COOLDOWN_DAYS = 30;
@@ -175,11 +176,7 @@ export default function IHNCodeDisplay({
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              {regenerateError && (
-                <p className={styles.error} role="alert">
-                  {regenerateError}
-                </p>
-              )}
+              <ErrorBubble variant="banner" message={regenerateError} />
               <Button type="submit" disabled={regenerating || !password}>
                 {regenerating ? 'Regenerating…' : 'Regenerate code'}
               </Button>

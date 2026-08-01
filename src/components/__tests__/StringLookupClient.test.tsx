@@ -14,6 +14,10 @@ describe('StringLookupClient', () => {
     jest.clearAllMocks();
     mockSearchParams.mockReturnValue(new URLSearchParams(''));
     global.fetch = jest.fn();
+    // jsdom doesn't implement scrollIntoView — ErrorBubble's banner variant
+    // (see ErrorBubble.test.tsx for the same mock) calls it whenever an
+    // error message appears, which several cases below trigger.
+    Element.prototype.scrollIntoView = jest.fn();
   });
 
   it('renders the lookup form when logged out — no sign-in required (fix #1: anonymous emergency access)', () => {

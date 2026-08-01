@@ -6,6 +6,7 @@ import Input from '@/components/Input';
 import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
 import LocationPicker from '@/components/LocationPicker';
+import ErrorBubble from '@/components/ErrorBubble';
 import type { Coords } from '@/lib/geolocation';
 import type { ServiceType } from '@/types';
 
@@ -145,7 +146,7 @@ export default function HospitalRegisterClient() {
           <Button type="submit" disabled={submitting}>
             {submitting ? 'Submitting…' : 'Submit for review'}
           </Button>
-          {error && <p style={{ color: 'var(--color-red)', fontSize: '0.85rem' }}>{error}</p>}
+          <ErrorBubble variant="banner" message={error} />
         </form>
       </Card>
     </div>

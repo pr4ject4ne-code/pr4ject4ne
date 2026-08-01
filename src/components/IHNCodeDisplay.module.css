@@ -28,10 +28,6 @@
   flex: none;
   align-self: center;
 }
-.error {
-  color: var(--color-red);
-  font-size: 0.85rem;
-}
 .note {
   font-size: 0.85rem;
   color: var(--color-muted);

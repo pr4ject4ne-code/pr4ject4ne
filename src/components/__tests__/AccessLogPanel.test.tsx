@@ -15,6 +15,11 @@ function jsonResponse(body: unknown, ok = true) {
 describe('AccessLogPanel', () => {
   beforeEach(() => {
     jest.restoreAllMocks();
+    // jsdom doesn't implement scrollIntoView — ErrorBubble's banner variant
+    // (see ErrorBubble.test.tsx for the same mock) calls it whenever an
+    // error message appears, which is exercised by the "fetch fails" case
+    // below.
+    Element.prototype.scrollIntoView = jest.fn();
   });
 
   it('shows the empty state when nothing has happened yet', async () => {
