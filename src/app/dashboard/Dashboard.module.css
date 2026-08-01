@@ -14,8 +14,12 @@
 }
 .title {
   margin: 0;
-  font-size: 2rem;
+  font-size: clamp(1.25rem, 5vw, 2rem);
   letter-spacing: -0.02em;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .mainGrid {
   display: grid;
