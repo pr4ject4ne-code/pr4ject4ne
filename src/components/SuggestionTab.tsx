@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 import Input from './Input';
+import ErrorBubble from './ErrorBubble';
 import { useSession } from '@/lib/useSession';
 import styles from './SuggestionTab.module.css';
 
@@ -101,11 +102,10 @@ export default function SuggestionTab({ hospitalId, page }: SuggestionTabProps) 
                 required
               />
             )}
-            {status === 'error' && (
-              <p role="alert" className={styles.error}>
-                Could not send. Please try again.
-              </p>
-            )}
+            <ErrorBubble
+              variant="banner"
+              message={status === 'error' ? 'Could not send. Please try again.' : null}
+            />
             <div className={styles.actions}>
               <Button type="submit" disabled={status === 'sending' || !emailSatisfied}>
                 {status === 'sending' ? 'Sending…' : 'Send'}

@@ -38,11 +38,6 @@
   resize: vertical;
 }
 
-.error {
-  color: var(--color-red);
-  font-size: 0.85rem;
-}
-
 .returnEmailNote {
   color: var(--color-muted);
   font-size: 0.85rem;

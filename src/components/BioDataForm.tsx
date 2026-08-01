@@ -1,11 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Input from './Input';
 import Dropdown from './Dropdown';
 import Button from './Button';
 import Card from './Card';
+import ErrorBubble from './ErrorBubble';
 import { uploadFile } from '@/lib/upload-client';
+import { scrollToFirstInvalidField } from '@/lib/scrollToError';
 import type { ProfileLayer, BiodataLayer } from '@/types';
 import styles from './BioDataForm.module.css';
 
@@ -68,6 +70,7 @@ export default function BioDataForm({
   saving,
   saveError,
 }: BioDataFormProps) {
+  const formRef = useRef<HTMLFormElement>(null);
   const [profile, setProfile] = useState<ProfileLayer>(initialProfile);
   const [biodata, setBiodata] = useState<BiodataLayer>(initialBiodata);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -178,12 +181,15 @@ export default function BioDataForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate()) {
+      scrollToFirstInvalidField(formRef.current);
+      return;
+    }
     await onSave(profile, { ...biodata, bmi });
   }
 
   return (
-    <form onSubmit={submit}>
+    <form ref={formRef} onSubmit={submit}>
       <Card variant="plain" as="section" className={styles.section}>
         <h2 className={styles.heading}>Profile</h2>
         <p className={styles.sub}>Freely visible. Required fields are marked.</p>
@@ -217,11 +223,7 @@ export default function BioDataForm({
               </Button>
             )}
             {photoUploading && <span className={styles.sub}>Uploading…</span>}
-            {photoError && (
-              <p role="alert" className={styles.error}>
-                {photoError}
-              </p>
-            )}
+            <ErrorBubble variant="banner" message={photoError} />
           </div>
         </div>
 
@@ -535,11 +537,7 @@ export default function BioDataForm({
         </div>
       </Card>
 
-      {saveError && (
-        <p role="alert" className={styles.error}>
-          {saveError}
-        </p>
-      )}
+      <ErrorBubble variant="banner" message={saveError} />
       <div className={styles.actions}>
         <Button type="submit" disabled={saving}>
           {saving ? 'Saving…' : 'Save biodata'}

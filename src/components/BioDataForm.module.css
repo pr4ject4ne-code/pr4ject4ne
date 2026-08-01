@@ -91,10 +91,6 @@
   font-size: 0.9rem;
   margin-top: 0.5rem;
 }
-.error {
-  color: var(--color-red);
-  font-size: 0.9rem;
-}
 .actions {
   display: flex;
   justify-content: flex-end;

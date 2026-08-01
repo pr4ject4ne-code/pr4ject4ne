@@ -79,11 +79,6 @@
 .agree a {
   color: var(--color-blue-dark);
 }
-.error {
-  color: var(--color-red);
-  font-size: 0.85rem;
-  margin: 0 0 0.75rem;
-}
 .submit {
   width: 100%;
 }

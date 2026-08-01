@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import Input from './Input';
 import Button from './Button';
 import Card from './Card';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
+import ErrorBubble from './ErrorBubble';
 import { validatePasswordStrength } from '@/lib/validation';
+import { scrollToFirstInvalidField } from '@/lib/scrollToError';
 import styles from './LoginForm.module.css';
 import buttonStyles from './Button.module.css';
 
@@ -19,6 +21,7 @@ const PASSWORD_STRENGTH_ID = 'reset-password-strength';
  * duplicating that markup.
  */
 export default function ResetPasswordForm({ token }: { token: string }) {
+  const formRef = useRef<HTMLFormElement>(null);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -42,7 +45,10 @@ export default function ResetPasswordForm({ token }: { token: string }) {
       setServerError('This reset link is invalid.');
       return;
     }
-    if (!validate()) return;
+    if (!validate()) {
+      scrollToFirstInvalidField(formRef.current);
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/auth/reset-password', {
@@ -100,7 +106,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
     <Card variant="plain" className={styles.card}>
       <h1 className={styles.title}>Choose a new password</h1>
       <p className={styles.subtitle}>Enter a new password for your account.</p>
-      <form onSubmit={onSubmit} noValidate>
+      <form ref={formRef} onSubmit={onSubmit} noValidate>
         <Input
           label="New password"
           type="password"
@@ -122,11 +128,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
           autoComplete="new-password"
           required
         />
-        {serverError && (
-          <p role="alert" className={styles.error}>
-            {serverError}
-          </p>
-        )}
+        <ErrorBubble variant="banner" message={serverError} />
         <Button type="submit" disabled={submitting} className={styles.submit}>
           {submitting ? 'Please wait…' : 'Reset password'}
         </Button>

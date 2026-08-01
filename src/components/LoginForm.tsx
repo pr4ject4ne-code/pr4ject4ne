@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Input from './Input';
 import Button from './Button';
 import Card from './Card';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
+import ErrorBubble from './ErrorBubble';
 import { validatePasswordStrength, isValidEmail } from '@/lib/validation';
+import { scrollToFirstInvalidField } from '@/lib/scrollToError';
 import styles from './LoginForm.module.css';
 
 type Mode = 'login' | 'signup';
@@ -16,6 +18,7 @@ const PASSWORD_STRENGTH_ID = 'signup-password-strength';
 
 export default function LoginForm() {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,7 +52,10 @@ export default function LoginForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setServerError(null);
-    if (!validate()) return;
+    if (!validate()) {
+      scrollToFirstInvalidField(formRef.current);
+      return;
+    }
     setSubmitting(true);
     try {
       const endpoint = mode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
@@ -128,11 +134,7 @@ export default function LoginForm() {
             autoFocus
             required
           />
-          {mfaError && (
-            <p role="alert" className={styles.error}>
-              {mfaError}
-            </p>
-          )}
+          <ErrorBubble variant="banner" message={mfaError} />
           <Button type="submit" disabled={mfaSubmitting || !mfaCode} className={styles.submit}>
             {mfaSubmitting ? 'Verifying…' : 'Verify'}
           </Button>
@@ -199,7 +201,7 @@ export default function LoginForm() {
         </button>
       </div>
 
-      <form onSubmit={onSubmit} noValidate>
+      <form ref={formRef} onSubmit={onSubmit} noValidate>
         <Input
           label="Email"
           type="email"
@@ -244,25 +246,23 @@ export default function LoginForm() {
               required
             />
             <label className={styles.agree}>
-              <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={agree}
+                onChange={(e) => setAgree(e.target.checked)}
+                aria-invalid={errors.agree ? true : undefined}
+                aria-describedby={errors.agree ? 'signup-agree-error' : undefined}
+              />
               <span>
                 I agree to the <a href="/terms-and-conditions">Terms &amp; Conditions</a> and{' '}
                 <a href="/privacy-policy">Privacy Policy</a>.
               </span>
             </label>
-            {errors.agree && (
-              <p role="alert" className={styles.error}>
-                {errors.agree}
-              </p>
-            )}
+            <ErrorBubble as="span" variant="field" id="signup-agree-error" message={errors.agree} />
           </>
         )}
 
-        {serverError && (
-          <p role="alert" className={styles.error}>
-            {serverError}
-          </p>
-        )}
+        <ErrorBubble variant="banner" message={serverError} />
 
         <Button type="submit" disabled={submitting} className={styles.submit}>
           {submitting ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Log in'}
