@@ -9,6 +9,7 @@ import Input from '@/components/Input';
 import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
 import LocationPicker from '@/components/LocationPicker';
+import ErrorBubble from '@/components/ErrorBubble';
 import { authFetch } from '@/lib/authFetch';
 import type { Coords } from '@/lib/geolocation';
 import type { Hospital, ServiceType } from '@/types';
@@ -94,7 +95,7 @@ export default function DevHospitalsClient() {
           {notice}
         </p>
       )}
-      {error && <p className={styles.error}>{error}</p>}
+      <ErrorBubble message={error} />
 
       <section className={styles.section}>
         <h2>Pending review</h2>
@@ -268,7 +269,7 @@ function CreateHospitalForm({ onCreated }: { onCreated: (id: string) => void }) 
         <Button type="submit" disabled={submitting}>
           {submitting ? 'Creating…' : 'Create hospital'}
         </Button>
-        {error && <p className={styles.error}>{error}</p>}
+        <ErrorBubble message={error} />
       </form>
     </Card>
   );

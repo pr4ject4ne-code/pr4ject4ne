@@ -11,10 +11,6 @@
   gap: 0.75rem;
   align-items: end;
 }
-.error {
-  color: var(--color-red);
-  font-size: 0.85rem;
-}
 .temp {
   background: var(--color-amethyst-light);
   color: var(--color-amethyst-dark);

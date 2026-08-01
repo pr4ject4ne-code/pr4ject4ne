@@ -7,6 +7,7 @@ import Card from '@/components/Card';
 import Input from '@/components/Input';
 import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
+import ErrorBubble from '@/components/ErrorBubble';
 import { authFetch } from '@/lib/authFetch';
 import styles from '../primary/DevPrimary.module.css';
 
@@ -155,7 +156,7 @@ export default function DevInstitutionsClient() {
               Create account
             </Button>
           </form>
-          {error && <p className={styles.error}>{error}</p>}
+          <ErrorBubble message={error} />
           {tempPassword && (
             <p className={styles.temp}>
               Password (shown once, save it now): <code>{tempPassword}</code>

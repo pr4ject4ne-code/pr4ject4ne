@@ -7,6 +7,7 @@ import Card from '@/components/Card';
 import Input from '@/components/Input';
 import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
+import ErrorBubble from '@/components/ErrorBubble';
 import { authFetch } from '@/lib/authFetch';
 import type { ConsentStatus } from '@/types';
 import styles from '../primary/DevPrimary.module.css';
@@ -324,7 +325,7 @@ export default function DevDoctorConsentClient() {
                 </div>
               )}
             </form>
-            {error && <p className={styles.error}>{error}</p>}
+            <ErrorBubble message={error} />
             {message && <p style={{ color: 'var(--color-green)' }}>{message}</p>}
           </Card>
         )}

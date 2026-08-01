@@ -8,6 +8,7 @@ import Card from '@/components/Card';
 import Input from '@/components/Input';
 import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
+import ErrorBubble from '@/components/ErrorBubble';
 import { authFetch } from '@/lib/authFetch';
 import styles from './DevPrimary.module.css';
 
@@ -296,7 +297,7 @@ export default function DevPrimaryClient() {
             />
             <Button type="submit">Change password</Button>
           </form>
-          {pwError && <p className={styles.error}>{pwError}</p>}
+          <ErrorBubble message={pwError} />
           {pwSuccess && <p className={styles.temp}>Password changed. Your other sessions were signed out.</p>}
         </Card>
       </section>
@@ -335,7 +336,7 @@ export default function DevPrimaryClient() {
                 required
               />
               <Button type="submit">Disable 2FA</Button>
-              {disableError && <p className={styles.error}>{disableError}</p>}
+              <ErrorBubble message={disableError} />
             </form>
           ) : enrollUri && enrollSecret ? (
             <>
@@ -355,14 +356,14 @@ export default function DevPrimaryClient() {
                 />
                 <Button type="submit">Verify &amp; enable</Button>
               </form>
-              {enrollError && <p className={styles.error}>{enrollError}</p>}
+              <ErrorBubble message={enrollError} />
             </>
           ) : (
             <>
               <Button type="button" onClick={startTotpEnroll}>
                 Enable 2FA
               </Button>
-              {enrollError && <p className={styles.error}>{enrollError}</p>}
+              <ErrorBubble message={enrollError} />
             </>
           )}
         </Card>
@@ -395,7 +396,7 @@ export default function DevPrimaryClient() {
             />
             <Button type="submit">Create developer</Button>
           </form>
-          {accountError && <p className={styles.error}>{accountError}</p>}
+          <ErrorBubble message={accountError} />
           {tempPassword && (
             <p className={styles.temp}>
               Temporary password (shown once — save it now): <code>{tempPassword}</code>
