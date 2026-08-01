@@ -16,6 +16,16 @@ describe('buildFirstAidQuery', () => {
     expect(new URLSearchParams(buildFirstAidQuery({ tag: 'Bleeding' })).get('tag')).toBe('Bleeding');
     expect(new URLSearchParams(buildFirstAidQuery({ tag: '' })).get('tag')).toBeNull();
   });
+  it('sets the region filter when provided and omits it when empty', () => {
+    expect(new URLSearchParams(buildFirstAidQuery({ region: 'Chest' })).get('region')).toBe('Chest');
+    expect(new URLSearchParams(buildFirstAidQuery({ region: '' })).get('region')).toBeNull();
+  });
+  it('sets the system filter when provided and omits it when empty', () => {
+    expect(new URLSearchParams(buildFirstAidQuery({ system: 'Cardiovascular' })).get('system')).toBe(
+      'Cardiovascular',
+    );
+    expect(new URLSearchParams(buildFirstAidQuery({ system: '' })).get('system')).toBeNull();
+  });
 });
 
 describe('disclaimer', () => {

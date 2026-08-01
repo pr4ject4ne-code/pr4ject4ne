@@ -14,6 +14,8 @@ const PAGE_SIZE = 12;
 export default function FirstAidClient() {
   const [category, setCategory] = useState<FirstAidCategory | ''>('');
   const [tag, setTag] = useState('');
+  const [region, setRegion] = useState('');
+  const [system, setSystem] = useState('');
   const [query, setQuery] = useState('');
   const [entries, setEntries] = useState<FirstAidEntry[]>([]);
   const [total, setTotal] = useState(0);
@@ -26,6 +28,8 @@ export default function FirstAidClient() {
       append: boolean,
       cat: FirstAidCategory | '',
       tg: string,
+      rg: string,
+      sy: string,
       q: string,
     ) => {
       setLoading(true);
@@ -33,6 +37,8 @@ export default function FirstAidClient() {
         const qs = buildFirstAidQuery({
           category: cat,
           tag: tg,
+          region: rg,
+          system: sy,
           q,
           limit: PAGE_SIZE,
           offset: nextOffset,
@@ -48,16 +54,16 @@ export default function FirstAidClient() {
     [],
   );
 
-  // Reload when a filter (category or tag) changes; search runs on submit.
+  // Reload when a filter (category, tag, region or system) changes; search runs on submit.
   useEffect(() => {
     setOffset(0);
-    load(0, false, category, tag, query);
+    load(0, false, category, tag, region, system, query);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, tag]);
+  }, [category, tag, region, system]);
 
   function runSearch() {
     setOffset(0);
-    load(0, false, category, tag, query);
+    load(0, false, category, tag, region, system, query);
   }
 
   const canLoadMore = entries.length < total;
@@ -71,9 +77,13 @@ export default function FirstAidClient() {
           entries={entries}
           category={category}
           tag={tag}
+          region={region}
+          system={system}
           query={query}
           onCategoryChange={setCategory}
           onTagChange={setTag}
+          onRegionChange={setRegion}
+          onSystemChange={setSystem}
           onQueryChange={setQuery}
           onSearch={runSearch}
         />
@@ -85,7 +95,7 @@ export default function FirstAidClient() {
               onClick={() => {
                 const next = offset + PAGE_SIZE;
                 setOffset(next);
-                load(next, true, category, tag, query);
+                load(next, true, category, tag, region, system, query);
               }}
             >
               {loading ? 'Loading…' : 'Load more'}

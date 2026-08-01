@@ -7,6 +7,8 @@ import Button from './Button';
 import { uploadFile } from '@/lib/upload-client';
 import { safeHttpUrl } from '@/lib/sanitize';
 import { FIRST_AID_TAGS } from '@/lib/first-aid-tags';
+import { REGION_TAGS } from '@/lib/first-aid-region-tags';
+import { SYSTEM_TAGS } from '@/lib/first-aid-system-tags';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
 import styles from './FirstAidForm.module.css';
 
@@ -25,6 +27,8 @@ export interface FirstAidFormValues {
   contraindications: string;
   images: string[];
   tags: string[];
+  region_tags: string[];
+  system_tags: string[];
 }
 
 // Split around `process` so the signs/symptoms picker can be rendered between
@@ -62,6 +66,8 @@ function fromEntry(entry?: FirstAidEntry): FirstAidFormValues {
     contraindications: entry?.contraindications ?? '',
     images: entry?.images ?? [],
     tags: entry?.tags ?? [],
+    region_tags: entry?.region_tags ?? [],
+    system_tags: entry?.system_tags ?? [],
   };
 }
 
@@ -95,6 +101,24 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
       signs_symptoms: prev.signs_symptoms.includes(tag)
         ? prev.signs_symptoms.filter((t) => t !== tag)
         : [...prev.signs_symptoms, tag],
+    }));
+  }
+
+  function toggleRegionTag(tag: string) {
+    setValues((prev) => ({
+      ...prev,
+      region_tags: prev.region_tags.includes(tag)
+        ? prev.region_tags.filter((t) => t !== tag)
+        : [...prev.region_tags, tag],
+    }));
+  }
+
+  function toggleSystemTag(tag: string) {
+    setValues((prev) => ({
+      ...prev,
+      system_tags: prev.system_tags.includes(tag)
+        ? prev.system_tags.filter((t) => t !== tag)
+        : [...prev.system_tags, tag],
     }));
   }
 
@@ -165,6 +189,46 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
                 aria-pressed={on}
                 className={on ? `${styles.tagChip} ${styles.tagChipOn}` : styles.tagChip}
                 onClick={() => toggleTag(tag)}
+              >
+                {tag}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className={styles.field}>
+        <label>Region</label>
+        <div className={styles.tagPicker}>
+          {REGION_TAGS.map((tag) => {
+            const on = values.region_tags.includes(tag);
+            return (
+              <button
+                key={tag}
+                type="button"
+                aria-pressed={on}
+                className={on ? `${styles.tagChip} ${styles.tagChipOn}` : styles.tagChip}
+                onClick={() => toggleRegionTag(tag)}
+              >
+                {tag}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className={styles.field}>
+        <label>System</label>
+        <div className={styles.tagPicker}>
+          {SYSTEM_TAGS.map((tag) => {
+            const on = values.system_tags.includes(tag);
+            return (
+              <button
+                key={tag}
+                type="button"
+                aria-pressed={on}
+                className={on ? `${styles.tagChip} ${styles.tagChipOn}` : styles.tagChip}
+                onClick={() => toggleSystemTag(tag)}
               >
                 {tag}
               </button>

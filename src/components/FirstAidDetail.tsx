@@ -97,6 +97,24 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
           ))}
         </div>
       )}
+      {entry.region_tags?.length > 0 && (
+        <div className={styles.tags} aria-label="Region">
+          {entry.region_tags.map((t) => (
+            <span key={t} className={styles.tag}>
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
+      {entry.system_tags?.length > 0 && (
+        <div className={styles.tags} aria-label="System">
+          {entry.system_tags.map((t) => (
+            <span key={t} className={styles.tag}>
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
 
       {hasImages && (
         <div className={styles.gallery}>

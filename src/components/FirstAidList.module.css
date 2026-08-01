@@ -146,6 +146,42 @@
   border-color: var(--color-blue);
 }
 
+/* Region/system disclosure — secondary anatomical filters, tucked away so
+   the page doesn't stack three chip walls (mirrors IHNCodeDisplay's
+   .why/.whySummary/.whyBody <details> pattern). */
+.moreFilters {
+  margin-bottom: 1.25rem;
+}
+.moreFiltersSummary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-blue-dark);
+}
+.moreFiltersSummary::-webkit-details-marker {
+  display: none;
+}
+.moreFiltersSummary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 0.4rem;
+  transition: transform 0.15s ease;
+}
+.moreFilters[open] .moreFiltersSummary::before {
+  transform: rotate(90deg);
+}
+.moreFiltersBody {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  max-width: 480px;
+}
+.moreFiltersBody > * {
+  flex: 1 1 200px;
+}
+
 /* Tags shown on a catalog card. */
 .cardTags {
   display: flex;
