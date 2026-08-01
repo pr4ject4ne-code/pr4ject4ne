@@ -10,15 +10,36 @@ import DoctorRoster from '@/components/DoctorRoster';
 import HospitalDepartments from '@/components/HospitalDepartments';
 import HospitalRankingPanel from '@/components/HospitalRankingPanel';
 import Card from '@/components/Card';
+import { authFetch } from '@/lib/authFetch';
 import { searchWithinHospital, type HospitalSearchMatch } from '@/lib/hospital-search';
 import type { HospitalRanking } from '@/lib/hospital-ranking';
 import type { Hospital, Doctor, Announcement } from '@/types';
 import styles from './HospitalProfile.module.css';
 
+interface DepartmentAggregate {
+  avg: number;
+  count: number;
+}
+
 interface Data {
   hospital: Hospital;
   doctors: Doctor[];
   announcements: Announcement[];
+  /** Always present from GET /api/hospitals/[id]; defaults to {} defensively
+   * if an older/mocked response omits it. */
+  department_ratings?: Record<string, DepartmentAggregate>;
+  /** Only present when the request carried a valid patient session cookie —
+   * absent (not just empty) for a signed-out visitor. */
+  your_ratings?: Record<string, number>;
+}
+
+interface RateResponse {
+  success: boolean;
+  department_avg: number;
+  department_count: number;
+  hospital_rating_avg: number;
+  hospital_rating_count: number;
+  your_score: number;
 }
 
 export default function HospitalProfileClient({ id }: { id: string }) {
@@ -60,6 +81,45 @@ export default function HospitalProfileClient({ id }: { id: string }) {
     if (!data || !searchQuery) return [];
     return searchWithinHospital(searchQuery, data.hospital, data.doctors, data.announcements);
   }, [data, searchQuery]);
+
+  /**
+   * POSTs a department rating and patches local state straight from the
+   * response body (department_avg/count, hospital_rating_avg/count,
+   * your_score) — no full refetch. Waits for the real response before
+   * touching any displayed number (not optimistic-before-confirmation), so a
+   * failed submit never flashes a number that didn't actually save. Rejects
+   * on any non-2xx so HospitalDepartments' own per-department error/pending
+   * UI reflects the failure; a 401 mid-session still gets authFetch's normal
+   * redirect-to-login handling on top of that rejection.
+   */
+  async function handleRate(departmentId: string, score: number) {
+    const res = await authFetch(`/api/hospitals/${id}/departments/${departmentId}/ratings`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ score }),
+    });
+    if (!res.ok) throw new Error('rate_failed');
+    const body: RateResponse = await res.json();
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        hospital: {
+          ...prev.hospital,
+          rating_avg: body.hospital_rating_avg,
+          rating_count: body.hospital_rating_count,
+        },
+        department_ratings: {
+          ...(prev.department_ratings ?? {}),
+          [departmentId]: { avg: body.department_avg, count: body.department_count },
+        },
+        your_ratings: {
+          ...(prev.your_ratings ?? {}),
+          [departmentId]: body.your_score,
+        },
+      };
+    });
+  }
 
   if (error) {
     return (
@@ -122,7 +182,12 @@ export default function HospitalProfileClient({ id }: { id: string }) {
           <div className={styles.col}>
             <HospitalInfo hospital={hospital} />
             <HospitalHours hours={hospital.hours} is24Hour={hospital.is_24_hour} />
-            <HospitalDepartments departments={hospital.departments} />
+            <HospitalDepartments
+              departments={hospital.departments}
+              ratings={data.department_ratings ?? {}}
+              yourRatings={data.your_ratings ?? null}
+              onRate={handleRate}
+            />
           </div>
           <div className={styles.col}>
             <AnnouncementCalendar announcements={announcements} />
