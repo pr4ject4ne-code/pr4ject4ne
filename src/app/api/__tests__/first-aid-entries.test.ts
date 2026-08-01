@@ -52,9 +52,11 @@ describe('GET /api/first-aid/entries', () => {
     for (const col of SEARCHED_COLUMNS) {
       expect(allSql).toMatch(new RegExp(`${col} ILIKE \\$\\d+`));
     }
-    // The tags array is folded into the search via array_to_string, not a bare
-    // ILIKE on the column itself.
+    // The tags/region_tags/system_tags arrays are folded into the search via
+    // array_to_string, not a bare ILIKE on the column itself.
     expect(allSql).toMatch(/array_to_string\(tags, ' '\) ILIKE \$\d+/);
+    expect(allSql).toMatch(/array_to_string\(region_tags, ' '\) ILIKE \$\d+/);
+    expect(allSql).toMatch(/array_to_string\(system_tags, ' '\) ILIKE \$\d+/);
 
     // The escaped search term is passed as a bound parameter, not interpolated.
     const pageCallParams = mockQuery.mock.calls[1][1] as unknown[];
@@ -77,6 +79,42 @@ describe('GET /api/first-aid/entries', () => {
     expect(res.status).toBe(200);
     const sql = mockQuery.mock.calls[1][0] as string;
     expect(sql).not.toMatch(/tags @>/);
+  });
+
+  it('filters by a whitelisted region using the GIN containment operator', async () => {
+    const res = await GET(req('region=Chest'));
+    expect(res.status).toBe(200);
+
+    const pageCall = mockQuery.mock.calls[1];
+    const sql = pageCall[0] as string;
+    const params = pageCall[1] as unknown[];
+    expect(sql).toMatch(/region_tags @> \$\d+::text\[\]/);
+    expect(params).toContainEqual(['Chest']);
+  });
+
+  it('ignores an unrecognised region value (not in the whitelist)', async () => {
+    const res = await GET(req('region=NotARealRegion'));
+    expect(res.status).toBe(200);
+    const sql = mockQuery.mock.calls[1][0] as string;
+    expect(sql).not.toMatch(/region_tags @>/);
+  });
+
+  it('filters by a whitelisted system using the GIN containment operator', async () => {
+    const res = await GET(req('system=Cardiovascular'));
+    expect(res.status).toBe(200);
+
+    const pageCall = mockQuery.mock.calls[1];
+    const sql = pageCall[0] as string;
+    const params = pageCall[1] as unknown[];
+    expect(sql).toMatch(/system_tags @> \$\d+::text\[\]/);
+    expect(params).toContainEqual(['Cardiovascular']);
+  });
+
+  it('ignores an unrecognised system value (not in the whitelist)', async () => {
+    const res = await GET(req('system=NotARealSystem'));
+    expect(res.status).toBe(200);
+    const sql = mockQuery.mock.calls[1][0] as string;
+    expect(sql).not.toMatch(/system_tags @>/);
   });
 
   it('filters by category when it is a valid category', async () => {
@@ -132,5 +170,12 @@ describe('GET /api/first-aid/entries', () => {
     await GET(req());
     const sql = mockQuery.mock.calls[1][0] as string;
     expect(sql).toContain('signs_symptoms');
+  });
+
+  it('selects region_tags and system_tags so the public catalog can render/filter by them', async () => {
+    await GET(req());
+    const sql = mockQuery.mock.calls[1][0] as string;
+    expect(sql).toContain('region_tags');
+    expect(sql).toContain('system_tags');
   });
 });

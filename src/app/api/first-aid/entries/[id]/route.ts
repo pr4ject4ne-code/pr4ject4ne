@@ -4,6 +4,8 @@ import { getDevUser } from '@/lib/dev-auth';
 import { checkRateLimit } from '@/lib/auth';
 import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
 import { normalizeTags } from '@/lib/first-aid-tags';
+import { normalizeRegionTags } from '@/lib/first-aid-region-tags';
+import { normalizeSystemTags } from '@/lib/first-aid-system-tags';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
 
@@ -75,6 +77,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
   if (Array.isArray(body.signs_symptoms)) {
     push('signs_symptoms', normalizeTags(body.signs_symptoms));
+  }
+  if (Array.isArray(body.region_tags)) {
+    push('region_tags', normalizeRegionTags(body.region_tags));
+  }
+  if (Array.isArray(body.system_tags)) {
+    push('system_tags', normalizeSystemTags(body.system_tags));
   }
 
   if (sets.length === 0) return apiError('Nothing to update.', 'BAD_REQUEST', 400);

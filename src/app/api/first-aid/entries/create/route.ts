@@ -4,6 +4,8 @@ import { getDevUser } from '@/lib/dev-auth';
 import { checkRateLimit } from '@/lib/auth';
 import { sanitizeText, safeHttpUrl } from '@/lib/sanitize';
 import { normalizeTags } from '@/lib/first-aid-tags';
+import { normalizeRegionTags } from '@/lib/first-aid-region-tags';
+import { normalizeSystemTags } from '@/lib/first-aid-system-tags';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import type { FirstAidCategory } from '@/types';
 
@@ -54,13 +56,17 @@ export async function POST(req: Request) {
   // Same whitelist/normalizer as `tags` — see migration 011 for why this is a
   // distinct column rather than reusing `tags`.
   const signsSymptoms = normalizeTags(body.signs_symptoms);
+  // Region/system are two independent anatomical axes, separate whitelists —
+  // see migration 022 and first-aid-tag-crosswalk.ts.
+  const regionTags = normalizeRegionTags(body.region_tags);
+  const systemTags = normalizeSystemTags(body.system_tags);
 
   const { rows } = await query<{ id: string }>(
     `INSERT INTO first_aid_entries
        (category, title, definition, description, process, dos, donts,
         things_to_look_out_for, implications, indication, contraindications,
-        images, tags, signs_symptoms, created_by_dev_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14,$15)
+        images, tags, signs_symptoms, region_tags, system_tags, created_by_dev_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14,$15,$16,$17)
      RETURNING id`,
     [
       category,
@@ -77,6 +83,8 @@ export async function POST(req: Request) {
       JSON.stringify(images),
       tags,
       signsSymptoms,
+      regionTags,
+      systemTags,
       dev.id,
     ],
   );

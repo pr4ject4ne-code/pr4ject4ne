@@ -2,6 +2,8 @@ import { query } from '@/lib/db';
 import { apiOk, parseLimit, parseOffset } from '@/lib/api';
 import { escapeLikePattern } from '@/lib/sanitize';
 import { isFirstAidTag } from '@/lib/first-aid-tags';
+import { isRegionTag } from '@/lib/first-aid-region-tags';
+import { isSystemTag } from '@/lib/first-aid-system-tags';
 import type { FirstAidEntry, FirstAidCategory } from '@/types';
 
 const CATEGORIES: FirstAidCategory[] = ['procedure', 'technique'];
@@ -37,6 +39,20 @@ export async function GET(req: Request) {
     conditions.push(`tags @> $${params.length}::text[]`);
   }
 
+  // Body-region filter (whitelisted, separate anatomical axis — migration 022).
+  const region = url.searchParams.get('region');
+  if (region && isRegionTag(region)) {
+    params.push([region]);
+    conditions.push(`region_tags @> $${params.length}::text[]`);
+  }
+
+  // Body-system filter (whitelisted, separate anatomical axis — migration 022).
+  const system = url.searchParams.get('system');
+  if (system && isSystemTag(system)) {
+    params.push([system]);
+    conditions.push(`system_tags @> $${params.length}::text[]`);
+  }
+
   const q = url.searchParams.get('q');
   if (q) {
     params.push(`%${escapeLikePattern(q)}%`);
@@ -52,7 +68,9 @@ export async function GET(req: Request) {
         `OR implications ILIKE $${n} ESCAPE '\\' ` +
         `OR indication ILIKE $${n} ESCAPE '\\' OR contraindications ILIKE $${n} ESCAPE '\\' ` +
         `OR things_to_look_out_for ILIKE $${n} ESCAPE '\\' ` +
-        `OR array_to_string(tags, ' ') ILIKE $${n} ESCAPE '\\')`,
+        `OR array_to_string(tags, ' ') ILIKE $${n} ESCAPE '\\' ` +
+        `OR array_to_string(region_tags, ' ') ILIKE $${n} ESCAPE '\\' ` +
+        `OR array_to_string(system_tags, ' ') ILIKE $${n} ESCAPE '\\')`,
     );
   }
 
@@ -69,7 +87,8 @@ export async function GET(req: Request) {
     query<FirstAidEntry>(
       `SELECT id, category, title, definition, description, process, dos, donts,
               things_to_look_out_for, implications, indication, contraindications,
-              images, tags, signs_symptoms, created_by_dev_id, created_at, updated_at
+              images, tags, signs_symptoms, region_tags, system_tags,
+              created_by_dev_id, created_at, updated_at
        FROM first_aid_entries ${where}
        ORDER BY title ASC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,

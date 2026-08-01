@@ -78,6 +78,26 @@ describe('POST /api/first-aid/entries/create', () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
+  it('normalizes region_tags/system_tags against their whitelists and persists them', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1' });
+    mockQuery.mockResolvedValue({ rows: [{ id: ENTRY_ID }] });
+    const res = await POST(
+      createReq({
+        title: 'Eye Injury',
+        category: 'procedure',
+        region_tags: ['Head & Neck', 'NotARealRegion', 'Head & Neck'],
+        system_tags: ['Special Senses', 'NotARealSystem'],
+      }),
+    );
+    expect(res.status).toBe(201);
+    const insertSql = mockQuery.mock.calls[0][0] as string;
+    const insertArgs = mockQuery.mock.calls[0][1] as unknown[];
+    expect(insertSql).toContain('region_tags');
+    expect(insertSql).toContain('system_tags');
+    expect(insertArgs).toContainEqual(['Head & Neck']);
+    expect(insertArgs).toContainEqual(['Special Senses']);
+  });
+
   it('normalizes signs_symptoms against the whitelist and persists it (worklist #34)', async () => {
     mockGetDevUser.mockResolvedValue({ id: 'dev1' });
     mockQuery.mockResolvedValue({ rows: [{ id: ENTRY_ID }] });
@@ -191,5 +211,25 @@ describe('PATCH /api/first-aid/entries/[id]', () => {
     const updateArgs = mockQuery.mock.calls[0][1] as unknown[];
     expect(updateSql).toContain('signs_symptoms = $');
     expect(updateArgs).toContainEqual(['Choking']);
+  });
+
+  it('normalizes region_tags/system_tags on edit, rejecting an invalid value', async () => {
+    mockGetDevUser.mockResolvedValue({ id: 'dev1', access_level: 'secondary' });
+    mockQueryOne.mockResolvedValue({ id: ENTRY_ID });
+    mockQuery.mockResolvedValue({ rows: [] });
+    const res = await PATCH(
+      patchReq({
+        region_tags: ['Chest', 'NotARealRegion'],
+        system_tags: ['Cardiovascular', 'NotARealSystem'],
+      }),
+      { params: Promise.resolve({ id: ENTRY_ID }) },
+    );
+    expect(res.status).toBe(200);
+    const updateSql = mockQuery.mock.calls[0][0] as string;
+    const updateArgs = mockQuery.mock.calls[0][1] as unknown[];
+    expect(updateSql).toContain('region_tags = $');
+    expect(updateSql).toContain('system_tags = $');
+    expect(updateArgs).toContainEqual(['Chest']);
+    expect(updateArgs).toContainEqual(['Cardiovascular']);
   });
 });

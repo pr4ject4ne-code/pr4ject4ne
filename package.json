@@ -17,6 +17,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
     "db:reset-admin-totp": "tsx scripts/reset-admin-totp.ts",
+    "db:backfill-region-system-tags": "tsx scripts/backfill-first-aid-region-system-tags.ts",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""
   },

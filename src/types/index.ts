@@ -278,6 +278,16 @@ export interface FirstAidEntry {
    * catalog, `signs_symptoms` is per-entry "does this apply to what I'm
    * seeing" content. See migration 011 for the full reasoning. */
   signs_symptoms: string[];
+  /** WHERE on the body this entry concerns (Head & Neck, Chest, ...). Closed
+   * whitelist, a distinct anatomical axis from `tags`/`signs_symptoms` — see
+   * first-aid-region-tags.ts and migration 022. */
+  region_tags: string[];
+  /** WHICH body system(s) this entry concerns (Cardiovascular, Special
+   * Senses, ...). Closed whitelist, a distinct anatomical axis from
+   * `tags`/`signs_symptoms` — see first-aid-system-tags.ts and migration
+   * 022. Includes "Special Senses" for ENT/eye entries (Eye injury,
+   * Nosebleed) rather than forcing them under Respiratory. */
+  system_tags: string[];
   created_by_dev_id: string | null;
   created_at: string;
   updated_at: string;
