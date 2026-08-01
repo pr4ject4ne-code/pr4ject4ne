@@ -38,6 +38,10 @@ export default function Header({
   showSearch,
 }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Keeps the dropdown mounted for the brief exit animation instead of
+  // vanishing instantly on close (menuOpen alone still drives aria-expanded
+  // + the actual open/close logic; this only controls animation lifecycle).
+  const [menuClosing, setMenuClosing] = useState(false);
   const [mode, setMode] = useState<SearchMode>('nearest');
   const [q, setQ] = useState('');
   const [symptomIds, setSymptomIds] = useState<string[]>([]);
@@ -66,6 +70,19 @@ export default function Header({
 
   function toggleRedFlag(id: string) {
     setRedFlagIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
+  }
+
+  function toggleMenu() {
+    setMenuOpen((prev) => {
+      const next = !prev;
+      setMenuClosing(!next);
+      return next;
+    });
+  }
+
+  function closeMenu() {
+    setMenuOpen(false);
+    setMenuClosing(true);
   }
 
   function onSubmit(e: React.FormEvent) {
@@ -253,24 +270,30 @@ export default function Header({
           className={styles.hamburger}
           aria-label="Menu"
           aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((o) => !o)}
+          onClick={toggleMenu}
         >
           <span />
           <span />
           <span />
         </button>
-        {menuOpen && (
-          <nav className={styles.menu} aria-label="Main menu">
-            <Link href={profileHref} onClick={() => setMenuOpen(false)}>
+        {(menuOpen || menuClosing) && (
+          <nav
+            className={menuOpen ? styles.menu : `${styles.menu} ${styles.menuClosing}`}
+            aria-label="Main menu"
+            onAnimationEnd={() => {
+              if (!menuOpen) setMenuClosing(false);
+            }}
+          >
+            <Link href={profileHref} onClick={closeMenu}>
               Profile
             </Link>
-            <Link href="/first-aid" onClick={() => setMenuOpen(false)}>
+            <Link href="/first-aid" onClick={closeMenu}>
               First Aid
             </Link>
-            <Link href="/filter" onClick={() => setMenuOpen(false)}>
+            <Link href="/filter" onClick={closeMenu}>
               Directory
             </Link>
-            <Link href="/string-lookup" onClick={() => setMenuOpen(false)}>
+            <Link href="/string-lookup" onClick={closeMenu}>
               Find by IHN
             </Link>
           </nav>
