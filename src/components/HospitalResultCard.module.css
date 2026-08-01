@@ -1,0 +1,119 @@
+/* Plain content card per the site-wide rule (globals.css / Card.module.css):
+   glass is reserved for floating chrome, page content stays flat — off-white
+   surface, hairline border, token shadow, no blur. Hover lift matches the
+   convention already established in HospitalMiniProfile.module.css. */
+.card {
+  padding: 0;
+  overflow: hidden;
+  transition:
+    transform 0.2s var(--spring),
+    box-shadow 0.2s ease;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+}
+
+.link {
+  display: block;
+  text-decoration: none;
+  color: var(--color-ink);
+}
+
+.media {
+  position: relative;
+  height: 132px;
+  background: linear-gradient(155deg, var(--color-blue-light) 0%, var(--color-amethyst-light) 100%);
+}
+.photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.placeholderWrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.placeholder {
+  color: var(--color-blue);
+  opacity: 0.85;
+}
+
+.badgeVerified,
+.badgeLive {
+  position: absolute;
+  top: 0.7rem;
+  left: 0.7rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: rgba(26, 29, 36, 0.55);
+  padding: 0.3rem 0.6rem 0.3rem 0.5rem;
+  border-radius: 999px;
+}
+/* When both verified and 24h badges are present, stack the second below the
+   first rather than overlapping — verified takes the top slot, 24h sits
+   underneath it. Adjacent-sibling selector beats the plain .badgeLive rule
+   on specificity regardless of source order. */
+.badgeVerified + .badgeLive {
+  top: calc(0.7rem + 1.6rem);
+}
+.badgeLive::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-highlight);
+  box-shadow: 0 0 0 3px rgba(18, 181, 201, 0.35);
+}
+
+.badgeDist {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  z-index: 1;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--color-ink);
+  background: rgba(255, 255, 255, 0.85);
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+}
+
+.body {
+  padding: 1rem 1rem 1.1rem;
+}
+.name {
+  margin: 0 0 0.25rem;
+  font-size: 0.97rem;
+}
+.address {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+.ratingRow {
+  margin-bottom: 0.75rem;
+}
+.pills {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-blue-dark);
+  background: var(--color-blue-light);
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+}
