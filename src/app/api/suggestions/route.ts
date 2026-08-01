@@ -8,8 +8,10 @@ import { notifyDevsOfSuggestion } from '@/lib/suggestion-notify';
 
 /**
  * General site feedback ("suggestion tab", present on every page).
- * Stored server-side; routed to SUGGESTIONS_EMAIL by an out-of-band worker.
- * The support email is NEVER exposed to the client, preventing scraping.
+ * Stored server-side; notifyDevsOfSuggestion() then emails every active
+ * primary developer account (users WHERE account_type='developer' AND
+ * access_level='primary' AND is_active=TRUE) directly via Resend.
+ * The recipient list is NEVER exposed to the client, preventing scraping.
  */
 interface Body {
   content?: string;
@@ -31,7 +33,7 @@ export async function POST(req: Request) {
   if (!allowed) return apiError('Too many submissions. Try again later.', 'RATE_LIMITED', 429);
 
   // Validate the email (drop if invalid) so no CRLF / header-injection payload
-  // reaches the out-of-band email worker; sanitize free text so the stored value
+  // reaches the notification email; sanitize free text so the stored value
   // is safe in an HTML email body too.
   const email = typeof body.email === 'string' && isValidEmail(body.email.trim())
     ? body.email.trim()

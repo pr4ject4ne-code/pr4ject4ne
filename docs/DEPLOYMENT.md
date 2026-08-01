@@ -18,7 +18,6 @@ one. Copy it to `.env.local` (dev) or set them in the platform secret store
 | --- | --- | --- |
 | `DATABASE_URL` | yes | PostgreSQL connection string used by `src/lib/db.ts`. |
 | `NODE_ENV` | yes (prod) | Set to `production` in production — this enables `Secure` session cookies and the HSTS header. |
-| `SUGGESTIONS_EMAIL` | yes | Server-side destination for "suggestion tab" feedback. Never exposed to the client. |
 | `NEXT_PUBLIC_OSRM_URL` | yes | OSRM routing/ETA host. Defaults to the public OSRM demo server. |
 | `NEXT_PUBLIC_OSM_TILE_URL` | yes | OpenStreetMap tile URL template for Leaflet. |
 | `UPLOAD_DIR` | yes | Local filesystem directory for uploaded images (dev). See the storage note below. |
