@@ -208,12 +208,12 @@ describe('sanitizeDepartments', () => {
 
   it('caps the number of departments', () => {
     const many = Array.from({ length: 60 }, (_, i) => ({ name: `Dept${i}`, services: [] }));
-    expect(sanitizeDepartments(many, 40)).toHaveLength(40);
+    expect(sanitizeDepartments(many, [], 40)).toHaveLength(40);
   });
 
   it('caps the number of services per department', () => {
     const services = Array.from({ length: 60 }, (_, i) => `Service${i}`);
-    const out = sanitizeDepartments([{ name: 'Big', services }], 40, 40);
+    const out = sanitizeDepartments([{ name: 'Big', services }], [], 40, 40);
     expect(out[0]!.services).toHaveLength(40);
   });
 
@@ -221,9 +221,12 @@ describe('sanitizeDepartments', () => {
     expect(sanitizeDepartments(['not-an-object', 42, null])).toEqual([]);
   });
 
-  it('preserves a well-formed UUID id on edit of an existing department', () => {
+  it('preserves a well-formed UUID id that matches an existing department', () => {
     const existingId = '11111111-1111-4111-8111-111111111111';
-    const out = sanitizeDepartments([{ id: existingId, name: 'Surgery', services: [] }]);
+    const out = sanitizeDepartments(
+      [{ id: existingId, name: 'Surgery', services: [] }],
+      [{ id: existingId }],
+    );
     expect(out).toEqual([{ id: existingId, name: 'Surgery', services: [] }]);
   });
 
@@ -236,6 +239,19 @@ describe('sanitizeDepartments', () => {
     const out = sanitizeDepartments([{ id: 'not-a-uuid', name: 'Radiology', services: [] }]);
     expect(out[0]!.id).toMatch(UUID_RE);
     expect(out[0]!.id).not.toBe('not-a-uuid');
+  });
+
+  it('ignores a well-formed UUID id that does NOT match any existing department (mints a fresh one)', () => {
+    // This is the security-relevant case: a client can no longer hand-craft
+    // or reuse an arbitrary/previously-seen id it wasn't actually assigned —
+    // only ids present in `existingDepartments` are honored.
+    const foreignId = '22222222-2222-4222-8222-222222222222';
+    const out = sanitizeDepartments(
+      [{ id: foreignId, name: 'Radiology', services: [] }],
+      [{ id: '11111111-1111-4111-8111-111111111111' }],
+    );
+    expect(out[0]!.id).toMatch(UUID_RE);
+    expect(out[0]!.id).not.toBe(foreignId);
   });
 
   it('assigns distinct ids to distinct departments with no id supplied', () => {

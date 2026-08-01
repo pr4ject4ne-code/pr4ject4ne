@@ -8,6 +8,7 @@ import { POST as postDoctor, DELETE as deleteDoctor } from '@/app/api/hospital/[
 import { PATCH as patchHours } from '@/app/api/hospital/[id]/hours/route';
 import { PUT as putMedia } from '@/app/api/hospital/[id]/media/route';
 import { POST as postAnnouncement } from '@/app/api/hospital/[id]/announcements/route';
+import { logAudit } from '@/lib/audit';
 
 const mockGetSession = jest.fn();
 const mockFindUserById = jest.fn();
@@ -228,6 +229,89 @@ describe('hospital data isolation', () => {
 
     const sqls = mockQuery.mock.calls.map(([sql]: [string]) => sql as string);
     expect(sqls.some((s) => s.startsWith('DELETE FROM department_ratings'))).toBe(false);
+  });
+
+  it('blocks the ratings-laundering exploit: dropping an id and re-adding an identical-name department is detected as a rename, carrying the old id forward so its rating survives', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const oldId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+
+    // The hospital currently has one department, already rated (simulated by
+    // the FOR-UPDATE diff read returning it) — the exploit's premise is that
+    // this department has a bad rating history the owner wants to erase.
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ departments: [{ id: oldId, name: 'Cardiology', services: [] }] }],
+      rowCount: 1,
+    });
+
+    // The exploit payload: `oldId` is missing entirely, and a "new" entry
+    // with the identical (whitespace/case-insensitive) name is submitted
+    // with no id — exactly what dropping-then-re-adding a department in the
+    // dashboard UI produces, and exactly what a hand-crafted request trying
+    // to launder the department clean would look like too.
+    const res = await patchInfo(
+      infoReq({ departments: [{ name: '  cardiology  ', services: [] }] }, HOSP_A),
+      { params: Promise.resolve({ id: HOSP_A }) },
+    );
+    expect(res.status).toBe(200);
+
+    const sqls = mockQuery.mock.calls.map(([sql]: [string]) => sql as string);
+    // No cascade-delete ran — this was detected as a rename, not a removal,
+    // so the department's existing rating(s) are untouched.
+    expect(sqls.some((s) => s.startsWith('DELETE FROM department_ratings'))).toBe(false);
+
+    // The stored departments array carries the OLD id forward onto the "new"
+    // entry — `department_ratings` rows (keyed by department_id) still point
+    // at a live department, so the rating history is preserved rather than
+    // orphaned/deleted.
+    const updateCall = mockQuery.mock.calls.find(([sql]: [string]) =>
+      sql.startsWith('UPDATE hospitals SET'),
+    ) as [string, unknown[]];
+    const [, values] = updateCall;
+    const stored = JSON.parse(
+      values.find((v) => typeof v === 'string' && v.toLowerCase().includes('cardiology')) as string,
+    );
+    // Name is stored as submitted (sanitizeText escapes HTML but doesn't
+    // trim) — only the identity (id) changes, proving the rename carried
+    // the old id forward rather than minting a fresh one.
+    expect(stored).toEqual([{ id: oldId, name: '  cardiology  ', services: [] }]);
+  });
+
+  it('a genuine removal (different name, no match) still cascade-deletes ratings AND audit-logs department_removed_with_ratings when it had ratings', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const removedId = 'a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1';
+
+    mockQuery
+      // [0] FOR-UPDATE diff read: hospital currently has one department.
+      .mockResolvedValueOnce({
+        rows: [{ departments: [{ id: removedId, name: 'Cardiology', services: [] }] }],
+        rowCount: 1,
+      })
+      // [1] the departments-column UPDATE itself.
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      // [2] the pre-cascade-delete rating-count snapshot for the audit log.
+      .mockResolvedValueOnce({ rows: [{ department_id: removedId, count: '3' }], rowCount: 1 });
+
+    const res = await patchInfo(
+      // Genuinely unrelated name — no rename match, this is a real removal.
+      infoReq({ departments: [{ name: 'Radiology', services: [] }] }, HOSP_A),
+      { params: Promise.resolve({ id: HOSP_A }) },
+    );
+    expect(res.status).toBe(200);
+
+    const deleteCall = mockQuery.mock.calls.find(([sql]: [string]) =>
+      sql.startsWith('DELETE FROM department_ratings'),
+    ) as [string, unknown[]];
+    expect(deleteCall).toBeDefined();
+    expect(deleteCall[1]).toEqual([HOSP_A, [removedId]]);
+
+    const auditCalls = (logAudit as jest.Mock).mock.calls.map(([entry]) => entry);
+    const removalAudit = auditCalls.find((e) => e.action === 'department_removed_with_ratings');
+    expect(removalAudit).toBeDefined();
+    expect(removalAudit.details).toEqual({
+      department_id: removedId,
+      department_name: 'Cardiology',
+      prior_rating_count: 3,
+    });
   });
 
   it('403 when staff of hospital A sets hospital B departments', async () => {

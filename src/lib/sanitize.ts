@@ -152,18 +152,34 @@ const UUID_SHAPE_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
  *
  * `id` is a stable per-department identity (migration 023) that
  * department_ratings.department_id references. The server is the source of
- * truth for "is this id valid," not the client: an incoming `id` is kept only
- * if it is a well-formed UUID-shaped string (covers a client round-tripping
- * an existing department's id on edit); anything else — missing, malformed,
- * or a client trying to invent its own id — gets a fresh server-generated
- * UUID (covers legacy clients and brand-new departments).
+ * truth for "is this id valid," not the client: an incoming `id` is kept
+ * ONLY if it is a well-formed UUID-shaped string that ALSO matches an id
+ * already present in `existingDepartments` (the hospital's current, stored
+ * departments row, passed in by the caller — see
+ * `PATCH /api/hospital/[id]/info`). Anything else — missing, malformed, a
+ * brand-new department's client-generated id, or a client hand-crafting an
+ * arbitrary/previously-seen id it was never actually assigned — gets a fresh
+ * server-generated UUID.
+ *
+ * This closes a ratings-laundering surface: without pinning `id` to the
+ * caller's own existing rows, a hospital owner could drop a badly-rated
+ * department's id from the payload (diffed as "removed" -> its ratings
+ * cascade-delete) while re-adding an entry with the identical display name
+ * under a fresh id in the SAME request — the department reappears with a
+ * clean slate. Validating `id` here is defense in depth alongside the
+ * rename-detection diff logic in the route itself (which also needs
+ * `existingDepartments` to tell a genuine removal from a same-name rename).
  */
 export function sanitizeDepartments(
   input: unknown,
+  existingDepartments: ReadonlyArray<{ id?: string }> = [],
   maxDepartments = 40,
   maxServicesPerDept = 40,
 ): SanitizedDepartment[] {
   if (!Array.isArray(input)) return [];
+  const existingIds = new Set(
+    existingDepartments.map((d) => d.id).filter((v): v is string => typeof v === 'string'),
+  );
   const out: SanitizedDepartment[] = [];
   for (const item of input.slice(0, maxDepartments)) {
     if (typeof item !== 'object' || item === null) continue;
@@ -183,7 +199,8 @@ export function sanitizeDepartments(
     // HospitalInfo.tsx), and `crypto.randomUUID()` is available in both the
     // browser and Node/edge runtimes without an import (same approach as
     // middleware.ts's nonce generation).
-    const id = typeof rec.id === 'string' && UUID_SHAPE_RE.test(rec.id) ? rec.id : crypto.randomUUID();
+    const rawId = typeof rec.id === 'string' && UUID_SHAPE_RE.test(rec.id) ? rec.id : null;
+    const id = rawId && existingIds.has(rawId) ? rawId : crypto.randomUUID();
     out.push({ id, name, services });
   }
   return out;

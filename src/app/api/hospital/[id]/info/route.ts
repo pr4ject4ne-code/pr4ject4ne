@@ -23,6 +23,11 @@ interface Body {
   show_doctors?: boolean;
 }
 
+/** Normalize a department name for equality comparisons (trim + lowercase). */
+function normalizeDeptName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 /** PATCH — edit hospital info (own hospital only). */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const hospitalId = (await params).id;
@@ -66,15 +71,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const specs = body.specialties.filter((s): s is string => typeof s === 'string').slice(0, 50);
     push('specialties', specs);
   }
-  let sanitizedDepartments: HospitalDepartment[] | null = null;
-  if (Array.isArray(body.departments)) {
-    sanitizedDepartments = sanitizeDepartments(body.departments);
-    push('departments', JSON.stringify(sanitizedDepartments));
-  }
+  const wantsDepartmentsUpdate = Array.isArray(body.departments);
   if (typeof body.is_24_hour === 'boolean') push('is_24_hour', body.is_24_hour);
   if (typeof body.show_doctors === 'boolean') push('show_doctors', body.show_doctors);
 
-  if (sets.length === 0) return apiError('Nothing to update.', 'BAD_REQUEST', 400);
+  if (sets.length === 0 && !wantsDepartmentsUpdate) {
+    return apiError('Nothing to update.', 'BAD_REQUEST', 400);
+  }
+
+  // Departments removed with existing ratings, collected inside the
+  // transaction below for a post-commit audit-log entry (item 4 — defense in
+  // depth, see cascadeDeleteRemovedDepartmentRatings's caller comment).
+  const removedWithRatings: { id: string; name: string; count: number }[] = [];
 
   // Everything below runs in ONE transaction: when `departments` is part of
   // this PATCH, a department that existed before and is missing from the new
@@ -83,18 +91,55 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // both commit or roll back together, never one without the other.
   await withTransaction(async (tx) => {
     let removedDepartmentIds: string[] = [];
-    if (sanitizedDepartments) {
+    let currentDepartments: HospitalDepartment[] = [];
+
+    if (wantsDepartmentsUpdate) {
       // FOR UPDATE locks the row for the duration of this transaction so a
-      // concurrent departments save can't race this diff (TOCTOU).
+      // concurrent departments save can't race this diff (TOCTOU). The
+      // current row is also the trust-anchor sanitizeDepartments needs: an
+      // incoming `id` is only honored if it already exists here.
       const { rows: current } = await tx.query<{ departments: HospitalDepartment[] }>(
         `SELECT departments FROM hospitals WHERE id = $1 FOR UPDATE`,
         [hospitalId],
       );
+      currentDepartments = current[0]?.departments ?? [];
+      const sanitizedDepartments = sanitizeDepartments(body.departments, currentDepartments);
+
       const currentIds = new Set(
-        (current[0]?.departments ?? []).map((d) => d.id).filter((v): v is string => Boolean(v)),
+        currentDepartments.map((d) => d.id).filter((v): v is string => Boolean(v)),
       );
       const nextIds = new Set(sanitizedDepartments.map((d) => d.id));
-      removedDepartmentIds = [...currentIds].filter((id) => !nextIds.has(id));
+      const candidateRemovedIds = [...currentIds].filter((id) => !nextIds.has(id));
+
+      // Rename detection: a "removed" department survives if its normalized
+      // name reappears on an incoming entry that doesn't already carry a
+      // matching existing id (i.e. one of the freshly-minted entries — a
+      // genuinely new id can't collide with currentIds since sanitizeDepartments
+      // only keeps ids present in currentDepartments). When found, the OLD id
+      // is carried forward onto that entry so its rating history survives —
+      // this is the fix for the "drop id + resubmit identical name" ratings-
+      // laundering exploit. Only a department whose id AND name both fail to
+      // survive in the incoming array is a genuine removal eligible for the
+      // ratings cascade-delete.
+      const removedByName = new Map<string, string>();
+      for (const dept of currentDepartments) {
+        if (candidateRemovedIds.includes(dept.id)) {
+          removedByName.set(normalizeDeptName(dept.name), dept.id);
+        }
+      }
+      const renamedIds = new Set<string>();
+      for (const dept of sanitizedDepartments) {
+        if (currentIds.has(dept.id)) continue; // already a genuine existing-id match, not a rename target
+        const matchId = removedByName.get(normalizeDeptName(dept.name));
+        if (matchId) {
+          dept.id = matchId;
+          renamedIds.add(matchId);
+          removedByName.delete(normalizeDeptName(dept.name)); // one old id reused at most once
+        }
+      }
+
+      removedDepartmentIds = candidateRemovedIds.filter((id) => !renamedIds.has(id));
+      push('departments', JSON.stringify(sanitizedDepartments));
     }
 
     values.push(hospitalId);
@@ -104,6 +149,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     );
 
     if (removedDepartmentIds.length > 0) {
+      // Snapshot rating counts for genuinely-removed departments BEFORE the
+      // cascade-delete, purely for the audit trail below (item 4).
+      const { rows: countRows } = await tx.query<{ department_id: string; count: string }>(
+        `SELECT department_id, COUNT(*)::text AS count FROM department_ratings
+         WHERE hospital_id = $1 AND department_id = ANY($2::uuid[]) GROUP BY department_id`,
+        [hospitalId, removedDepartmentIds],
+      );
+      const countByDept = new Map(countRows.map((r) => [r.department_id, Number(r.count)]));
+      const nameById = new Map(currentDepartments.map((d) => [d.id, d.name]));
+      for (const id of removedDepartmentIds) {
+        const count = countByDept.get(id) ?? 0;
+        if (count > 0) {
+          removedWithRatings.push({ id, name: nameById.get(id) ?? '(unknown)', count });
+        }
+      }
+
       await cascadeDeleteRemovedDepartmentRatings(hospitalId, removedDepartmentIds, tx);
     }
   });
@@ -116,6 +177,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     details: { fields: cols },
     ip: clientIpFrom(req.headers),
   });
+
+  for (const dept of removedWithRatings) {
+    await logAudit({
+      userId: staff.userId,
+      action: 'department_removed_with_ratings',
+      resourceType: 'hospital',
+      resourceId: hospitalId,
+      details: { department_id: dept.id, department_name: dept.name, prior_rating_count: dept.count },
+      ip: clientIpFrom(req.headers),
+    });
+  }
 
   return apiOk({ success: true });
 }

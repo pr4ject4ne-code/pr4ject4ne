@@ -20,6 +20,7 @@ export type AuditAction =
   | 'announcement_change'
   | 'personnel_change'
   | 'department_rating_submitted'
+  | 'department_removed_with_ratings'
   | 'first_aid_upload'
   | 'first_aid_edit'
   | 'first_aid_delete'
