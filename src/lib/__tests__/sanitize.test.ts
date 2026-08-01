@@ -171,6 +171,8 @@ describe('sanitizeClinicalConditions', () => {
 });
 
 describe('sanitizeDepartments', () => {
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   it('returns [] for non-arrays', () => {
     expect(sanitizeDepartments(undefined)).toEqual([]);
     expect(sanitizeDepartments('x')).toEqual([]);
@@ -182,7 +184,11 @@ describe('sanitizeDepartments', () => {
       { name: '<b>Surgery</b>', services: ['General Surgery', '  ', 'Orthopaedics'] },
     ]);
     expect(out).toEqual([
-      { name: '&lt;b&gt;Surgery&lt;/b&gt;', services: ['General Surgery', 'Orthopaedics'] },
+      {
+        id: expect.stringMatching(UUID_RE),
+        name: '&lt;b&gt;Surgery&lt;/b&gt;',
+        services: ['General Surgery', 'Orthopaedics'],
+      },
     ]);
   });
 
@@ -193,10 +199,10 @@ describe('sanitizeDepartments', () => {
 
   it('defaults services to [] when missing or not an array', () => {
     expect(sanitizeDepartments([{ name: 'Diagnostics' }])).toEqual([
-      { name: 'Diagnostics', services: [] },
+      { id: expect.stringMatching(UUID_RE), name: 'Diagnostics', services: [] },
     ]);
     expect(sanitizeDepartments([{ name: 'Diagnostics', services: 'not-an-array' }])).toEqual([
-      { name: 'Diagnostics', services: [] },
+      { id: expect.stringMatching(UUID_RE), name: 'Diagnostics', services: [] },
     ]);
   });
 
@@ -213,5 +219,30 @@ describe('sanitizeDepartments', () => {
 
   it('drops non-object items', () => {
     expect(sanitizeDepartments(['not-an-object', 42, null])).toEqual([]);
+  });
+
+  it('preserves a well-formed UUID id on edit of an existing department', () => {
+    const existingId = '11111111-1111-4111-8111-111111111111';
+    const out = sanitizeDepartments([{ id: existingId, name: 'Surgery', services: [] }]);
+    expect(out).toEqual([{ id: existingId, name: 'Surgery', services: [] }]);
+  });
+
+  it('generates a fresh id for a brand-new department (no id supplied)', () => {
+    const out = sanitizeDepartments([{ name: 'Diagnostics', services: [] }]);
+    expect(out[0]!.id).toMatch(UUID_RE);
+  });
+
+  it('ignores a malformed/client-invented id and generates a fresh one', () => {
+    const out = sanitizeDepartments([{ id: 'not-a-uuid', name: 'Radiology', services: [] }]);
+    expect(out[0]!.id).toMatch(UUID_RE);
+    expect(out[0]!.id).not.toBe('not-a-uuid');
+  });
+
+  it('assigns distinct ids to distinct departments with no id supplied', () => {
+    const out = sanitizeDepartments([
+      { name: 'A', services: [] },
+      { name: 'B', services: [] },
+    ]);
+    expect(out[0]!.id).not.toBe(out[1]!.id);
   });
 });

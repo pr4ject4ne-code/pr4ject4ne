@@ -34,6 +34,12 @@ jest.mock('@/lib/auth', () => {
 jest.mock('@/lib/db', () => ({
   query: (...a: unknown[]) => mockQuery(...a),
   queryOne: (...a: unknown[]) => mockQueryOne(...a),
+  // PATCH /api/hospital/[id]/info now wraps its write in withTransaction (to
+  // atomically cascade-delete removed departments' ratings); route the tx's
+  // query through the same mockQuery so existing call-order assertions still
+  // work for non-departments PATCHes (a single UPDATE call).
+  withTransaction: (fn: (tx: { query: (...a: unknown[]) => unknown }) => unknown) =>
+    fn({ query: (...a: unknown[]) => mockQuery(...a) }),
 }));
 
 jest.mock('@/lib/audit', () => ({
@@ -107,10 +113,18 @@ describe('hospital data isolation', () => {
       { params: Promise.resolve({ id: HOSP_A }) },
     );
     expect(res.status).toBe(200);
-    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    // Two tx queries now: [0] the FOR-UPDATE departments diff read, [1] the
+    // actual UPDATE hospitals — locate the UPDATE explicitly rather than
+    // assuming index 0.
+    const updateCall = mockQuery.mock.calls.find(([sql]: [string]) =>
+      sql.startsWith('UPDATE hospitals SET'),
+    ) as [string, unknown[]];
+    const [sql, values] = updateCall;
     expect(sql).toContain('departments');
     const stored = JSON.parse(values.find((v) => typeof v === 'string' && v.includes('Surgery')) as string);
-    expect(stored).toEqual([{ name: '&lt;b&gt;Surgery&lt;/b&gt;', services: ['General Surgery'] }]);
+    expect(stored).toEqual([
+      { id: expect.stringMatching(/^[0-9a-f-]{36}$/i), name: '&lt;b&gt;Surgery&lt;/b&gt;', services: ['General Surgery'] },
+    ]);
   });
 
   it('drops malformed department entries instead of erroring', async () => {
@@ -120,7 +134,10 @@ describe('hospital data isolation', () => {
       { params: Promise.resolve({ id: HOSP_A }) },
     );
     expect(res.status).toBe(200);
-    const [, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    const updateCall = mockQuery.mock.calls.find(([sql]: [string]) =>
+      sql.startsWith('UPDATE hospitals SET'),
+    ) as [string, unknown[]];
+    const [, values] = updateCall;
     const stored = JSON.parse(values.find((v) => typeof v === 'string' && v.startsWith('[')) as string);
     expect(stored).toEqual([]);
   });
@@ -148,6 +165,69 @@ describe('hospital data isolation', () => {
     expect(values).toContain(null);
     expect(values).not.toContain(999);
     expect(values).not.toContain(-999);
+  });
+
+  it('cascade-deletes only the removed department\'s ratings and recomputes the hospital aggregate, in the same transaction as the departments write', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const removedId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    const keptId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+
+    // The FOR-UPDATE diff read: the hospital currently has two departments.
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          departments: [
+            { id: removedId, name: 'Old Dept', services: [] },
+            { id: keptId, name: 'Kept Dept', services: [] },
+          ],
+        },
+      ],
+      rowCount: 1,
+    });
+
+    const res = await patchInfo(
+      infoReq({ departments: [{ id: keptId, name: 'Kept Dept', services: [] }] }, HOSP_A),
+      { params: Promise.resolve({ id: HOSP_A }) },
+    );
+    expect(res.status).toBe(200);
+
+    const sqls = mockQuery.mock.calls.map(([sql]: [string]) => sql as string);
+
+    const deleteCall = mockQuery.mock.calls.find(([sql]: [string]) =>
+      sql.startsWith('DELETE FROM department_ratings'),
+    ) as [string, unknown[]];
+    expect(deleteCall).toBeDefined();
+    // Deletes ONLY the removed department's ratings — the kept department's
+    // id is never passed to the delete.
+    expect(deleteCall[1]).toEqual([HOSP_A, [removedId]]);
+    expect(deleteCall[1][1]).not.toContain(keptId);
+
+    // The hospital aggregate recompute (distinct from the departments-column
+    // UPDATE) also ran, in the same transaction.
+    expect(sqls.filter((s) => s.includes('rating_avg = COALESCE'))).toHaveLength(1);
+    const updateCallCount = sqls.filter((s) => s.startsWith('UPDATE hospitals SET')).length;
+    expect(updateCallCount).toBe(1); // the departments-column write itself
+  });
+
+  it('does not touch department_ratings when no department was removed', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    const keptId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ departments: [{ id: keptId, name: 'Kept Dept', services: [] }] }],
+      rowCount: 1,
+    });
+
+    const res = await patchInfo(
+      infoReq(
+        { departments: [{ id: keptId, name: 'Renamed Dept', services: [] }] },
+        HOSP_A,
+      ),
+      { params: Promise.resolve({ id: HOSP_A }) },
+    );
+    expect(res.status).toBe(200);
+
+    const sqls = mockQuery.mock.calls.map(([sql]: [string]) => sql as string);
+    expect(sqls.some((s) => s.startsWith('DELETE FROM department_ratings'))).toBe(false);
   });
 
   it('403 when staff of hospital A sets hospital B departments', async () => {

@@ -129,23 +129,34 @@ export function sanitizeClinicalConditions(
 }
 
 export interface SanitizedDepartment {
+  id: string;
   name: string;
   services: string[];
 }
+
+const UUID_SHAPE_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Sanitize a client-supplied `departments` array (worklist #14) before it is
  * stored as the hospital's JSONB `departments` column.
  *
- * Shape: `[{ name, services: string[] }]`. Each entry is dropped unless it
- * has a non-empty (escaped) `name`; `services` is a flat string list, escaped
- * per-entry, blanks dropped. Caps mirror `sanitizeClinicalConditions`'s scale
- * (a hospital's real department count/service count is small, tens not
+ * Shape: `[{ id, name, services: string[] }]`. Each entry is dropped unless
+ * it has a non-empty (escaped) `name`; `services` is a flat string list,
+ * escaped per-entry, blanks dropped. Caps mirror `sanitizeClinicalConditions`'s
+ * scale (a hospital's real department count/service count is small, tens not
  * hundreds) while still comfortably covering a large institution:
  *  - up to 40 departments per hospital
  *  - up to 40 services per department
  *  - department name up to 200 chars, each service up to 200 chars
  * (same per-string cap `specialties` already uses on this same table).
+ *
+ * `id` is a stable per-department identity (migration 023) that
+ * department_ratings.department_id references. The server is the source of
+ * truth for "is this id valid," not the client: an incoming `id` is kept only
+ * if it is a well-formed UUID-shaped string (covers a client round-tripping
+ * an existing department's id on edit); anything else — missing, malformed,
+ * or a client trying to invent its own id — gets a fresh server-generated
+ * UUID (covers legacy clients and brand-new departments).
  */
 export function sanitizeDepartments(
   input: unknown,
@@ -167,7 +178,13 @@ export function sanitizeDepartments(
           .filter(Boolean)
           .slice(0, maxServicesPerDept)
       : [];
-    out.push({ name, services });
+    // Uses the global Web Crypto API (crypto.randomUUID), not `node:crypto` —
+    // this module is imported by client components too (see e.g.
+    // HospitalInfo.tsx), and `crypto.randomUUID()` is available in both the
+    // browser and Node/edge runtimes without an import (same approach as
+    // middleware.ts's nonce generation).
+    const id = typeof rec.id === 'string' && UUID_SHAPE_RE.test(rec.id) ? rec.id : crypto.randomUUID();
+    out.push({ id, name, services });
   }
   return out;
 }

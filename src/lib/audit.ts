@@ -19,6 +19,7 @@ export type AuditAction =
   | 'hospital_rejected'
   | 'announcement_change'
   | 'personnel_change'
+  | 'department_rating_submitted'
   | 'first_aid_upload'
   | 'first_aid_edit'
   | 'first_aid_delete'

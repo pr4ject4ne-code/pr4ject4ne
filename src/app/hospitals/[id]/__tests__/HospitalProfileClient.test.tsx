@@ -96,8 +96,8 @@ describe('HospitalProfileClient — departments (worklist #14)', () => {
       {
         ...BASE_HOSPITAL,
         departments: [
-          { name: 'Surgery', services: ['General Surgery', 'Orthopaedics'] },
-          { name: 'Diagnostics', services: [] },
+          { id: 'dept-1', name: 'Surgery', services: ['General Surgery', 'Orthopaedics'] },
+          { id: 'dept-2', name: 'Diagnostics', services: [] },
         ],
       },
       [],

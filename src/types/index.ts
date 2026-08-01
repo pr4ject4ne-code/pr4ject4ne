@@ -80,8 +80,16 @@ export interface HospitalPhoto {
  * itself (e.g. "Surgery" -> ["General Surgery", "Orthopaedics"]). `services`
  * is deliberately free-form/flat — "subclassed as they see fit" without a
  * fixed taxonomy (worklist #14).
+ *
+ * `id` is a stable identity for this array element (migration 023), backed
+ * by no native FK (Postgres can't FK into a JSONB array element) — it is what
+ * department_ratings.department_id references, validated at write time via
+ * an EXISTS check instead. Always present on rows read from the DB after
+ * migration 023; sanitizeDepartments generates one server-side for any
+ * client payload that omits/mangles it.
  */
 export interface HospitalDepartment {
+  id: string;
   name: string;
   services: string[];
 }

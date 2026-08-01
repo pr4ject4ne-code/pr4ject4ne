@@ -425,7 +425,11 @@ function DepartmentsTab({
   function addDepartment() {
     const name = newDeptName.trim();
     if (!name) return;
-    setState((s) => [...s, { name, services: [] }]);
+    // Assigned client-side immediately (crypto.randomUUID) so a brand-new
+    // department has stable identity from the moment it's created, before
+    // the first save — the server (sanitizeDepartments) still re-validates
+    // this on write and would replace it if it weren't a well-formed UUID.
+    setState((s) => [...s, { id: crypto.randomUUID(), name, services: [] }]);
     setNewDeptName('');
   }
 
@@ -466,7 +470,7 @@ function DepartmentsTab({
 
       <ul className={styles.list}>
         {state.map((dept, i) => (
-          <li key={i} className={styles.row} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.6rem' }}>
+          <li key={dept.id} className={styles.row} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.6rem' }}>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <Input
                 label={`Department ${i + 1} name`}
