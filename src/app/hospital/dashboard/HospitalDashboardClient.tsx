@@ -12,6 +12,7 @@ import PhotoUpload from '@/components/PhotoUpload';
 import DoctorForm, { type DoctorFormValues } from '@/components/DoctorForm';
 import AnnouncementForm, { type AnnouncementFormValues } from '@/components/AnnouncementForm';
 import LocationPicker from '@/components/LocationPicker';
+import ErrorBubble from '@/components/ErrorBubble';
 import { authFetch } from '@/lib/authFetch';
 import type { Coords } from '@/lib/geolocation';
 import type { Hospital, Doctor, Announcement, HospitalPhoto, HospitalDepartment } from '@/types';
@@ -157,7 +158,7 @@ export default function HospitalDashboardClient() {
             />
             <Button type="submit">Change password</Button>
           </form>
-          {pwError && <p style={{ color: 'var(--color-red)', fontSize: '0.85rem', marginTop: '0.75rem' }}>{pwError}</p>}
+          <ErrorBubble variant="banner" message={pwError} />
           {pwSuccess && <p style={{ color: 'var(--color-green)', fontSize: '0.85rem', marginTop: '0.75rem' }}>Password changed. Your other sessions were signed out.</p>}
         </Card>
       </section>

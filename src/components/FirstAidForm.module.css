@@ -20,12 +20,6 @@
   font-size: 0.92rem;
   resize: vertical;
 }
-.error {
-  color: var(--color-red);
-  font-size: 0.9rem;
-  margin: 0;
-}
-
 /* Topic-tag multi-select chips (authoring). */
 .tagPicker {
   display: flex;

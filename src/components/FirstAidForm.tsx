@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Input from './Input';
 import Dropdown from './Dropdown';
 import Button from './Button';
+import ErrorBubble from './ErrorBubble';
 import { uploadFile } from '@/lib/upload-client';
 import { safeHttpUrl } from '@/lib/sanitize';
 import { FIRST_AID_TAGS } from '@/lib/first-aid-tags';
@@ -335,18 +336,10 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
             </Button>
           </div>
         )}
-        {uploadError && (
-          <p role="alert" style={{ color: 'var(--color-danger, #c0392b)', fontSize: '0.85rem' }}>
-            {uploadError}
-          </p>
-        )}
+        <ErrorBubble variant="banner" message={uploadError} />
       </div>
 
-      {error && (
-        <p role="alert" className={styles.error}>
-          {error}
-        </p>
-      )}
+      <ErrorBubble variant="banner" message={error} />
       <Button type="submit" disabled={submitting}>
         {submitting ? 'Saving…' : entry ? 'Save changes' : 'Create entry'}
       </Button>
