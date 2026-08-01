@@ -36,8 +36,7 @@ Left to right:
 - **Map stack decision:** Leaflet.js + OpenStreetMap tiles + OSRM routing.
   - Reason: fully open-source, no API key/account/billing tier required anywhere in the stack — avoids any cost inquiry. Mapbox and OpenRouteService were considered but both require signup even at free tier, which risks a billing conversation later if usage caps are hit.
   - OSRM can start against the public demo server for MVP; self-host later if volume requires it (flag to founder if/when that becomes necessary).
-- Recommended/searched hospitals are drawn on the map with their route from the user's location, annotated with:
-  - Estimated arrival time (from OSRM routing).
+- Recommended/searched hospitals are drawn on the map with their route from the user's location (route line only — **ETA display removed 2026-08-01**: OSRM's free demo router has no real-time or historical traffic model, so a driving-time number for Enugu-area trips read as implausibly optimistic; founder chose removal over the alternative of adding a paid traffic-aware routing provider, which conflicts with this project's no-billing-signup policy).
   - Current availability (data source TBD — likely from the hospital's self-managed listing, see SPEC.md module 1).
 
 ## Below the map — hospital mini-profiles
