@@ -1,142 +1,148 @@
-/* Homepage = full-bleed interactive map with floating glass chrome on top
-   (the map-first model from docs/pages/homepage.md). The header floats over
-   the map's top edge; the results ride over it as a frosted-glass panel. */
-.stage {
+/* Homepage rebuild (2026-08-01, Phase 2): hero -> expandable map section ->
+   normal in-flow results section, all in normal document flow (no fixed-
+   viewport map, no draggable bottom sheet, no scroll-linked darken/parallax
+   — the whole page is a plain scrolling document now). Glass stays reserved
+   for floating chrome per the project's "glass = chrome only" rule: only the
+   hero's search pill is glass; the map panel and result cards are plain
+   page-content surfaces (shadow + hairline border, no blur). */
+
+.hero {
   position: relative;
-  width: 100%;
-  height: 80vh;
-  min-height: 480px;
+  background:
+    radial-gradient(52rem 32rem at 12% -12%, rgba(109, 74, 255, 0.14), transparent 60%),
+    radial-gradient(44rem 32rem at 92% 6%, rgba(18, 181, 201, 0.12), transparent 55%),
+    linear-gradient(180deg, #eef1fb 0%, var(--color-off-white) 65%);
+  padding: 3.2rem 1.25rem 2.6rem;
 }
 
-/* Fixed viewport backdrop (not confined to .stage): fills the screen and
-   stays put as the page scrolls, rather than scrolling away with the
-   80vh stage that contains it. `--map-parallax` is a small (few-px)
-   counter-offset written imperatively (HomeClient.tsx) while the mobile
-   bottom-sheet is being dragged — the sheet already visually "lifts" via its
-   own height change, so nudging the map layer a few px the OPPOSITE
-   direction during that same gesture is the one deliberate parallax/depth
-   proof-point this pass adds: differential motion between the glass panel
-   and the layer behind it is what makes blur read as a pane with actual
-   thickness, not just a flat blurred texture (see globals.css/spring comment
-   for the fuller research context). Transition only applies once the drag
-   ends (`.mapLayer` has no `dragging` class at that point) so it snaps back
-   to 0 with the same spring, not linearly. */
-.mapLayer {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  background: var(--color-blue-light);
-  transform: translateY(var(--map-parallax, 0px));
-  transition: transform 0.35s var(--spring);
-}
-.mapLayer.parallaxDragging {
-  transition: none;
-}
-
-/* Sits above the fixed map, below the floating results panel (z-index 400).
-   Darkness is scroll-linked via the --map-darken custom property, set
-   imperatively from HomeClient.tsx (no React re-render per scroll tick). */
-.darkenOverlay {
-  position: fixed;
-  inset: 0;
+.heroInner {
+  position: relative;
   z-index: 1;
-  pointer-events: none;
-  background: rgba(26, 29, 36, var(--map-darken, 0));
-  transition: background-color 0.08s linear;
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: center;
 }
 
-/* Floating results panel. Mobile: a bottom sheet rising over the map.
-   Desktop: a side panel docked to the left, Google/Apple-Maps style. */
-.panel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 400;
-  /* Fixed viewport-relative height (not a % of .stage) so a drag-to-resize
-     collapsed/expanded pair stays stable if .stage's own height changes
-     again later (it already has once: 100vh -> 80vh, which silently shrank
-     the old `max-height: 58%` results window from 58vh to ~46.4vh). 46vh
-     keeps the same visual footprint that shrink left behind; 88vh is the
-     expanded state, deliberately short of 100vh so a sliver of map stays
-     visible and the "there's more below" cue from item #4 isn't undone. */
-  height: 46vh;
-  max-height: 90vh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  transition: height 0.4s var(--spring);
-  padding: 0.4rem 1.1rem 1.4rem;
-  /* Liquid glass over the live map: more transparent than the base glass, and
-     the map is refracted (bent) through it via the #lg-refract displacement.
-     A wet specular rim (inset highlight) gives the edge real glass thickness. */
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: url(#lg-refract) saturate(200%) blur(18px);
-  -webkit-backdrop-filter: saturate(200%) blur(18px);
-  border-top: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  box-shadow:
-    var(--shadow-lg),
-    inset 0 1px 1px rgba(255, 255, 255, 0.85);
+.heroTitle {
+  font-size: clamp(1.9rem, 5vw, 2.8rem);
 }
 
-/* Device-tier fallback (see GfxTier.tsx): the SVG refraction filter chain
-   (feTurbulence + feDisplacementMap composited every frame this panel is
-   visible) is the single most expensive blur on the page since it sits over
-   the live MapLibre canvas — drop it for the low tier in favor of a cheaper
-   plain blur, rather than stacking a costly filter graph on hardware least
-   able to afford it. */
-html[data-gfx-tier='low'] .panel {
-  backdrop-filter: saturate(150%) blur(10px);
-  -webkit-backdrop-filter: saturate(150%) blur(10px);
+.heroAccent {
+  color: var(--color-amethyst);
 }
 
-/* Expanded state (drag-to-resize / keyboard-toggled), mobile only. Scoped
-   inside the same <900px range the drag/grabber behavior applies at —
-   otherwise `.panel.expanded`'s specificity (0,2,0) would outrank the
-   desktop media query's `.panel` rule (0,1,0) below and pin the docked
-   side panel to 88vh if `sheetExpanded` state ever carries across a
-   resize/breakpoint crossing (nothing resets it on resize). */
-@media (max-width: 899px) {
-  .panel.expanded {
-    height: 88vh;
-  }
-  /* Minimized: just the grabber + heading strip, so the map underneath is
-     almost entirely visible (founder ask, 2026-07-28 — "minimizable to be
-     able to see the full map"). Reachable by dragging the sheet down past
-     the collapsed floor, or by cycling the grabber with keyboard/Enter. */
-  .panel.minimized {
-    height: 12vh;
-    overflow: hidden;
-  }
+.heroSub {
+  margin: 0.9rem auto 0;
+  max-width: 34rem;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--color-muted);
 }
 
-/* While actively dragging, height is written imperatively per pointermove —
-   suppress the transition so it tracks the pointer 1:1, then re-enable it
-   (base .panel rule) for the snap-to-nearest-state animation on release. */
-.panel.dragging {
-  transition: none;
+/* The one true glass surface on this page — floating chrome over the hero's
+   gradient wash, matching Card/panel glass tokens elsewhere in the app. */
+.searchGlass {
+  margin: 1.75rem auto 0;
+  max-width: 640px;
+  padding: 0.5rem;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
 }
 
-/* Drag-handle affordance for the bottom sheet (mobile only). Now a real
-   interactive control (Pointer Events drag + keyboard toggle), not
-   decoration — touch-action: none stops the browser's own scroll/refresh
-   gesture from fighting the drag. */
-.grabber {
-  display: block;
-  width: 42px;
-  height: 4px;
-  margin: 0.4rem auto 0.7rem;
+.trust {
+  margin: 1.25rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+/* ---- Expandable map section ---- */
+
+.mapSection {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2.2rem 1.25rem 0;
+}
+
+.mapHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.mapHeadText h2 {
+  font-size: 1.25rem;
+  margin: 0 0 0.15rem;
+}
+
+.mapHeadText p {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.mapExpandBtn {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-amethyst-dark);
+  background: var(--color-amethyst-light);
+  border: none;
+  padding: 0.55rem 0.85rem 0.55rem 0.75rem;
   border-radius: 999px;
-  background: rgba(26, 29, 36, 0.18);
-  cursor: grab;
-  touch-action: none;
+  cursor: pointer;
+  transition:
+    transform 0.18s var(--spring),
+    background 0.18s ease;
 }
-.grabber:active {
-  cursor: grabbing;
+.mapExpandBtn:hover {
+  transform: translateY(-1px);
 }
-.grabber:focus-visible {
-  outline: 2px solid var(--color-amethyst);
-  outline-offset: 2px;
+
+.mapExpandIcon,
+.mapExpandIconOn {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.3s var(--spring);
+}
+.mapExpandIconOn {
+  transform: rotate(180deg);
+}
+
+/* Page content, not chrome — plain shadow/hairline register, no blur. Height
+   is the one thing that changes on toggle; Map.tsx's own ResizeObserver (on
+   the element this contains) keeps MapLibre's canvas sized correctly for the
+   whole transition, not just once it settles. */
+.mapPanel {
+  position: relative;
+  height: 320px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-hairline);
+  box-shadow: var(--shadow);
+  transition: height 0.45s var(--spring);
+}
+
+.mapPanelExpanded {
+  height: 580px;
+}
+
+/* ---- Results section (normal in-flow, not a fixed/floating panel) ---- */
+
+.results {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
 }
 
 .headingRow {
@@ -163,9 +169,9 @@ html[data-gfx-tier='low'] .panel {
   font-weight: 600;
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.5);
-  color: var(--color-amethyst-dark, var(--color-amethyst));
+  border: 1px solid var(--color-hairline);
+  background: var(--color-white);
+  color: var(--color-amethyst-dark);
   cursor: pointer;
 }
 .filterToggle:hover,
@@ -188,14 +194,10 @@ html[data-gfx-tier='low'] .panel {
   margin: 0;
 }
 
-/* Stage-1 emergency outcome (symptom-red-flags.ts) — a persistent, high-
-   contrast banner that stays pinned to the top of the results panel as the
-   user scrolls, so the "call for emergency" affordance is never scrolled
-   out of view. */
+/* Stage-1 emergency outcome (symptom-red-flags.ts) — lives in the results
+   section now (not the map section), high-contrast so the "call for
+   emergency" affordance reads immediately. */
 .emergencyBanner {
-  position: sticky;
-  top: 0;
-  z-index: 10;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -238,9 +240,9 @@ html[data-gfx-tier='low'] .panel {
   padding: 0.55rem 0.75rem;
   font-size: 0.9rem;
   border-radius: var(--radius);
-  border: 1px solid var(--glass-border);
-  background: var(--color-surface, #fff);
-  color: var(--color-ink, inherit);
+  border: 1px solid var(--color-border);
+  background: var(--color-white);
+  color: var(--color-ink);
 }
 .locateInput:focus-visible {
   outline: 2px solid var(--color-amethyst);
@@ -249,11 +251,17 @@ html[data-gfx-tier='low'] .panel {
 
 .list {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.85rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 880px) {
+  .list {
+    grid-template-columns: 1fr;
+  }
 }
 
 .empty {
+  grid-column: 1 / -1;
   color: var(--color-muted);
   display: flex;
   flex-direction: column;
@@ -266,26 +274,4 @@ html[data-gfx-tier='low'] .panel {
   display: flex;
   justify-content: center;
   margin-top: 1.25rem;
-}
-
-@media (min-width: 900px) {
-  .panel {
-    top: 92px;
-    left: 1.25rem;
-    right: auto;
-    bottom: 1.25rem;
-    width: 392px;
-    height: auto;
-    max-height: none;
-    transition: none;
-    padding: 1.1rem 1.25rem 1.5rem;
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg);
-  }
-  .grabber {
-    display: none;
-  }
-  .heading {
-    margin-top: 0;
-  }
 }

@@ -80,22 +80,21 @@ function pinElement(color: string, size = 36): HTMLDivElement {
 }
 
 /**
- * Padding for fitBounds so framed content clears the floating results panel:
- * docked on the left on desktop, a bottom sheet on mobile.
+ * Padding for fitBounds. The map no longer shares the viewport with a
+ * floating results panel (no docked side panel, no bottom sheet) — it lives
+ * in its own in-flow section — so one modest fixed padding on every side is
+ * enough to keep framed content off the panel's edges.
  */
 function framePadding(): PaddingOptions {
-  const wide = typeof window !== 'undefined' && window.innerWidth >= 900;
-  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-  return wide
-    ? { top: 90, right: 80, bottom: 80, left: 440 }
-    : { top: 100, right: 50, bottom: Math.round(vh * 0.5), left: 50 };
+  return { top: 40, right: 40, bottom: 40, left: 40 };
 }
 
 /**
- * Full-bleed MapLibre GL + MapTiler map. Loaded client-only (dynamic import in
- * HomeClient) since MapLibre touches `window`. Hospitals render as teardrop
- * pins; the nearest is highlighted teal; an OSRM route is overlaid and the view
- * is framed to the route when present.
+ * MapLibre GL + MapTiler map, sized entirely by its container (the caller's
+ * job — see HomeClient.tsx's expandable `.mapPanel`). Loaded client-only
+ * (dynamic import in HomeClient) since MapLibre touches `window`. Hospitals
+ * render as teardrop pins; the nearest is highlighted teal; an OSRM route is
+ * overlaid and the view is framed to the route when present.
  */
 export default function Map({
   center,
@@ -126,8 +125,13 @@ export default function Map({
     mapRef.current = map;
     map.on('load', () => setReady(true));
 
-    // MapLibre tracks window resize itself, but the full-bleed container can also
-    // change from layout shifts; resize on any container size change to keep it filled.
+    // MapLibre tracks window resize itself, but this container's own size can
+    // also change independently (layout shifts, and — since this container is
+    // width:100%/height:100% of HomeClient's expandable `.mapPanel` — the
+    // collapsed/expanded CSS height transition). ResizeObserver fires on every
+    // box-size change, which per spec is throttled to roughly once per
+    // animation frame, so this keeps tiles correctly sized throughout that
+    // transition, not just once it settles.
     const ro = new ResizeObserver(() => map.resize());
     ro.observe(containerRef.current);
 
@@ -216,8 +220,7 @@ export default function Map({
     }
 
     // Frame the whole route (+ the user) instead of leaving it off-screen at a
-    // fixed zoom. Padding accounts for the floating results panel: docked left
-    // on desktop, a bottom sheet on mobile.
+    // fixed zoom.
     if (hasRoute) {
       const bounds = new maplibregl.LngLatBounds();
       line.forEach((c) => bounds.extend(c));

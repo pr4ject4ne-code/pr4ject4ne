@@ -121,6 +121,11 @@ export interface Hospital {
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   updated_at: string;
+  /** Client-computed straight-line distance from the user's current/entered
+   * location, in km — not persisted, not returned by the API. Attached in
+   * HomeClient.tsx's `orderedHospitals` memo (only when a location is known)
+   * so result-card components can show it without recomputing the sort. */
+  distanceKm?: number;
 }
 
 export interface Announcement {
