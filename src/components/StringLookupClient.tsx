@@ -90,11 +90,19 @@ export default function StringLookupClient() {
       <div className={styles.intro}>
         <h1 className={styles.title}>Find by IHN</h1>
         <p className={styles.subtitle}>
-          Enter someone&apos;s IHN code to view whatever biodata they&apos;ve chosen to share, an
-          organized summary, not raw data. No sign-in required, so anyone handed the code in an
-          emergency (a relative, a bystander, a first responder) can use it right away. Only
-          fields the account holder has explicitly opted in to share will ever appear here.
+          Look up someone&apos;s shared biodata using their IHN code.
         </p>
+        <details className={styles.why}>
+          <summary className={styles.whySummary}>Why does this matter?</summary>
+          <div className={styles.whyBody}>
+            <p>
+              No sign-in required, so anyone handed the code in an emergency (a relative, a
+              bystander, a first responder) can use it right away, viewed as an organized
+              summary, not raw data. Only fields the account holder has explicitly opted in to
+              share will ever appear here.
+            </p>
+          </div>
+        </details>
       </div>
 
       <Card variant="plain">

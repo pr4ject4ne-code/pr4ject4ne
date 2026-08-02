@@ -204,7 +204,12 @@
   flex: 1;
   border: none;
   padding: 0.5rem 0.7rem;
-  font-size: 0.9rem;
+  /* 1rem (16px), not 0.9rem — below 16px, iOS Safari zooms the viewport on
+     focus, which reads to a typing user as the page suddenly jumping/zooming
+     out from under them. Kept as the base value (not gated behind the mobile
+     breakpoint below) since it's a real cross-viewport a11y/UX fix, not a
+     cosmetic mobile-only tweak. */
+  font-size: 1rem;
   color: var(--color-ink);
   min-width: 0;
 }
@@ -223,4 +228,48 @@
 }
 .searchBtn:hover {
   background: var(--color-amethyst-dark);
+}
+
+/* Narrow phones: three non-shrinking mode pills ("By symptom" alone is a wide
+   label) sharing one horizontal row with the input left it squeezed to a
+   sliver — still receiving input, but rendered too narrow to read while
+   typing. Below this width, restructure the pill into two full-width grid
+   rows (mode pills on top, input+search button below) via named grid areas
+   rather than reordering the DOM/JSX, same technique Header.module.css uses
+   for its own row-stacking breakpoint. The empty "mode" row collapses to 0
+   height automatically (no explicit row-height) when onHospitalSearch hides
+   the mode group, so this is safe for both the homepage and hospital-scoped
+   search bar. A full pill capsule (border-radius: 999px) doesn't read right
+   once it's two stacked rows, so it softens to the standard large-rect token
+   at this breakpoint only — desktop/tablet keep the capsule shape. */
+@media (max-width: 480px) {
+  .searchPill {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'mode mode'
+      'input btn';
+    border-radius: var(--radius-lg);
+  }
+
+  .modeGroup {
+    grid-area: mode;
+    width: 100%;
+  }
+
+  .modePill,
+  .modePillOn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .searchInput,
+  .symptomToggle {
+    grid-area: input;
+    width: 100%;
+  }
+
+  .searchBtn {
+    grid-area: btn;
+  }
 }
