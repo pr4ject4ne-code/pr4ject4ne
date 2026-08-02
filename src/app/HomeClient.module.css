@@ -248,7 +248,11 @@
   flex: 1;
   min-width: 0;
   padding: 0.55rem 0.75rem;
-  font-size: 0.9rem;
+  /* 1rem (16px), not 0.9rem — same rule as SearchBar's own input: below 16px
+     iOS Safari zooms the viewport on focus, which reads as the page jumping
+     out from under you mid-typing. This input is on the homepage's denied-
+     geolocation path, which is a common state on a phone. */
+  font-size: 1rem;
   border-radius: var(--radius);
   border: 1px solid var(--color-border);
   background: var(--color-white);

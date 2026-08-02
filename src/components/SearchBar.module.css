@@ -212,6 +212,14 @@
   font-size: 1rem;
   color: var(--color-ink);
   min-width: 0;
+  /* The browser's OWN focus-driven scroll (which runs before any JS handler)
+     can park the input directly under the sticky, blurred header
+     (Header.module.css `.bar`), which smears the text being typed. Reserve the
+     header's height so it stops short of it. Same 88px allowance ErrorBubble
+     uses for the same header. The keyboard-open case, which CSS cannot see at
+     all, is handled in lib/keyboardSafeScroll.ts. */
+  scroll-margin-top: 88px;
+  scroll-margin-bottom: 24px;
 }
 .searchInput:focus {
   outline: none;

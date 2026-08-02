@@ -23,49 +23,6 @@
   font-size: 0.92rem;
 }
 
-/* Collapsed-by-default "why does this matter?" disclosure — same treatment
-   as IHNCodeDisplay.module.css's .why/.whySummary/.whyBody (this codebase's
-   established pattern is a small duplicated block per component rather than
-   a shared import, see also BioDataForm.module.css/FirstAidList.module.css). */
-.why {
-  margin-top: 0.6rem;
-}
-.whySummary {
-  cursor: pointer;
-  list-style: none;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--color-amethyst-dark);
-  padding: 0.1rem 0;
-}
-.whySummary::-webkit-details-marker {
-  display: none;
-}
-.whySummary::before {
-  content: '▸';
-  display: inline-block;
-  margin-right: 0.4rem;
-  transition: transform 0.15s ease;
-}
-.why[open] .whySummary::before {
-  transform: rotate(90deg);
-}
-.whyBody {
-  margin-top: 0.6rem;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  padding: 0.85rem 1rem;
-  font-size: 0.85rem;
-  color: var(--color-ink);
-}
-.whyBody p {
-  margin: 0;
-}
-
 .form {
   display: flex;
   flex-direction: column;

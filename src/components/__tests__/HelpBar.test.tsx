@@ -29,6 +29,25 @@ describe('HelpBar', () => {
     expect(screen.queryByText('Reporting an issue')).not.toBeInTheDocument();
   });
 
+  it('surfaces the Find by IHN topic for the searches a user would actually type', () => {
+    // This explanation used to live on the /string-lookup page itself; it was
+    // moved here, so the Help panel is now its ONLY home — it has to be
+    // findable by the obvious queries or it is effectively gone.
+    for (const query of ['IHN', 'find by ihn', 'Find by IHN', 'someone else']) {
+      const { unmount } = render(<HelpBar />);
+      fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+      fireEvent.change(screen.getByLabelText('Search help topics'), {
+        target: { value: query },
+      });
+      expect(
+        screen.getByText("Looking up someone else's biodata (Find by IHN)"),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/only the fields the account holder has explicitly opted in/i))
+        .toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it('shows an empty state when no topics match', () => {
     render(<HelpBar />);
     fireEvent.click(screen.getByRole('button', { name: 'Help' }));

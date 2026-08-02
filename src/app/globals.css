@@ -243,7 +243,12 @@ label {
 
 /* Centered auth screens (login / sign-up) */
 .auth-page {
+  /* dvh (with the vh fallback) so the centered card is centered in the space
+     actually on screen: with a mobile keyboard open, `100vh` still measures
+     the full unshrunk viewport, which pushes the focused field down behind
+     the keyboard. */
   min-height: calc(100vh - 168px);
+  min-height: calc(100dvh - 168px);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -89,20 +89,15 @@ export default function StringLookupClient() {
     <div className={styles.wrap}>
       <div className={styles.intro}>
         <h1 className={styles.title}>Find by IHN</h1>
+        {/* One functional orientation line only. The longer explanation
+            (no sign-in needed, organized summary not raw data, sharing-prefs
+            gating) lives in the footer Help panel under "Understanding your
+            IHN code" — see lib/help-content.ts. Deliberately NOT an on-page
+            collapsible: the founder asked for it moved off this page, not
+            folded into a box still sitting on it. */}
         <p className={styles.subtitle}>
           Look up someone&apos;s shared biodata using their IHN code.
         </p>
-        <details className={styles.why}>
-          <summary className={styles.whySummary}>Why does this matter?</summary>
-          <div className={styles.whyBody}>
-            <p>
-              No sign-in required, so anyone handed the code in an emergency (a relative, a
-              bystander, a first responder) can use it right away, viewed as an organized
-              summary, not raw data. Only fields the account holder has explicitly opted in to
-              share will ever appear here.
-            </p>
-          </div>
-        </details>
       </div>
 
       <Card variant="plain">

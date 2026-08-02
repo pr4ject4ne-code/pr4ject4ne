@@ -171,6 +171,68 @@ describe('SearchBar Stage 1 — red-flag emergency gate', () => {
   });
 });
 
+/**
+ * The founder-reported "I cannot see what I type" case: the input is styled
+ * correctly, but on a phone the on-screen keyboard opens AFTER focus and can
+ * leave it off-screen. See lib/keyboardSafeScroll.ts (unit-tested separately);
+ * this covers the wiring — that focus starts the watcher and blur stops it.
+ */
+describe('SearchBar keyboard-safe focus', () => {
+  class FakeVisualViewport extends EventTarget {
+    offsetTop = 0;
+    height = 800;
+    shrink(to: number) {
+      this.height = to;
+      this.dispatchEvent(new Event('resize'));
+    }
+  }
+
+  let viewport: FakeVisualViewport;
+  let scrollBy: jest.Mock;
+
+  function placeInputAt(top: number) {
+    const input = screen.getByLabelText('Search');
+    input.getBoundingClientRect = () =>
+      ({ top, bottom: top + 40, height: 40, left: 0, right: 300, width: 300, x: 0, y: top }) as DOMRect;
+    return input;
+  }
+
+  beforeEach(() => {
+    viewport = new FakeVisualViewport();
+    Object.defineProperty(window, 'visualViewport', {
+      value: viewport,
+      configurable: true,
+      writable: true,
+    });
+    scrollBy = jest.fn();
+    window.scrollBy = scrollBy as unknown as typeof window.scrollBy;
+  });
+
+  it('brings the input back into view when the keyboard shrinks the viewport while it is focused', () => {
+    render(<SearchBar />);
+    switchToNameMode();
+    const input = placeInputAt(600);
+    fireEvent.focus(input);
+    // Nothing was obscured at focus time, so the page must not have moved.
+    expect(scrollBy).not.toHaveBeenCalled();
+
+    viewport.shrink(450); // keyboard opens over the bottom of the screen
+    expect(scrollBy).toHaveBeenCalledTimes(1);
+    expect(scrollBy.mock.calls[0][0].top).toBeGreaterThan(0);
+  });
+
+  it('stops watching the viewport after blur', () => {
+    render(<SearchBar />);
+    switchToNameMode();
+    const input = placeInputAt(600);
+    fireEvent.focus(input);
+    fireEvent.blur(input);
+
+    viewport.shrink(450);
+    expect(scrollBy).not.toHaveBeenCalled();
+  });
+});
+
 describe('SearchBar hospital-scoped mode (onHospitalSearch)', () => {
   it('hides the mode pill group entirely when onHospitalSearch is provided', () => {
     render(<SearchBar onHospitalSearch={jest.fn()} />);

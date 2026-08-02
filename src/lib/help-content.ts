@@ -45,6 +45,12 @@ export const HELP_CONTENT: HelpEntry[] = [
   },
   {
     section: 'Understanding your IHN code',
+    topic: "Looking up someone else's biodata (Find by IHN)",
+    answer:
+      'The "Find by IHN" page, linked from the site menu, looks someone up from their IHN code alone. No sign-in is needed, so a relative, a bystander, or a first responder who has been handed the code in an emergency can use it right away. What comes back is an organized summary rather than raw data, and only the fields the account holder has explicitly opted in to share will ever appear.',
+  },
+  {
+    section: 'Understanding your IHN code',
     topic: 'Why it matters',
     answer:
       'In an emergency, every minute spent tracking down your medical history is a minute a hospital is not treating you. Your biodata (blood group, genotype, chronic conditions, allergies, next of kin) lets a partner hospital pull up the essentials the moment your IHN code is shared, which means faster triage and safer treatment.',

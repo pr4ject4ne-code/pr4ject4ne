@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SYMPTOM_REGIONS, SYMPTOM_ITEMS } from '@/lib/symptom-specialty-map';
 import { RED_FLAG_SYMPTOMS, evaluateRedFlagGate, MAX_SEVERITY } from '@/lib/symptom-red-flags';
+import { keepFocusedElementVisible } from '@/lib/keyboardSafeScroll';
 import styles from './SearchBar.module.css';
 
 export type SearchMode = 'nearest' | 'hospital' | 'symptom';
@@ -33,6 +34,25 @@ export default function SearchBar({ onHospitalSearch }: SearchBarProps) {
   const [severity, setSeverity] = useState<number | null>(null);
   const [symptomPickerOpen, setSymptomPickerOpen] = useState(false);
   const router = useRouter();
+  // Releases the visual-viewport watcher started on focus (see
+  // lib/keyboardSafeScroll.ts): on a phone, the on-screen keyboard opening
+  // AFTER focus is what can leave the input off-screen or under the sticky
+  // header, so the watcher has to outlive the focus event itself.
+  const releaseFocusScroll = useRef<(() => void) | null>(null);
+
+  function onInputFocus(e: React.FocusEvent<HTMLInputElement>) {
+    releaseFocusScroll.current?.();
+    releaseFocusScroll.current = keepFocusedElementVisible(e.currentTarget);
+  }
+
+  function onInputBlur() {
+    releaseFocusScroll.current?.();
+    releaseFocusScroll.current = null;
+  }
+
+  // Unmounting while still focused (e.g. navigating away on submit) must not
+  // leave the listener attached to the shared visualViewport object.
+  useEffect(() => () => releaseFocusScroll.current?.(), []);
 
   const isSymptomMode = mode === 'symptom' && !onHospitalSearch;
   // Stage 1 red-flag gate (symptom-red-flags.ts) — evaluated purely
@@ -122,6 +142,8 @@ export default function SearchBar({ onHospitalSearch }: SearchBarProps) {
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            onFocus={onInputFocus}
+            onBlur={onInputBlur}
             placeholder={onHospitalSearch ? 'Search this hospital…' : MODE_PLACEHOLDER[mode]}
             aria-label="Search"
           />

@@ -1,7 +1,13 @@
 .shell {
   display: flex;
   flex-direction: column;
+  /* `100dvh` with a `100vh` fallback for browsers without dvh support (same
+     two-line pattern as LogoLoader.module.css). `100vh` alone does not shrink
+     when a mobile keyboard opens, which forces the page taller than the space
+     actually on screen and adds scroll the user never asked for while they are
+     typing. */
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .main {
