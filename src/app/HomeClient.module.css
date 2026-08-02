@@ -24,7 +24,10 @@
 }
 
 .heroTitle {
-  font-size: clamp(1.9rem, 5vw, 2.8rem);
+  font-size: clamp(2.25rem, 6vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
 }
 
 .heroAccent {
@@ -35,6 +38,7 @@
   margin: 0.9rem auto 0;
   max-width: 34rem;
   font-size: 1.05rem;
+  font-weight: 600;
   line-height: 1.55;
   color: var(--color-muted);
 }
@@ -103,10 +107,16 @@
   cursor: pointer;
   transition:
     transform 0.18s var(--spring),
-    background 0.18s ease;
+    background 0.18s ease,
+    box-shadow 0.18s ease;
 }
 .mapExpandBtn:hover {
   transform: translateY(-1px);
+  box-shadow: var(--shadow-glow-amethyst);
+}
+.mapExpandBtn:active {
+  transform: translateY(0) scale(0.96);
+  transition: transform 0.18s var(--spring);
 }
 
 .mapExpandIcon,

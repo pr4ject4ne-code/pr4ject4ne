@@ -62,6 +62,13 @@
 }
 .primary:hover:not(:disabled) {
   background: var(--color-amethyst-dark);
+  box-shadow: var(--shadow), var(--shadow-glow-amethyst);
+}
+.primary:active:not(:disabled) {
+  /* Slightly deeper squash than the base .btn press — the hover glow is more
+     prominent now, so the press needs a touch more contrast to still read as
+     a distinct "push down" relative to it. */
+  transform: scale(0.96) translateY(-1px);
 }
 
 .secondary {
@@ -70,6 +77,10 @@
 }
 .secondary:hover:not(:disabled) {
   background: var(--color-blue-dark);
+  box-shadow: var(--shadow), var(--shadow-glow-blue);
+}
+.secondary:active:not(:disabled) {
+  transform: scale(0.96) translateY(-1px);
 }
 
 /* Ghost keeps text on a tinted (non-white) surface so the colored-text rule holds. */

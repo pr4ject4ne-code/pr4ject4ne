@@ -68,6 +68,16 @@
   --shadow: 0 2px 6px rgba(20, 30, 60, 0.05), 0 12px 28px rgba(20, 30, 60, 0.07);
   --shadow-lg: 0 8px 40px rgba(20, 30, 60, 0.12);
 
+  /* Colored "glow" hover shadows — soft, large-blur, low-opacity, hue-tinted
+     (same recipe shape as the twothree reference site's hover system), but
+     using Racoon Eye's own amethyst/blue tokens rather than its blue palette.
+     Reserved for genuinely interactive chrome on hover/press (buttons, result
+     cards, the map-expand pill) — layered alongside the neutral --shadow-*
+     scale above, not a replacement for it. */
+  --shadow-glow-amethyst: 0 0 32px rgba(109, 74, 255, 0.22);
+  --shadow-glow-blue: 0 0 32px rgba(63, 109, 199, 0.2);
+  --shadow-card-hover: 0 8px 28px rgba(109, 74, 255, 0.14);
+
   /* Spring / gel easing — the shared curve for the liquid-glass interactions
      (segmented control slide, card lift, jelly tap, bottom-sheet snap).
      This is a genuinely SAMPLED damped-harmonic-oscillator response

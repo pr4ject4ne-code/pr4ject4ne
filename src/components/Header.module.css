@@ -149,8 +149,8 @@
 .inlineNav a {
   text-decoration: none;
   color: var(--header-fg);
-  font-weight: 600;
-  font-size: 0.95rem;
+  font-weight: 700;
+  font-size: 0.875rem;
   padding: 0.4rem 0.2rem;
   transition: transform 0.15s ease;
   display: inline-block;
