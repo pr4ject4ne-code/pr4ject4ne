@@ -1,0 +1,217 @@
+/*
+ * Shared hover/press mechanics — the single source of truth for interaction
+ * feedback across the whole app.
+ *
+ * Consume via CSS Modules `composes:` rather than re-implementing the same
+ * lift/press by hand in every module (which is exactly how the codebase drifted
+ * into a dozen slightly-different hovers):
+ *
+ *   .myButton {
+ *     composes: pressableGlowAmethyst from '../styles/interactions.module.css';
+ *     background: var(--color-amethyst);
+ *   }
+ *
+ * Use a RELATIVE path in `composes` (the `@/` tsconfig alias is a TypeScript/JS
+ * resolution concern, not a css-loader one). Composing pulls in the composed
+ * class's own rules INCLUDING its :hover/:active states, because the composed
+ * class name is added to the element's class list — you don't need to restate
+ * them.
+ *
+ * Rules for anything added here:
+ *  - every transform transition uses var(--spring) (globals.css), never a
+ *    hardcoded cubic-bezier and never a keyframe animation. That's what keeps
+ *    all of this inside the global prefers-reduced-motion collapse.
+ *  - transform is the only animated layout property (compositor-only, no
+ *    reflow); colour/shadow changes use a short plain ease.
+ *  - sizes come from the type-scale tokens (--fs-micro, --fs-nav), never
+ *    literals.
+ */
+
+/* ---- .pressable — the Button mechanic (Button.module.css is the reference) ----
+   Hover lifts 2px onto the neutral --shadow; press squashes to 0.97 while
+   staying slightly lifted, so the spring reads as continuous on BOTH the
+   squash and the release. */
+.pressable {
+  cursor: pointer;
+  transition:
+    transform 0.3s var(--spring),
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.pressable:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.pressable:active:not(:disabled) {
+  transform: scale(0.97) translateY(-1px);
+  transition: transform 0.22s var(--spring);
+}
+
+/* Coloured glow variants: same mechanic, with the hue-tinted glow stacked on
+   the neutral shadow. Amethyst = primary/brand actions, blue = secondary. */
+.pressableGlowAmethyst {
+  composes: pressable;
+}
+
+.pressableGlowAmethyst:hover:not(:disabled) {
+  box-shadow: var(--shadow), var(--shadow-glow-amethyst);
+}
+
+.pressableGlowAmethyst:active:not(:disabled) {
+  /* A touch deeper than the base press — the glow makes the hover state more
+     prominent, so the press needs more contrast to still read as a push. */
+  transform: scale(0.96) translateY(-1px);
+}
+
+.pressableGlowBlue {
+  composes: pressable;
+}
+
+.pressableGlowBlue:hover:not(:disabled) {
+  box-shadow: var(--shadow), var(--shadow-glow-blue);
+}
+
+.pressableGlowBlue:active:not(:disabled) {
+  transform: scale(0.96) translateY(-1px);
+}
+
+/* ---- .cardLift — the result-card mechanic (HospitalResultCard is the reference) ----
+   Bigger lift than a button, amethyst-tinted border on hover, and a real press
+   so a whole tappable card still acknowledges touch. Resting border is the
+   site's hairline token so only the COLOUR animates (no layout shift); a
+   consumer that wants no resting border can override border-color. */
+.cardLift {
+  cursor: pointer;
+  border: 1px solid var(--color-hairline);
+  transition:
+    transform 0.2s var(--spring),
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.cardLift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: rgba(109, 74, 255, 0.3);
+}
+
+.cardLift:active {
+  transform: translateY(-1px) scale(0.99);
+  transition: transform 0.22s var(--spring);
+}
+
+/* ---- .chip — pills, tags, filter chips, mode toggles ----
+   One resting size (--fs-micro) for every badge/pill in the app. Colour tokens
+   are the quiet blue tint at rest, amethyst on hover (purple leads on
+   interaction). Consumers override background/color for state variants (on,
+   danger, etc.) without touching the motion. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-blue-dark);
+  background: var(--color-blue-light);
+  cursor: pointer;
+  transition:
+    transform 0.24s var(--spring),
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.chip:hover {
+  background: var(--color-amethyst-light);
+  color: var(--color-amethyst-dark);
+  transform: translateY(-1px);
+}
+
+.chip:active {
+  transform: scale(0.96);
+  transition: transform 0.22s var(--spring);
+}
+
+/* ---- .navLink — header nav, footer links, dev/hospital shell nav ----
+   An underline that wipes in from the left, not a background/colour tint: the
+   header sits on a solid violet surface and the footer on brand blue, where a
+   tint barely registers. currentColor means the same class works on ink-on-white
+   and white-on-violet chrome without a per-surface variant. */
+.navLink {
+  position: relative;
+  display: inline-block;
+  padding: 0.4rem 0.2rem;
+  font-size: var(--fs-nav);
+  font-weight: 700;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.24s var(--spring);
+}
+
+.navLink::after {
+  content: '';
+  position: absolute;
+  left: 0.2rem;
+  right: 0.2rem;
+  bottom: 0.1rem;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.25s var(--spring);
+}
+
+.navLink:hover::after,
+.navLink:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.navLink:hover {
+  transform: translateY(-1px);
+}
+
+.navLink:active {
+  transform: scale(0.96);
+  transition: transform 0.22s var(--spring);
+}
+
+/* ---- .iconBtn — icon-only controls (close, sort toggle, peek, stepper) ----
+   Grows slightly on hover (an icon has no label to lift, so scale reads better
+   than translate) and squashes hard on press. Assumes a light surface; on
+   coloured chrome, override `background` for the hover tint. */
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  line-height: 0;
+  cursor: pointer;
+  transition:
+    transform 0.24s var(--spring),
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.iconBtn:hover:not(:disabled) {
+  background: var(--color-amethyst-light);
+  color: var(--color-amethyst-dark);
+  transform: scale(1.06);
+}
+
+.iconBtn:active:not(:disabled) {
+  transform: scale(0.9);
+  transition: transform 0.22s var(--spring);
+}

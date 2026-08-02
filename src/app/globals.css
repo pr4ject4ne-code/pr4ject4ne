@@ -59,6 +59,47 @@
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
+  /* ---- Type scale (single source of truth, site-wide) ----
+     Body text keeps the system stack above; HEADINGS get a self-hosted
+     display face (Plus Jakarta Sans, wired in src/app/layout.tsx via
+     next/font/google — zero external runtime request, so `font-src 'self'`
+     in middleware.ts stays intact). The fallback keeps headings on the
+     system stack anywhere --font-jakarta isn't defined (jsdom/tests, or if
+     the font wiring is ever removed).
+
+     Names here are a repo-wide commitment: every page/component references
+     these tokens instead of inventing its own sizes. Values are cheap to
+     retune; names are not. --fs-display is the promoted homepage-hero
+     clamp; the display:nav ratio at desktop is 4.5rem : 0.9rem (5x) —
+     deliberate, confident hero-vs-chrome contrast. */
+  --font-display: var(--font-jakarta, var(--font-sans));
+
+  --fs-display: clamp(2.25rem, 6vw, 4.5rem); /* hero only */
+  --fs-h1: clamp(1.85rem, 4.4vw, 2.9rem); /* every page title */
+  --fs-h2: clamp(1.3rem, 2.4vw, 1.8rem); /* section titles */
+  --fs-h3: 1.1rem;
+  --fs-h4: 0.98rem;
+  --fs-body: 1rem;
+  --fs-body-sm: 0.9rem;
+  --fs-caption: 0.8rem;
+  --fs-micro: 0.72rem; /* all badges/pills — one size, no drift */
+  --fs-nav: 0.9rem; /* chrome: header nav, footer links, dev/hospital shells */
+  /* HARD FLOOR for every input/select/textarea: below 16px, iOS Safari zooms
+     the viewport on focus, which reads as the page jumping out from under a
+     typing user. Enforced by src/styles/__tests__/design-system.test.ts. */
+  --fs-control: 1rem;
+
+  --lh-display: 1.08;
+  --lh-h1: 1.12;
+  --lh-h2: 1.18;
+  --lh-h3: 1.28;
+  --lh-body: 1.55;
+
+  --ls-display: -0.03em;
+  --ls-h1: -0.028em;
+  --ls-h2: -0.022em;
+  --ls-h3: -0.015em;
+
   --radius-sm: 10px;
   --radius: 14px;
   --radius-lg: 22px;
@@ -156,20 +197,46 @@ button {
   font-family: inherit;
 }
 
+/* Every heading level gets its own size/leading/tracking from the scale
+   above. They deliberately no longer share one loose line-height: a single
+   1.25 is too tight for h3/h4 and far too loose for a large h1/hero, which
+   was the exact defect fixed on the homepage hero and is fixed globally
+   here. A page/component may still override font-size via its own module
+   class (class beats element specificity) — but it should do so with these
+   tokens, not a fresh magic number. */
 h1,
 h2,
 h3,
 h4 {
+  font-family: var(--font-display);
   color: var(--color-ink);
-  line-height: 1.25;
   font-weight: 800;
-  letter-spacing: -0.02em;
 }
 
-h3,
-h4 {
+h1 {
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  letter-spacing: var(--ls-h1);
+}
+
+h2 {
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
+  letter-spacing: var(--ls-h2);
+}
+
+h3 {
+  font-size: var(--fs-h3);
+  line-height: var(--lh-h3);
+  letter-spacing: var(--ls-h3);
   font-weight: 700;
-  letter-spacing: -0.01em;
+}
+
+h4 {
+  font-size: var(--fs-h4);
+  line-height: var(--lh-h3);
+  letter-spacing: var(--ls-h3);
+  font-weight: 700;
 }
 
 /* ---- Custom scrollbars (site-wide) ----

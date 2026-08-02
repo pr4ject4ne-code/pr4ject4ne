@@ -1,6 +1,19 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
+
+// Headings-only display face. `next/font/google` downloads and SELF-HOSTS the
+// files at build time, so there is no runtime request to Google and the
+// existing `font-src 'self'` CSP (src/middleware.ts) needs no change.
+// Exposed as --font-jakarta; globals.css composes it into the semantic
+// --font-display token (with a system-stack fallback) and only the h1-h4
+// rules consume it — body text stays on --font-sans.
+const displayFont = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jakarta',
+});
 
 export const metadata: Metadata = {
   title: 'Racoon Eye',
@@ -42,7 +55,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     // (no attribute) and the client's first hydration pass (attribute
     // already present) will always legitimately differ on this one
     // attribute. Same fix every no-FOUC library (next-themes etc.) uses.
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={displayFont.variable} suppressHydrationWarning>
       <head>
         {/* Browsers deliberately hide a script's `nonce` attribute/property
             from JS after the initial parse (a security measure so it can't

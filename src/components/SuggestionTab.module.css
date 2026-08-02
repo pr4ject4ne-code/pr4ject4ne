@@ -33,7 +33,9 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   font-family: inherit;
-  font-size: 0.95rem;
+  /* --fs-control (1rem/16px), not 0.95rem — below 16px iOS Safari zooms the
+     viewport on focus. Same floor as Input.module.css's .input. */
+  font-size: var(--fs-control);
   margin-bottom: 0.9rem;
   resize: vertical;
 }

@@ -20,34 +20,40 @@
   box-shadow: 0 6px 24px rgba(60, 40, 130, 0.2);
 }
 
-/* Resting state on plain (non-floating) pages: ~86% transparent (the founder's
-   "sick and pale" complaint) with dark ink text/icons so contents stay legible
-   against typically-light page content sitting behind the sticky bar. Raises
-   back to the filled, blurred, white-on-violet glass on hover/focus-within so
-   contents are unmistakably readable whenever someone is actually using the
-   bar. Scoped away from `.floating` (map header), which stays as designed. */
+/* Resting state on plain (non-floating) pages.
+   History: this used to be the full white-on-violet glass, which the founder
+   read as "too loud / sick and pale" on content pages, and the fix
+   overcorrected all the way to an ~86%-transparent wash that only filled in on
+   hover — an apologetic header that looked unfinished from first paint and
+   only became intentional once you touched it.
+   Now: a SOLID, confident surface from first paint — an opaque amethyst-tinted
+   white (--color-amethyst-light, so the brand still reads) carrying dark ink
+   text/icons, with a real shadow. It stays a backdrop-filtered surface because
+   it is genuinely floating chrome (sticky, content scrolls under it), but at
+   this opacity it presents as a solid bar rather than a see-through one, and
+   it never washes out over whatever content happens to sit behind it.
+   Scoped away from `.floating` (map header), which stays as designed. */
 .bar:not(.floating) {
-  background: rgba(101, 70, 235, 0.14);
-  backdrop-filter: blur(6px) saturate(140%);
-  -webkit-backdrop-filter: blur(6px) saturate(140%);
-  --header-fg: var(--color-ink);
-  --header-border: rgba(15, 30, 70, 0.12);
-  box-shadow: 0 4px 16px rgba(60, 40, 130, 0.06);
-  transition:
-    background 0.2s ease,
-    backdrop-filter 0.2s ease,
-    box-shadow 0.2s ease,
-    color 0.2s ease;
-}
-
-.bar:not(.floating):hover,
-.bar:not(.floating):focus-within {
-  background: rgba(101, 70, 235, 0.82);
+  background: rgba(242, 238, 255, 0.94);
   backdrop-filter: blur(18px) saturate(180%);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
-  --header-fg: var(--color-white);
-  --header-border: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 6px 24px rgba(60, 40, 130, 0.2);
+  --header-fg: var(--color-ink);
+  --header-border: rgba(109, 74, 255, 0.16);
+  box-shadow: var(--shadow-sm);
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* No colour/foreground inversion on hover any more — swapping ink-on-light for
+   white-on-violet mid-interaction was only ever there to rescue the faint
+   resting state, and against a solid bar it reads as a flash. All that's left
+   is a small lift in presence (fully opaque + a deeper shadow) so the bar still
+   acknowledges interaction, including for keyboard users via :focus-within. */
+.bar:not(.floating):hover,
+.bar:not(.floating):focus-within {
+  background: var(--color-amethyst-light);
+  box-shadow: var(--shadow);
 }
 
 /* Homepage: float over the full-bleed map. Lighter tint so the map shows

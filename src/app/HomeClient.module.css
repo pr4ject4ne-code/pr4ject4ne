@@ -23,11 +23,14 @@
   text-align: center;
 }
 
+/* Pure token refactor — these were the hardcoded values that got promoted
+   into globals.css as --fs-display/--lh-display/--ls-display, so the rendered
+   result is byte-identical. The hero is the ONLY consumer of --fs-display. */
 .heroTitle {
-  font-size: clamp(2.25rem, 6vw, 4.5rem);
+  font-size: var(--fs-display);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.08;
+  letter-spacing: var(--ls-display);
+  line-height: var(--lh-display);
 }
 
 .heroAccent {

@@ -5,6 +5,9 @@
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
+  /* Was unset, so it fell back to the UA's ~13px default for form controls —
+     below the 16px iOS focus-zoom floor. */
+  font-size: var(--fs-control);
 }
 .list {
   list-style: none;
