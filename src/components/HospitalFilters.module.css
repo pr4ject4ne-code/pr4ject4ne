@@ -46,11 +46,27 @@
 /* Pill toggles: the shared `.chip` mechanic (subtle rise on hover, squash on
    press) rather than the button lift — these are segments wedged into a row,
    so a 2px lift would break the row's alignment. Layout/colour are overridden
-   per segment; the motion stays shared. */
+   per segment; the motion stays shared.
+   `composes:` must stay on the bare simple-class selector (CSS Modules only
+   allows composition on a single local class, no ancestor combinator), so the
+   overriding declarations that need real specificity live in a separate
+   `.segmented .seg` rule below rather than here. */
 .seg {
   composes: chip from '../styles/interactions.module.css';
   flex: 1;
   justify-content: center;
+}
+
+/* Rescoped under `.segmented` (the real ancestor wrapper — see
+   HospitalFilters.tsx) rather than bare `.seg`: these properties override
+   composed `.chip`'s own base rule (padding/font-size/border-color/
+   background/color), which lives in a different chunk
+   (interactions.module.css) whose Next.js chunk-load order relative to this
+   file varies by route. A bare `.seg` rule races `.chip` at equal
+   specificity and can silently lose that race on some routes — a
+   resting-state bug visible on first paint. Real ancestor specificity fixes
+   that regardless of chunk order. */
+.segmented .seg {
   padding: 0.35rem 0.5rem;
   font-size: var(--fs-caption);
   border-color: var(--glass-border);
@@ -60,14 +76,23 @@
 
 .segActive {
   composes: seg;
+}
+
+/* Same chunk-order race as `.segmented .seg` above, over composed `.chip`'s
+   base rule. */
+.segmented .segActive {
   background: var(--color-amethyst);
   border-color: var(--color-amethyst);
   color: #fff;
 }
 
 /* The selected segment keeps its filled amethyst identity on hover/press —
-   `.chip`'s light tint would read as a deselection. */
-.segActive:hover {
+   `.chip`'s light tint would read as a deselection. Rescoped under
+   `.segmented` for the same reason: this races composed `.chip:hover` at
+   equal specificity, which is exactly the case this rule exists to guard
+   against (an active segment reading as "deselected" on hover) — a bare
+   `.segActive:hover` rule doesn't reliably win that race across routes. */
+.segmented .segActive:hover {
   background: var(--color-amethyst-dark);
   border-color: var(--color-amethyst-dark);
   color: #fff;

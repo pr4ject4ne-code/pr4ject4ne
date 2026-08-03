@@ -5,12 +5,29 @@
    This card IS the reference for the shared `.cardLift` mechanic, so it now
    composes it rather than restating the same lift/glow/press values inline —
    one source of truth, identical rendering (the composed class carries the
-   very numbers this card contributed). Only the resting border-color is
-   overridden back to transparent, which `.cardLift` explicitly sanctions. */
+   very numbers this card contributed). The resting border-color is
+   overridden back to transparent (which `.cardLift` explicitly sanctions) in
+   the `article.card` rule below rather than here — `composes:` only works on
+   a bare simple-class selector, and the override needs real specificity
+   (see that rule's comment). */
 .card {
   composes: cardLift from '../styles/interactions.module.css';
   padding: 0;
   overflow: hidden;
+}
+
+/* Rescoped as `article.card` (element+class — HospitalResultCard.tsx renders
+   this via `<Card as="article" className={styles.card}>`, so `.card` is
+   always on a real <article>) rather than bare `.card`: this overrides
+   composed `.cardLift`'s own resting `border: 1px solid var(--color-hairline)`,
+   which lives in a different chunk (interactions.module.css) whose Next.js
+   chunk-load order relative to this file varies by route. A bare `.card`
+   rule races that base rule at equal specificity and can lose on some
+   routes — showing a visible hairline border at rest instead of the intended
+   borderless-until-hover look. (The `:hover` override on this same property
+   doesn't need this treatment — `.cardLift:hover`'s pseudo-class already
+   gives it higher specificity than plain `.card`.) */
+article.card {
   border-color: transparent;
 }
 

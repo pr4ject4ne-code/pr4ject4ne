@@ -320,16 +320,27 @@
    sliding up out of its socket, its top 2px shaved off by the clip) and the
    hover glow (clipped to nothing — re-homed onto .searchPill above). The
    press-squash from .pressableGlowAmethyst is kept as-is: it shrinks INWARD,
-   so the clip never touches it. */
-.searchBtn:hover:not(:disabled) {
+   so the clip never touches it.
+   Rescoped under `.searchPill` (the real ancestor — .searchBtn is a <button>
+   inside the <form className={styles.searchPill}> in SearchBar.tsx) rather
+   than bare `.searchBtn`: these override composed `.pressableGlowAmethyst`'s
+   own hover/active rules (transform/box-shadow), which live in a different
+   chunk (interactions.module.css) whose Next.js chunk-load order relative to
+   this file varies by route. A bare `.searchBtn:hover` rule races that
+   composed rule at equal specificity and can lose on some routes — the
+   composed hover lift + glow would show through the pill's overflow:hidden
+   as a clipped artifact instead of the intended flat hover, and the press
+   could gain an unwanted extra lift. */
+.searchPill .searchBtn:hover:not(:disabled) {
   transform: none;
   background: var(--color-amethyst-dark);
   box-shadow: none;
 }
 /* Restated (not inherited) because :hover and :active both match during a
    press and the rule above would otherwise be the last one standing and cancel
-   the squash. Same scale as the shared mechanic, minus its 1px lift. */
-.searchBtn:active:not(:disabled) {
+   the squash. Same scale as the shared mechanic, minus its 1px lift. Same
+   chunk-order race as the hover rule above, rescoped the same way. */
+.searchPill .searchBtn:active:not(:disabled) {
   transform: scale(0.96);
   transition: transform 0.22s var(--spring);
 }
