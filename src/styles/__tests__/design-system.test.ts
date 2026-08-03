@@ -125,13 +125,9 @@ const PRESS_COVERAGE_ALLOWLIST: string[] = [
   'src/app/hospital/HospitalShell.module.css',
   'src/app/hospital/dashboard/HospitalDashboard.module.css',
   'src/components/AnnouncementCalendar.module.css',
-  'src/components/BioDataForm.module.css',
-  'src/components/Calendar.module.css',
   'src/components/DoctorRoster.module.css',
   'src/components/HospitalDepartments.module.css',
   'src/components/HospitalGallery.module.css',
-  'src/components/IHNCodeDisplay.module.css',
-  'src/components/SharingPrefsPanel.module.css',
   'src/components/SuggestionsBoard.module.css',
 ];
 
@@ -278,11 +274,7 @@ const GLASS_ALLOWLIST = [
  * de-glassed by the phase that owns each file. Same shrink-only contract as
  * the press-coverage allowlist: remove entries as they're fixed, never add.
  */
-const GLASS_KNOWN_VIOLATIONS = [
-  'src/components/BioDataForm.module.css',
-  'src/components/IHNCodeDisplay.module.css',
-  'src/components/StringLookupClient.module.css',
-];
+const GLASS_KNOWN_VIOLATIONS = ['src/components/StringLookupClient.module.css'];
 
 describe('glass containment: backdrop-filter is floating chrome only', () => {
   it('no unsanctioned file uses backdrop-filter', () => {

@@ -244,7 +244,11 @@ export default function DashboardClient() {
               <Button type="submit">Change password</Button>
             </form>
             <ErrorBubble variant="banner" message={pwError} />
-            {pwSuccess && <p style={{ color: 'var(--color-green)', fontSize: '0.85rem', marginTop: '0.75rem' }}>Password changed. Your other sessions were signed out.</p>}
+            {pwSuccess && (
+              <p className={styles.pwSuccess} role="status">
+                Password changed. Your other sessions were signed out.
+              </p>
+            )}
           </Card>
         </section>
 

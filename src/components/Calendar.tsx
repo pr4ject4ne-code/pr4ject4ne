@@ -146,6 +146,7 @@ export default function Calendar() {
       <div className={styles.head}>
         <button
           type="button"
+          className={styles.navBtn}
           onClick={() => setCursor(new Date(year, month - 1, 1))}
           aria-label="Previous month"
         >
@@ -154,6 +155,7 @@ export default function Calendar() {
         <h3 className={styles.label}>{label}</h3>
         <button
           type="button"
+          className={styles.navBtn}
           onClick={() => setCursor(new Date(year, month + 1, 1))}
           aria-label="Next month"
         >

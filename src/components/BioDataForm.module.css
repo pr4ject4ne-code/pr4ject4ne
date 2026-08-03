@@ -1,18 +1,27 @@
 .section {
   margin-bottom: 1.25rem;
 }
+/* Card-level heading ("Profile" / "Biodata"). One step below the dashboard's
+   own .sectionTitle (--fs-h2), matching every other card title on this page
+   (IHNCodeDisplay, SharingPrefsPanel, AccessLogPanel). */
 .heading {
-  font-size: 1.2rem;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-h3);
+  letter-spacing: var(--ls-h3);
   margin: 0 0 0.25rem;
 }
+/* In-card subheading ("Lifestyle", "Anthropometric measurements", …). */
 .subheading {
-  font-size: 0.95rem;
+  font-size: var(--fs-h4);
+  line-height: var(--lh-h3);
+  letter-spacing: var(--ls-h3);
   color: var(--color-amethyst-dark);
-  margin: 1rem 0 0.5rem;
+  margin: 1.5rem 0 0.5rem;
 }
 .sub {
   color: var(--color-muted);
-  font-size: 0.88rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
   margin: 0 0 1rem;
 }
 .grid {
@@ -20,15 +29,19 @@
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0 1rem;
 }
-/* Profile photo: glass-panel row with a circular preview + upload controls. */
+/* Profile photo row: a circular preview + upload controls.
+   De-glassed — `backdrop-filter` blurs whatever is BEHIND an element, and this
+   sits flat in the page flow inside a <Card variant="plain">, so it was paying
+   real compositor cost to blur a solid off-white surface (globals.css / the
+   glass-containment rule in src/styles/__tests__/design-system.test.ts). A
+   plain white panel with the hairline token reads as a nested surface against
+   the card's off-white and costs nothing. */
 .photoRow {
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  background: var(--color-white);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   padding: 0.9rem 1rem;
@@ -44,7 +57,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--color-hairline);
   box-shadow: var(--shadow-sm);
 }
 .photoPreview img {
@@ -53,8 +66,8 @@
   object-fit: cover;
 }
 .photoPlaceholder {
-  font-size: 1.6rem;
-  font-weight: 700;
+  font-size: var(--fs-h2);
+  font-weight: 800;
   color: var(--color-amethyst-dark);
 }
 .photoControls {
@@ -73,14 +86,15 @@
   max-width: 100%;
 }
 .photoLabel {
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
   font-weight: 600;
   color: var(--color-ink);
 }
 
 .doctorAid {
   color: var(--color-amethyst-dark);
-  font-size: 0.82rem;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
   margin: -0.5rem 0 0.9rem;
 }
 
@@ -88,7 +102,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
   margin-top: 0.5rem;
 }
 .actions {
@@ -105,6 +119,8 @@
   flex-direction: column;
   gap: 0.4rem;
 }
+/* A static record row, not a control — deliberately no cursor/hover/press of
+   its own; the only thing you can act on inside it is .removeBtn below. */
 .conditionItem {
   display: flex;
   align-items: center;
@@ -113,25 +129,42 @@
   padding: 0.55rem 0.8rem;
   background: var(--color-amethyst-light);
   border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
 }
 .conditionCause {
   color: var(--color-ink);
 }
 .conditionTime {
   color: var(--color-muted);
-  font-size: 0.76rem;
+  font-size: var(--fs-caption);
   margin-left: 0.5rem;
   white-space: nowrap;
 }
+/* Destructive text button. Previously declared `cursor: pointer` with no
+   hover or press at all — on touch, where there is no hover, deleting a
+   clinical-condition record gave zero acknowledgement that the tap landed.
+   Takes the shared press mechanic; the colour overrides are scoped under
+   .conditionItem (the real DOM ancestor — see BioDataForm.tsx) so they
+   outrank composed `.pressable` on specificity rather than on source order,
+   since composed rules land in a chunk whose load order Next decides per
+   route. `box-shadow: none` because .pressable's neutral lift shadow under a
+   transparent background reads as a stray blur. */
 .removeBtn {
+  composes: pressable from '../styles/interactions.module.css';
   border: none;
   background: transparent;
   color: var(--color-red);
-  font-weight: 600;
-  font-size: 0.82rem;
-  cursor: pointer;
+  font-weight: 700;
+  font-size: var(--fs-caption);
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
+}
+.conditionItem .removeBtn:hover:not(:disabled) {
+  background: var(--color-red-light);
+  color: var(--color-red);
+  box-shadow: none;
 }
 .conditionAdd {
   display: grid;
@@ -146,41 +179,58 @@
 }
 
 /* "Why does this matter?" collapsibles (BMI / genotype / blood group) — same
-   pattern and glass tokens as IHNCodeDisplay.module.css, duplicated here
-   since CSS module classes are file-scoped. */
+   pattern and tokens as IHNCodeDisplay.module.css, duplicated here since CSS
+   module classes are file-scoped. */
 .why {
   margin: 0.4rem 0 1rem;
 }
+/* `inline-block` both drops the default marker box and sizes the summary to
+   its own text, so the pointer and the press only cover the words rather than
+   the full-width row — and it makes the element transformable at all, which an
+   inline box is not. This previously had `cursor: pointer` with no hover or
+   press: the caret flip on open was the only feedback, and it fires after the
+   toggle rather than acknowledging the tap. */
 .whySummary {
+  display: inline-block;
   cursor: pointer;
   list-style: none;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
   font-weight: 700;
   color: var(--color-amethyst-dark);
   padding: 0.1rem 0;
+  transition:
+    color 0.15s ease,
+    transform 0.24s var(--spring);
 }
 .whySummary::-webkit-details-marker {
   display: none;
+}
+.whySummary:hover {
+  color: var(--color-amethyst);
+}
+.whySummary:active {
+  transform: scale(0.97);
+  transition: transform 0.22s var(--spring);
 }
 .whySummary::before {
   content: '▸';
   display: inline-block;
   margin-right: 0.4rem;
-  transition: transform 0.15s ease;
+  transition: transform 0.25s var(--spring);
 }
 .why[open] .whySummary::before {
   transform: rotate(90deg);
 }
+/* De-glassed for the same reason as .photoRow above. */
 .whyBody {
   margin-top: 0.6rem;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  background: var(--color-white);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   padding: 0.85rem 1rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
   color: var(--color-ink);
 }
 .whyBody p {

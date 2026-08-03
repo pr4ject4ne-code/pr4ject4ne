@@ -3,23 +3,47 @@
 }
 .title {
   margin: 0 0 0.4rem;
-  font-size: 1.05rem;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-h3);
+  letter-spacing: var(--ls-h3);
 }
 .intro {
   margin: 0 0 1rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
   color: var(--color-muted);
 }
+/* Padding moved onto the rows themselves (below) so the hover tint is a real
+   target area, so the gap here shrinks to keep the visual rhythm unchanged. */
 .list {
   display: grid;
-  gap: 0.6rem;
+  gap: 0.15rem;
   margin-bottom: 1rem;
 }
+/* Each row is a <label> wrapping its checkbox, so the whole row toggles the
+   pref — it declared `cursor: pointer` to say so but had no hover and no press
+   at all, and globals.css strips the native tap highlight from every label. On
+   touch that left flipping a SHARING permission with nothing but the checkbox
+   glyph changing. Hand-rolled rather than composed: the shared `.pressable`
+   lift/shadow is a button mechanic and reads wrong on a full-width text row,
+   but the spring token and the press-then-release shape are the same. */
 .row {
   display: flex;
   align-items: flex-start;
   gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.24s var(--spring);
+}
+.row:hover {
+  background: var(--color-amethyst-light);
+}
+.row:active {
+  transform: scale(0.99);
+  transition: transform 0.22s var(--spring);
 }
 .row input[type='checkbox'] {
   width: 1rem;
@@ -30,12 +54,13 @@
 }
 .rowTitle {
   display: block;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: var(--fs-body-sm);
+  font-weight: 700;
 }
 .rowHint {
   display: block;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
   color: var(--color-muted);
 }
 .saved {

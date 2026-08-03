@@ -10,19 +10,38 @@
   justify-content: space-between;
   margin-bottom: 0.5rem;
 }
-.head button {
-  background: var(--color-blue-light);
-  border: none;
-  border-radius: var(--radius);
+/* Month steppers. Were styled as a bare `.head button` descendant selector,
+   which (a) can't take `composes:` — CSS Modules only allows it on a bare
+   local class — and (b) had `cursor: pointer` with no hover and no press at
+   all. Now a real class carrying the shared icon-button mechanic. */
+.navBtn {
+  composes: iconBtn from '../styles/interactions.module.css';
   width: 32px;
   height: 32px;
-  cursor: pointer;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+}
+/* Scoped under `.head` (the real DOM ancestor — see Calendar.tsx) rather than
+   a bare `.navBtn`: these override composed `.iconBtn`'s own base and hover
+   rules, which live in a different CSS chunk whose Next.js load order relative
+   to this file varies by route, so an equal-specificity override could
+   silently lose. `.iconBtn` is sized for an inline SVG (padding + line-height:
+   0), which a "‹" glyph needs undone to sit centred in the 32px box. */
+.head .navBtn {
+  padding: 0;
+  line-height: 1;
+  background: var(--color-blue-light);
   color: var(--color-blue-dark);
-  font-size: 1.1rem;
+}
+.head .navBtn:hover:not(:disabled) {
+  background: var(--color-amethyst-light);
+  color: var(--color-amethyst-dark);
 }
 .label {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-h3);
+  letter-spacing: var(--ls-h3);
 }
 .grid {
   display: grid;
@@ -31,7 +50,7 @@
 }
 .weekday {
   text-align: center;
-  font-size: 0.72rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
   color: var(--color-muted);
   padding: 0.25rem 0;
@@ -39,6 +58,13 @@
 .empty {
   aspect-ratio: 1;
 }
+/* Every day cell is a real button that selects the date. It had a hover tint
+   but no press, so on touch — where there is no hover at all — picking a day
+   was silent until the panel below re-rendered. Hand-rolled rather than
+   composing `.pressable`/`.iconBtn`: both reset padding/border and lift on
+   hover, and a 2px translate inside a 3px-gap 7-column grid visibly breaks the
+   row alignment. The spring token and the squash-on-press shape are the shared
+   ones. */
 .day {
   position: relative;
   aspect-ratio: 1;
@@ -46,10 +72,19 @@
   border-radius: 8px;
   background: var(--color-white);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.24s var(--spring);
 }
 .day:hover {
   background: var(--color-blue-light);
+  border-color: var(--color-blue);
+}
+.day:active {
+  transform: scale(0.9);
+  transition: transform 0.22s var(--spring);
 }
 .selected {
   border-color: var(--color-amethyst);
@@ -74,7 +109,8 @@
 
 .muted {
   color: var(--color-muted);
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
 }
 
 .dayPanel {
@@ -84,7 +120,9 @@
 }
 .dayPanelTitle {
   margin: 0 0 0.5rem;
-  font-size: 0.95rem;
+  font-size: var(--fs-h4);
+  line-height: var(--lh-h3);
+  letter-spacing: var(--ls-h3);
 }
 .reminderList {
   list-style: none;
@@ -111,26 +149,34 @@
   min-width: 0;
 }
 .reminderTime {
-  font-size: 0.72rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
-  color: var(--color-amethyst);
+  color: var(--color-amethyst-dark);
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 .reminderTitle {
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: var(--fs-body-sm);
+  font-weight: 700;
   word-break: break-word;
 }
 .reminderNote {
   margin: 0.15rem 0 0;
-  font-size: 0.82rem;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
   color: var(--color-muted);
   word-break: break-word;
 }
+/* A <Button variant="danger">, so its hover/press already come from
+   Button.module.css. The compact sizing is scoped under `.reminderItem`
+   because a bare `.removeBtn` ties on specificity with Button's own `.btn`
+   font-size and would win or lose purely on chunk order. */
 .removeBtn {
   flex-shrink: 0;
+}
+.reminderItem .removeBtn {
   padding: 0.3rem 0.6rem;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
 }
 .reminderForm {
   display: flex;
@@ -139,6 +185,7 @@
 }
 .formError {
   color: var(--color-red);
-  font-size: 0.82rem;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
   margin: 0;
 }

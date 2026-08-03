@@ -7,15 +7,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1.25rem;
 }
 .account {
   margin-bottom: 1.5rem;
 }
+/* The page's only h1. Was clamp(1.25rem, 5vw, 2rem) — a 20px floor on a
+   375px screen, which put the greeting BELOW the section titles under it and
+   made the dashboard's own title the smallest heading on the page. Now the
+   site-wide page-title token, so it reads at the same weight as every other
+   page's h1. The break-word pair stays: this interpolates an arbitrary
+   user-supplied full name, which can be a single unbroken string. */
 .title {
   margin: 0;
-  font-size: clamp(1.25rem, 5vw, 2rem);
-  letter-spacing: -0.02em;
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  letter-spacing: var(--ls-h1);
+  flex: 1 1 auto;
   max-width: 100%;
   min-width: 0;
   overflow-wrap: break-word;
@@ -27,36 +37,54 @@
   gap: 1rem;
   margin: 0 0 1.75rem;
 }
+/* Card-level headings ("Recent", "Calendar") — one step below .sectionTitle. */
 .heading {
-  font-size: 1.05rem;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-h3);
+  letter-spacing: var(--ls-h3);
   margin: 0;
 }
 .calHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
+/* Section titles keep their amethyst left-accent bar; only the size/leading/
+   tracking move onto the scale. */
 .sectionTitle {
-  font-size: 1.45rem;
-  letter-spacing: -0.01em;
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
+  letter-spacing: var(--ls-h2);
   margin: 1.75rem 0 1rem;
   padding-left: 0.7rem;
   border-left: 3px solid var(--color-amethyst);
 }
 .muted {
   color: var(--color-muted);
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
 }
 .saved {
   color: var(--color-green);
   font-weight: 600;
   margin: 0.75rem 0;
 }
+/* Was an inline style on the <p> in DashboardClient.tsx (the one hardcoded
+   font-size left on this page); same register as .saved above. */
+.pwSuccess {
+  color: var(--color-green);
+  font-weight: 600;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
+  margin: 0.75rem 0 0;
+}
 .verifyBanner {
   margin-bottom: 1.25rem;
   padding: 0.85rem 1.1rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
 }
 .verifyBanner p {
   margin: 0;
@@ -64,7 +92,8 @@
 .ihnBanner {
   margin-bottom: 1.25rem;
   padding: 0.85rem 1.1rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -77,5 +106,18 @@
 @media (max-width: 700px) {
   .mainGrid {
     grid-template-columns: 1fr;
+  }
+  /* At the h1's mobile size a long "Hello, <full name>" would be squeezed into
+     whatever the Log out button left over, wrapping to three or four lines.
+     Give the title the full row and let the button drop beneath it. */
+  .topRow {
+    align-items: flex-start;
+  }
+  .title {
+    flex: 1 1 100%;
+  }
+  .ihnBanner {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

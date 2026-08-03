@@ -2,7 +2,9 @@
   border-color: var(--color-amethyst);
 }
 .title {
-  font-size: 1.05rem;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-h3);
+  letter-spacing: var(--ls-h3);
   margin: 0 0 0.5rem;
 }
 .codeRow {
@@ -11,12 +13,19 @@
   gap: 0.5rem;
   margin: 0 0 0.6rem;
 }
+/* The code is the whole point of this card, so it sits at section-title size
+   rather than the old 1.4rem magic number. `min-width: 0` + `overflow-wrap`
+   keep it inside the flex row next to the Copy button at 375px even though the
+   code itself contains no spaces to break on. */
 .code {
   flex: 1;
+  min-width: 0;
   font-family: ui-monospace, monospace;
-  font-size: 1.4rem;
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
   font-weight: 700;
   letter-spacing: 1px;
+  overflow-wrap: anywhere;
   background: var(--color-amethyst-light);
   color: var(--color-amethyst-dark);
   padding: 0.6rem 0.9rem;
@@ -24,12 +33,15 @@
   text-align: center;
   margin: 0;
 }
+/* The Copy control itself is a <Button variant="ghost">, so its hover/press
+   already comes from Button.module.css — this only positions it. */
 .copyBtn {
   flex: none;
   align-self: center;
 }
 .note {
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
   color: var(--color-muted);
   margin: 0;
 }
@@ -53,46 +65,68 @@
 .qrCaption {
   flex: 1;
   min-width: 160px;
-  font-size: 0.8rem;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-body);
   color: var(--color-muted);
   margin: 0;
 }
 
-/* "Why does this matter?" — a small frosted-glass collapsible, same register
-   as Card.module.css (glass tokens, soft shadow, no hard border). */
+/* "Why does this matter?" / "Regenerate this code" — small collapsibles. */
 .why {
   margin-top: 0.75rem;
 }
+/* `inline-block` both drops the default marker box and sizes the summary to
+   its own text, so the pointer and the press only cover the words rather than
+   the full-width row — and it makes the element transformable at all, which an
+   inline box is not. These summaries previously had `cursor: pointer` with no
+   hover or press; "Regenerate this code" in particular is the entry point to a
+   destructive action and gave no acknowledgement that the tap landed. */
 .whySummary {
+  display: inline-block;
   cursor: pointer;
   list-style: none;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
   font-weight: 700;
   color: var(--color-amethyst-dark);
   padding: 0.1rem 0;
+  transition:
+    color 0.15s ease,
+    transform 0.24s var(--spring);
 }
 .whySummary::-webkit-details-marker {
   display: none;
+}
+.whySummary:hover {
+  color: var(--color-amethyst);
+}
+.whySummary:active {
+  transform: scale(0.97);
+  transition: transform 0.22s var(--spring);
 }
 .whySummary::before {
   content: '▸';
   display: inline-block;
   margin-right: 0.4rem;
-  transition: transform 0.15s ease;
+  transition: transform 0.25s var(--spring);
 }
 .why[open] .whySummary::before {
   transform: rotate(90deg);
 }
+/* De-glassed: `backdrop-filter` blurs whatever is BEHIND an element, and this
+   sits flat in the page flow inside a <Card variant="plain">, so it was paying
+   real compositor cost to blur a solid off-white surface (globals.css / the
+   glass-containment rule in src/styles/__tests__/design-system.test.ts). A
+   plain white panel with the hairline token reads as a nested surface against
+   the card's off-white and costs nothing. */
 .whyBody {
   margin-top: 0.6rem;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  background: var(--color-white);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   padding: 0.85rem 1rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
   color: var(--color-ink);
 }
 .whyBody p {
