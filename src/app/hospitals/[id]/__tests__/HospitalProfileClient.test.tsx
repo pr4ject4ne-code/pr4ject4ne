@@ -91,6 +91,38 @@ describe('HospitalProfileClient — doctors section visibility (worklist #10)', 
   });
 });
 
+describe('HospitalProfileClient — heading structure (Racoon Eye v1 Phase 4A)', () => {
+  it('renders the hospital name as the page\'s one and only <h1>', async () => {
+    mockFetchWith(BASE_HOSPITAL, [DOCTOR]);
+    render(<HospitalProfileClient id="h1" />);
+
+    // Regression guard: the loaded profile used to have NO <h1> at all (the
+    // hospital name shipped as an <h2>), which is both a hierarchy defect and
+    // a real accessibility one.
+    const h1s = await screen.findAllByRole('heading', { level: 1 });
+    expect(h1s).toHaveLength(1);
+    // The verification badge sits beside the heading, not inside it, so the
+    // accessible name is exactly the hospital name.
+    expect(h1s[0]).toHaveAccessibleName('Test Facility');
+    expect(screen.getByText('Verified')).toBeInTheDocument();
+  });
+
+  it('renders the error <h1> alone, never alongside the hospital-name <h1>', async () => {
+    global.fetch = jest.fn((url: string) => {
+      if (url.includes('/ranking')) return Promise.resolve({ ok: false } as Response);
+      return Promise.resolve({ ok: false } as Response);
+    }) as unknown as typeof fetch;
+
+    render(<HospitalProfileClient id="h1" />);
+    // The error branch early-returns before the success tree is constructed,
+    // so the two <h1>s are on mutually exclusive render paths.
+    const h1s = await screen.findAllByRole('heading', { level: 1 });
+    expect(h1s).toHaveLength(1);
+    expect(h1s[0]).toHaveTextContent('Hospital not found.');
+    expect(screen.queryByText('Test Facility')).not.toBeInTheDocument();
+  });
+});
+
 describe('HospitalProfileClient — departments (worklist #14)', () => {
   it('renders departments and their services when present', async () => {
     mockFetchWith(

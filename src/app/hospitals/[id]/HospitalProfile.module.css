@@ -24,8 +24,14 @@
 .searchResults {
   border-color: var(--color-amethyst);
 }
+/* This page's heading SIZES run one step below their heading LEVELS: the
+   hospital name is the <h1> at --fs-h1, and every card/section <h2> renders
+   at --fs-h3. That's deliberate — heading level is document structure (and
+   must stay h1 -> h2 for screen readers), while --fs-h2's 1.8rem desktop max
+   is a full-bleed page-section size that would shout inside a half-width
+   content card. One token, one size, for every card title on this page. */
 .searchTitle {
-  font-size: 1.05rem;
+  font-size: var(--fs-h3);
   margin: 0 0 0.6rem;
 }
 .matchList {
@@ -34,15 +40,20 @@
   padding: 0;
   display: grid;
   gap: 0.4rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
 }
+/* A static provenance label ("Doctor", "Announcement"…), not a control — no
+   cursor/press, so it stays on --fs-micro by hand rather than composing the
+   interactive `.chip`. */
 .matchSection {
   display: inline-block;
   background: var(--color-blue-light);
   color: var(--color-blue-dark);
-  font-size: 0.7rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
   text-transform: uppercase;
-  padding: 0.1rem 0.4rem;
+  padding: 0.1rem 0.45rem;
   border-radius: 999px;
   margin-right: 0.5rem;
 }
@@ -51,6 +62,7 @@
 }
 .muted {
   color: var(--color-muted);
+  font-size: var(--fs-body-sm);
 }
 
 @media (max-width: 800px) {

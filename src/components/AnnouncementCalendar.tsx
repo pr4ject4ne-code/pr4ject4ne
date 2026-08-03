@@ -64,8 +64,13 @@ export default function AnnouncementCalendar({ announcements }: { announcements:
       )}
 
       <div className={styles.calHeader}>
+        {/* These carry an explicit class (rather than being styled via a
+            `.calHeader button` descendant rule) because CSS Modules only
+            allows `composes:` on a bare class selector — that's how they pull
+            in the shared `.iconBtn` hover/press mechanic. */}
         <button
           type="button"
+          className={styles.navBtn}
           onClick={() => setCursor(new Date(year, month - 1, 1))}
           aria-label="Previous month"
         >
@@ -74,6 +79,7 @@ export default function AnnouncementCalendar({ announcements }: { announcements:
         <h2 className={styles.monthLabel}>{monthLabel}</h2>
         <button
           type="button"
+          className={styles.navBtn}
           onClick={() => setCursor(new Date(year, month + 1, 1))}
           aria-label="Next month"
         >

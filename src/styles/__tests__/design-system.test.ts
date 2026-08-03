@@ -124,10 +124,6 @@ const PRESS_COVERAGE_ALLOWLIST: string[] = [
   'src/app/dev/primary/DevPrimary.module.css',
   'src/app/hospital/HospitalShell.module.css',
   'src/app/hospital/dashboard/HospitalDashboard.module.css',
-  'src/components/AnnouncementCalendar.module.css',
-  'src/components/DoctorRoster.module.css',
-  'src/components/HospitalDepartments.module.css',
-  'src/components/HospitalGallery.module.css',
   'src/components/SuggestionsBoard.module.css',
 ];
 
