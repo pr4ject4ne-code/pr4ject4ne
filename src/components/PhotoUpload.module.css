@@ -23,14 +23,25 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.35rem 0.5rem;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
 }
-.itemMeta button {
-  background: none;
-  border: none;
+/* Destructive icon button: takes .iconBtn's press mechanic but overrides its
+   default amethyst hover tint with red — a remove control should not read as a
+   brand action on the way to being pressed. The colour overrides are scoped
+   under .itemMeta to outrank .iconBtn on specificity rather than on source
+   order: composed classes land in a separate CSS chunk whose <link> order Next
+   decides per route (here it happens to load AFTER this file's chunk, so an
+   equal-specificity override would silently lose). */
+.removeBtn {
+  composes: iconBtn from '../styles/interactions.module.css';
+  font-size: var(--fs-body-sm);
+}
+.itemMeta .removeBtn {
   color: var(--color-red);
-  cursor: pointer;
-  font-size: 0.9rem;
+}
+.itemMeta .removeBtn:hover:not(:disabled) {
+  background: var(--color-red-light);
+  color: var(--color-red);
 }
 .addRow {
   display: grid;
@@ -43,7 +54,9 @@
   padding: 0.5rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  font-size: 0.9rem;
+  font-family: inherit;
+  /* 16px floor — below it, iOS Safari zooms the viewport on focus. */
+  font-size: var(--fs-control);
 }
 .saveRow {
   display: flex;
