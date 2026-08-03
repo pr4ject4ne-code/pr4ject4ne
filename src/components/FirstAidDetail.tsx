@@ -126,7 +126,7 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
                 <button
                   key={src + i}
                   type="button"
-                  className={i === activeIndex ? styles.activeThumb : ''}
+                  className={i === activeIndex ? styles.activeThumb : styles.thumb}
                   onClick={() => setActive(i)}
                   aria-label={`Photo ${i + 1}`}
                 >

@@ -5,12 +5,16 @@
   display: inline-block;
   background: var(--color-amethyst-light);
   color: var(--color-amethyst-dark);
-  font-size: 0.7rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
 }
+/* The entry title is this page's primary heading (FirstAidDetailClient renders
+   no other h1), so it deliberately declares no font-size and takes --fs-h1
+   from the base h1 rule in globals.css. */
 .title {
   margin: 0.5rem 0 1rem;
 }
@@ -27,17 +31,27 @@
 .thumbs {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  /* `overflow-x: auto` forces the block axis to `auto` too, which would clip
+     .pressable's 2px hover lift (and add a stray vertical scrollbar). The
+     symmetric block padding gives the lift somewhere to go; the reduced
+     margin keeps the visual gap to the hero image unchanged. */
+  margin-top: 0.25rem;
+  padding: 0.25rem 0;
   overflow-x: auto;
 }
-.thumbs button {
+/* A real class (not `.thumbs button`) so it can compose the shared mechanic —
+   `composes:` is only legal on a bare local class, never a descendant
+   selector. These previously declared `cursor: pointer` with no hover or press
+   at all. */
+.thumb {
+  composes: pressable from '../styles/interactions.module.css';
+  flex: 0 0 auto;
   border: 2px solid transparent;
   border-radius: var(--radius);
   overflow: hidden;
   padding: 0;
   width: 72px;
   height: 52px;
-  cursor: pointer;
   background: var(--color-blue-light);
 }
 .thumbs img {
@@ -46,7 +60,13 @@
   object-fit: cover;
 }
 .activeThumb {
-  border-color: var(--color-amethyst) !important;
+  composes: thumb;
+}
+/* Rescoped under `.thumbs` (the real ancestor — see FirstAidDetail.tsx) so it
+   beats `.thumb`'s own `border` shorthand on specificity rather than on source
+   order, which is what the old `!important` was standing in for. */
+.thumbs .activeThumb {
+  border-color: var(--color-amethyst);
 }
 .sections {
   margin: 0;
@@ -61,27 +81,28 @@
 .section dd {
   margin: 0;
   white-space: pre-wrap;
-  line-height: 1.55;
+  line-height: var(--lh-body);
 }
 
-/* Grouped section headings (worklist #33 polish pass). */
+/* Grouped section headings (worklist #33 polish pass). These are real <h2>s
+   and now take --fs-h2/--lh-h2/--ls-h2 from globals.css instead of a 1.05rem
+   magic number that left them barely distinguishable from the body text
+   underneath. The bigger heading needs proportionally more air above it. */
 .group {
-  margin-top: 1.75rem;
+  margin-top: 2.25rem;
 }
 .group:first-of-type {
   margin-top: 0;
 }
 .groupTitle {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--color-ink);
   border-left: 3px solid var(--color-amethyst);
-  padding-left: 0.6rem;
+  padding-left: 0.7rem;
   margin: 0 0 0.6rem;
 }
 .groupHint {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
+  margin: 0 0 0.6rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
   color: var(--color-muted);
 }
 
@@ -91,12 +112,14 @@
   gap: 0.4rem;
   margin-bottom: 1rem;
 }
+/* Static, non-interactive badges — deliberately NOT `.chip` (which declares
+   cursor: pointer and a hover/press), just the shared badge size. */
 .tag {
   background: var(--color-blue-light);
   color: var(--color-blue-dark);
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.2rem 0.6rem;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
   border-radius: 999px;
 }
 
@@ -106,8 +129,8 @@
 .symptomTag {
   background: var(--color-amethyst-light);
   color: var(--color-amethyst-dark);
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: var(--fs-micro);
+  font-weight: 700;
   padding: 0.25rem 0.65rem;
   border-radius: 999px;
 }

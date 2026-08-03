@@ -128,9 +128,6 @@ const PRESS_COVERAGE_ALLOWLIST: string[] = [
   'src/components/BioDataForm.module.css',
   'src/components/Calendar.module.css',
   'src/components/DoctorRoster.module.css',
-  'src/components/FirstAidDetail.module.css',
-  'src/components/FirstAidForm.module.css',
-  'src/components/FirstAidList.module.css',
   'src/components/HospitalDepartments.module.css',
   'src/components/HospitalGallery.module.css',
   'src/components/IHNCodeDisplay.module.css',
@@ -283,7 +280,6 @@ const GLASS_ALLOWLIST = [
  */
 const GLASS_KNOWN_VIOLATIONS = [
   'src/components/BioDataForm.module.css',
-  'src/components/FirstAidList.module.css',
   'src/components/IHNCodeDisplay.module.css',
   'src/components/StringLookupClient.module.css',
 ];

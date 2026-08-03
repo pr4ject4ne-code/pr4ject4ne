@@ -1,9 +1,19 @@
+/* Patient-safety copy — wording is fixed (FIRST_AID_DISCLAIMER in
+   lib/first-aid-search.ts); only the sizing/contrast treatment lives here.
+
+   Text is --color-ink, not white: white on --color-yellow (#b8860b) measures
+   3.03:1, well under the 4.5:1 WCAG AA floor for normal-size text, and this is
+   the one paragraph on the page a user most needs to be able to read. Ink on
+   the same amber measures 5.6:1 and keeps the warning-band identity intact —
+   no new colour token, just the readable one of the two we already have. */
 .disclaimer {
   background: var(--color-yellow);
-  color: var(--color-white);
+  color: var(--color-ink);
   border-radius: var(--radius);
   padding: 0.75rem 1rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
+  font-weight: 600;
   margin: 0 0 1.25rem;
   box-shadow: var(--shadow-sm);
 }

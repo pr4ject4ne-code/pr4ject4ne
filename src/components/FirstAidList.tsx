@@ -55,7 +55,7 @@ export default function FirstAidList({
               type="button"
               role="tab"
               aria-selected={category === value}
-              className={category === value ? styles.activeTab : ''}
+              className={category === value ? styles.activeTab : styles.tab}
               onClick={() => onCategoryChange(value)}
             >
               {label}
@@ -77,7 +77,9 @@ export default function FirstAidList({
             placeholder="Search first aid…"
             aria-label="Search first aid"
           />
-          <button type="submit">Search</button>
+          <button type="submit" className={styles.searchButton}>
+            Search
+          </button>
         </form>
       </div>
 
@@ -87,7 +89,7 @@ export default function FirstAidList({
             key={t}
             type="button"
             aria-pressed={tag === t}
-            className={tag === t ? `${styles.tagChip} ${styles.tagChipOn}` : styles.tagChip}
+            className={tag === t ? styles.tagChipOn : styles.tagChip}
             onClick={() => onTagChange(tag === t ? '' : t)}
           >
             {t}
@@ -134,7 +136,7 @@ export default function FirstAidList({
             return (
               <li key={e.id}>
                 <Link href={`/first-aid/${e.id}`} className={styles.cardLink}>
-                  <Card variant="plain" as="article" className={styles.card}>
+                  <Card variant="plain" as="article" interactive className={styles.card}>
                     {thumb && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={thumb} alt="" className={styles.thumb} />

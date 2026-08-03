@@ -6,57 +6,119 @@
   flex-wrap: wrap;
   margin-bottom: 1.25rem;
 }
+
+/* Segmented category control. De-glassed: `backdrop-filter` blurs whatever is
+   BEHIND an element, and this sits flat in the page flow over a solid off-white
+   background — real compositor cost, no visual payoff (globals.css / the glass
+   containment rule). Now a plain white capsule holding pill segments, the same
+   language as HospitalFilters' .segmented. */
 .tabs {
   display: inline-flex;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-hairline);
+  border-radius: 999px;
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
 }
-.tabs button {
-  border: none;
+
+/* `composes:` must stay on a bare simple-class selector (CSS Modules rejects
+   composition on any compound/descendant selector), so the overriding
+   declarations live in the `.tabs .tab` rule below. */
+.tab {
+  composes: chip from '../styles/interactions.module.css';
+  justify-content: center;
+}
+
+/* Rescoped under `.tabs` (the real ancestor — see FirstAidList.tsx) rather
+   than bare `.tab`: these override composed `.chip`'s own base rule
+   (padding/font-size/background/color), which lives in a different chunk
+   (interactions.module.css) whose Next.js chunk-load order relative to this
+   file varies by route. A bare `.tab` rule races `.chip` at equal specificity
+   and can silently lose on some routes — a resting-state bug on first paint. */
+.tabs .tab {
+  padding: 0.4rem 0.95rem;
+  font-size: var(--fs-caption);
   background: transparent;
-  padding: 0.5rem 0.9rem;
-  cursor: pointer;
-  font-weight: 600;
   color: var(--color-muted);
-  transition: background 0.15s ease, color 0.15s ease;
 }
+
 .activeTab {
-  background: var(--color-blue) !important;
-  color: var(--color-white) !important;
+  composes: tab;
 }
+
+/* Purple leads on active/selected states (globals.css), so the selected tab is
+   amethyst rather than the demoted blue it used to be. Ancestor-scoped for the
+   same chunk-order reason, which also retires the old `!important` pair. */
+.tabs .activeTab {
+  background: var(--color-amethyst);
+  color: var(--color-white);
+}
+/* The selected tab keeps its filled identity on hover — `.chip`'s light tint
+   would read as a deselection. */
+.tabs .activeTab:hover {
+  background: var(--color-amethyst-dark);
+  color: var(--color-white);
+}
+
+/* Search pill — de-glassed for the same reason as .tabs. Dropping the old
+   `overflow: hidden` lets the submit button carry the shared chip press
+   (a clipped transform/shadow renders as nothing); the button is inset
+   inside the capsule instead of being welded to its edge. */
 .search {
   display: flex;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1 1 260px;
+  max-width: 380px;
+  padding: 0.25rem 0.25rem 0.25rem 0.35rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-hairline);
+  border-radius: 999px;
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
+.search:focus-within {
+  border-color: var(--color-amethyst);
+  box-shadow: 0 0 0 3px var(--color-amethyst-light);
+}
+/* --fs-control (16px), not the old 0.9rem: below 16px, iOS Safari zooms the
+   viewport on focus, which reads as the page jumping out from under a typing
+   user. `min-width: 0` lets the input shrink inside the flex capsule instead
+   of forcing the row wider than its container at the larger size. */
 .search input {
+  flex: 1;
+  min-width: 0;
   border: none;
-  padding: 0.5rem 0.7rem;
-  font-size: 0.9rem;
+  padding: 0.4rem 0.5rem;
+  font-family: inherit;
+  font-size: var(--fs-control);
   background: transparent;
   color: var(--color-ink);
 }
 .search input:focus {
   outline: none;
 }
-.search button {
-  border: none;
-  background: var(--color-amethyst);
-  color: var(--color-white);
-  padding: 0 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
+.searchButton {
+  composes: chip from '../styles/interactions.module.css';
 }
+/* Same chunk-order race as `.tabs .tab` above, rescoped under the real
+   ancestor (`.search` is the <form> this button sits in). */
+.search .searchButton {
+  padding: 0.4rem 0.95rem;
+  font-size: var(--fs-caption);
+  background: var(--color-amethyst);
+  border-color: var(--color-amethyst);
+  color: var(--color-white);
+}
+.search .searchButton:hover {
+  background: var(--color-amethyst-dark);
+  border-color: var(--color-amethyst-dark);
+  color: var(--color-white);
+}
+
 .grid {
   list-style: none;
   margin: 0;
@@ -65,28 +127,27 @@
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 1rem;
 }
+/* Block-level and full-height so every card in a row matches its neighbours
+   and the whole card (not just its text) is the link's hit area. */
 .cardLink {
+  display: block;
+  height: 100%;
   text-decoration: none;
   color: inherit;
 }
+/* The lift/glow/press comes from `<Card interactive>` (Card.module.css's
+   `.interactive`, which composes the shared `.cardLift`) rather than a
+   hand-rolled hover here. */
 .card {
   padding: 0;
   overflow: hidden;
   height: 100%;
 }
-.thumb,
-.thumbPlaceholder {
+.thumb {
   width: 100%;
   height: 130px;
   object-fit: cover;
   background: var(--color-blue-light);
-}
-.thumbPlaceholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  color: var(--color-blue);
 }
 .cardBody {
   padding: 0.75rem;
@@ -95,19 +156,22 @@
   display: inline-block;
   background: var(--color-amethyst-light);
   color: var(--color-amethyst-dark);
-  font-size: 0.68rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  padding: 0.1rem 0.4rem;
+  padding: 0.1rem 0.45rem;
   border-radius: 999px;
 }
+/* A real <h3>; takes --fs-h3 from globals.css rather than a flat 1rem that
+   made it the same size as body copy. */
 .title {
   margin: 0.35rem 0 0.25rem;
-  font-size: 1rem;
 }
 .definition {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
   color: var(--color-muted);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -118,7 +182,8 @@
   color: var(--color-muted);
 }
 
-/* Topic-tag filter chips (public catalog). */
+/* Topic-tag filter chips (public catalog) — the shared `.chip` mechanic, so
+   they hover and press exactly like every other pill in the app. */
 .tagFilter {
   display: flex;
   flex-wrap: wrap;
@@ -126,24 +191,22 @@
   margin-bottom: 1.25rem;
 }
 .tagChip {
-  border: 1px solid var(--color-hairline);
-  background: var(--color-white);
-  color: var(--color-ink);
-  border-radius: 999px;
-  padding: 0.28rem 0.7rem;
-  font-size: 0.8rem;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-}
-.tagChip:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
+  composes: chip from '../styles/interactions.module.css';
 }
 .tagChipOn {
-  background: var(--color-blue);
+  composes: tagChip;
+}
+/* Ancestor-scoped (`.tagFilter` is the real wrapper — see FirstAidList.tsx)
+   to beat composed `.chip`'s base/hover rules regardless of chunk order. */
+.tagFilter .tagChipOn {
+  background: var(--color-amethyst);
+  border-color: var(--color-amethyst);
   color: var(--color-white);
-  border-color: var(--color-blue);
+}
+.tagFilter .tagChipOn:hover {
+  background: var(--color-amethyst-dark);
+  border-color: var(--color-amethyst-dark);
+  color: var(--color-white);
 }
 
 /* Region/system disclosure — secondary anatomical filters, tucked away so
@@ -152,21 +215,35 @@
 .moreFilters {
   margin-bottom: 1.25rem;
 }
+/* `inline-block` both drops the default marker box and sizes the summary to
+   its own text, so the pointer/press only covers the words rather than the
+   full-width row. It also makes the element transformable for the press. */
 .moreFiltersSummary {
+  display: inline-block;
   cursor: pointer;
   list-style: none;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
   font-weight: 700;
   color: var(--color-blue-dark);
+  transition:
+    color 0.15s ease,
+    transform 0.24s var(--spring);
 }
 .moreFiltersSummary::-webkit-details-marker {
   display: none;
+}
+.moreFiltersSummary:hover {
+  color: var(--color-amethyst-dark);
+}
+.moreFiltersSummary:active {
+  transform: scale(0.97);
+  transition: transform 0.22s var(--spring);
 }
 .moreFiltersSummary::before {
   content: '▸';
   display: inline-block;
   margin-right: 0.4rem;
-  transition: transform 0.15s ease;
+  transition: transform 0.25s var(--spring);
 }
 .moreFilters[open] .moreFiltersSummary::before {
   transform: rotate(90deg);
@@ -182,7 +259,7 @@
   flex: 1 1 200px;
 }
 
-/* Tags shown on a catalog card. */
+/* Tags shown on a catalog card — static labels, not controls. */
 .cardTags {
   display: flex;
   flex-wrap: wrap;
@@ -190,9 +267,10 @@
   margin-top: 0.5rem;
 }
 .cardTag {
-  font-size: 0.68rem;
+  font-size: var(--fs-micro);
+  font-weight: 700;
   background: var(--color-blue-light);
   color: var(--color-blue-dark);
   border-radius: 999px;
-  padding: 0.08rem 0.45rem;
+  padding: 0.12rem 0.5rem;
 }
