@@ -1,24 +1,17 @@
 /* Plain content card per the site-wide rule (globals.css / Card.module.css):
    glass is reserved for floating chrome, page content stays flat — off-white
-   surface, hairline border, token shadow, no blur. Hover lift matches the
-   convention already established in HospitalMiniProfile.module.css. */
+   surface, hairline border, token shadow, no blur.
+
+   This card IS the reference for the shared `.cardLift` mechanic, so it now
+   composes it rather than restating the same lift/glow/press values inline —
+   one source of truth, identical rendering (the composed class carries the
+   very numbers this card contributed). Only the resting border-color is
+   overridden back to transparent, which `.cardLift` explicitly sanctions. */
 .card {
+  composes: cardLift from '../styles/interactions.module.css';
   padding: 0;
   overflow: hidden;
-  border: 1px solid transparent;
-  transition:
-    transform 0.2s var(--spring),
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
-}
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-card-hover);
-  border-color: rgba(109, 74, 255, 0.3);
-}
-.card:active {
-  transform: translateY(-1px) scale(0.99);
-  transition: transform 0.22s var(--spring);
+  border-color: transparent;
 }
 
 .link {

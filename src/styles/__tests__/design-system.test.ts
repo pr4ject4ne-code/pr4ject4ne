@@ -132,7 +132,6 @@ const PRESS_COVERAGE_ALLOWLIST: string[] = [
   'src/components/FirstAidForm.module.css',
   'src/components/FirstAidList.module.css',
   'src/components/HospitalDepartments.module.css',
-  'src/components/HospitalFilters.module.css',
   'src/components/HospitalGallery.module.css',
   'src/components/IHNCodeDisplay.module.css',
   'src/components/LoginForm.module.css',

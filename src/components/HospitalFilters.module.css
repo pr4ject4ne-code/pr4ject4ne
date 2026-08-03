@@ -27,11 +27,14 @@
   width: 100%;
 }
 
+/* --fs-control, not a compact size: anything below 16px makes iOS Safari zoom
+   the whole page in on focus, which is far more disruptive in a docked filter
+   panel than a slightly larger select is. */
 .row select {
   padding: 0.4rem 0.5rem;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
-  font-size: 0.85rem;
+  font-size: var(--fs-control);
   background: var(--color-surface, #fff);
 }
 
@@ -40,21 +43,33 @@
   gap: 0.35rem;
 }
 
-.seg,
-.segActive {
+/* Pill toggles: the shared `.chip` mechanic (subtle rise on hover, squash on
+   press) rather than the button lift — these are segments wedged into a row,
+   so a 2px lift would break the row's alignment. Layout/colour are overridden
+   per segment; the motion stays shared. */
+.seg {
+  composes: chip from '../styles/interactions.module.css';
   flex: 1;
+  justify-content: center;
   padding: 0.35rem 0.5rem;
-  font-size: 0.8rem;
-  border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  cursor: pointer;
+  font-size: var(--fs-caption);
+  border-color: var(--glass-border);
   background: transparent;
   color: var(--color-ink, inherit);
 }
 
 .segActive {
+  composes: seg;
   background: var(--color-amethyst);
   border-color: var(--color-amethyst);
+  color: #fff;
+}
+
+/* The selected segment keeps its filled amethyst identity on hover/press —
+   `.chip`'s light tint would read as a deselection. */
+.segActive:hover {
+  background: var(--color-amethyst-dark);
+  border-color: var(--color-amethyst-dark);
   color: #fff;
 }
 

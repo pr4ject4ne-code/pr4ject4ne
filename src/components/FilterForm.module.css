@@ -12,23 +12,38 @@
   gap: 0.25rem;
 }
 .field label {
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
   font-weight: 600;
 }
+/* --fs-control (16px) is the floor for any focusable text control: below it,
+   iOS Safari zooms the page in on focus and never zooms back out. */
 .field input[type='text'],
 .field select {
   padding: 0.5rem 0.6rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  font-size: 0.9rem;
+  font-size: var(--fs-control);
 }
 .checkboxField {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
+/* The checkbox and its label are one toggle — both take the pointer, and the
+   label tints on hover/press so the hit area reads as live. */
+.checkboxField input,
 .checkboxField label {
-  font-size: 0.9rem;
+  cursor: pointer;
+}
+.checkboxField label {
+  font-size: var(--fs-body-sm);
+  transition: color 0.15s ease;
+}
+.checkboxField label:hover {
+  color: var(--color-amethyst-dark);
+}
+.checkboxField label:active {
+  color: var(--color-amethyst);
 }
 .apply {
   width: 100%;
