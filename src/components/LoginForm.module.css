@@ -3,15 +3,21 @@
   max-width: 430px;
   padding: 1.75rem 1.75rem 1.6rem;
 }
+/* Every auth screen sharing this module (/login, /forgot-password,
+   /reset-password) is a page whose <h1> IS the page title, so it takes the
+   full h1 step of the scale rather than the old bespoke 1.5rem — which read
+   as a section heading, not a page heading, and carried a loose UA leading. */
 .title {
-  margin: 0 0 0.3rem;
-  font-size: 1.5rem;
-  letter-spacing: -0.01em;
+  margin: 0 0 0.4rem;
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  letter-spacing: var(--ls-h1);
 }
 .subtitle {
   margin: 0 0 1.4rem;
   color: var(--color-muted);
-  font-size: 0.92rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
 }
 
 /* iOS-style segmented control on a tinted track with liquid sliding pill. */
@@ -29,8 +35,8 @@
   border: none;
   background: transparent;
   padding: 0.55rem;
-  font-weight: 600;
-  font-size: 0.92rem;
+  font-weight: 700;
+  font-size: var(--fs-body-sm);
   cursor: pointer;
   color: var(--color-blue-dark);
   border-radius: 999px;
@@ -41,9 +47,28 @@
      spring curve to be visible at all. */
   transition:
     color 0.3s var(--spring),
+    transform 0.24s var(--spring),
     box-shadow 0.15s ease;
   position: relative;
   z-index: 1;
+}
+/* Hover/press for the segmented control. This deliberately does NOT `composes:`
+   .chip from interactions.module.css even though it borrows that class's exact
+   motion (translateY(-1px) hover, scale(0.96) press, --spring throughout):
+   .chip also brings a box model that is wrong here — its own blue-light
+   background would fill each tab on top of the track that already IS
+   blue-light, plus its pill padding and --fs-micro size. Overriding all four
+   would need `.tabs .tab`/`.tabs .tab:hover` specificity ladders to beat the
+   composed chunk (whose <link> order Next picks per route), which is more
+   fragile than restating three declarations. Only the motion is shared, and it
+   is shared by using the same tokens. */
+.tabs button:hover {
+  color: var(--color-amethyst-dark);
+  transform: translateY(-1px);
+}
+.tabs button:active {
+  transform: scale(0.96);
+  transition: transform 0.22s var(--spring);
 }
 .activeTab {
   color: var(--color-ink) !important;
@@ -73,11 +98,9 @@
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
   margin-bottom: 0.9rem;
-}
-.agree a {
-  color: var(--color-blue-dark);
 }
 .submit {
   width: 100%;
@@ -85,18 +108,46 @@
 .forgot {
   margin: -0.6rem 0 0.9rem;
   text-align: right;
-  font-size: 0.85rem;
-}
-.forgot a {
-  color: var(--color-blue-dark);
+  font-size: var(--fs-body-sm);
 }
 .backLink {
   margin: 1rem 0 0;
   text-align: center;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
 }
+/* Inline text links across all three screens ("Terms", "Forgot password?",
+   "Back to log in"). They had colour but no feedback at all — no hover, no
+   press. Amethyst leads on interaction (same direction as .chip/.iconBtn in
+   interactions.module.css); the underline appears on hover so the resting
+   state stays quiet next to the primary submit button. */
+.agree a,
+.forgot a,
 .backLink a {
   color: var(--color-blue-dark);
+  text-decoration: none;
+  transition:
+    color 0.15s ease,
+    transform 0.24s var(--spring);
+}
+.agree a:hover,
+.forgot a:hover,
+.backLink a:hover {
+  color: var(--color-amethyst-dark);
+  text-decoration: underline;
+}
+/* The press squash needs a block-ish box (transform is ignored on a plain
+   inline box), so it is limited to the two links that already stand alone on
+   their own line. The Terms/Privacy links sit mid-sentence inside .agree and
+   must stay inline so the sentence can wrap normally in a 375px-wide card —
+   they get the colour+underline hover only. */
+.forgot a,
+.backLink a {
+  display: inline-block;
+}
+.forgot a:active,
+.backLink a:active {
+  transform: scale(0.96);
+  transition: transform 0.22s var(--spring);
 }
 .linkButton {
   background: none;
@@ -104,9 +155,19 @@
   padding: 0;
   font: inherit;
   color: var(--color-blue-dark);
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
   cursor: pointer;
   text-decoration: underline;
+  transition:
+    color 0.15s ease,
+    transform 0.24s var(--spring);
+}
+.linkButton:hover {
+  color: var(--color-amethyst-dark);
+}
+.linkButton:active {
+  transform: scale(0.96);
+  transition: transform 0.22s var(--spring);
 }
 .strength {
   margin: -0.5rem 0 0.9rem;
@@ -136,7 +197,7 @@
 }
 .strengthLabel {
   margin: 0 0 0.35rem;
-  font-size: 0.8rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
   color: var(--color-muted);
 }
@@ -147,7 +208,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0.2rem 0.6rem;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
 }
 .checkMet {
   color: var(--color-green);
@@ -155,6 +216,14 @@
 .checkUnmet {
   color: var(--color-muted);
 }
+/* The one deliberately non-token font-size in this file. The IHN is a
+   fixed-length monospace artifact (19 glyphs, e.g. IHN-QW6E-2R59-SXYW) that
+   has to fit the 430px card on one line: the nearest token, --fs-h2, is a
+   fluid clamp that reaches 1.8rem on a desktop viewport, where 19 monospace
+   advances plus tracking overrun the card's inner width and break the code
+   across two lines at a hyphen. A code the user is asked to copy exactly must
+   not wrap, so this stays a fixed size, matched to --fs-h2's own 1.3rem
+   floor. */
 .ihn {
   font-family: ui-monospace, monospace;
   font-size: 1.3rem;

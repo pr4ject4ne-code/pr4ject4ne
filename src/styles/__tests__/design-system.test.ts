@@ -134,7 +134,6 @@ const PRESS_COVERAGE_ALLOWLIST: string[] = [
   'src/components/HospitalDepartments.module.css',
   'src/components/HospitalGallery.module.css',
   'src/components/IHNCodeDisplay.module.css',
-  'src/components/LoginForm.module.css',
   'src/components/SharingPrefsPanel.module.css',
   'src/components/SuggestionsBoard.module.css',
 ];
