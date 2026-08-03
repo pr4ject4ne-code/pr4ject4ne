@@ -9,11 +9,22 @@ export default function HospitalInfo({ hospital }: { hospital: Hospital }) {
   const website = safeHttpUrl(hospital.website);
   return (
     <Card variant="plain" as="section">
-      <h2 className={styles.name}>
-        {hospital.name}
-        {hospital.verified && <span className={styles.verified}>Verified</span>}
-        {!hospital.verified && <span className={styles.community}>Community-managed</span>}
-      </h2>
+      {/* The hospital name is this page's ONLY <h1> (it used to be an <h2>, so
+          the profile shipped with no h1 at all — a real hierarchy AND a11y
+          defect). The one other <h1> on this route lives in
+          HospitalProfileClient's error branch, which early-returns before
+          this tree is ever constructed, so the two can never co-render.
+          The verified/community badge sits BESIDE the heading rather than
+          inside it, so the h1's accessible name is exactly the hospital
+          name and nothing else. */}
+      <div className={styles.nameRow}>
+        <h1 className={styles.name}>{hospital.name}</h1>
+        {hospital.verified ? (
+          <span className={styles.verified}>Verified</span>
+        ) : (
+          <span className={styles.community}>Community-managed</span>
+        )}
+      </div>
       <dl className={styles.list}>
         {hospital.address && (
           <div className={styles.row}>

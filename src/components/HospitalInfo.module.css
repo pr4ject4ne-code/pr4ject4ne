@@ -1,31 +1,46 @@
-.name {
+/* Title block: the <h1> and its verification badge on one wrapping row. The
+   flex layout lives HERE, not on the heading, so the heading element itself
+   carries nothing but the hospital name. */
+.nameRow {
   display: flex;
   align-items: center;
   gap: 0.6rem;
   flex-wrap: wrap;
-  margin: 0 0 0.75rem;
-  font-size: 1.4rem;
+  margin: 0 0 0.9rem;
 }
+/* Deliberately declares no font-size: the hospital name is the page title, so
+   it takes --fs-h1 (with its leading, tracking and the display face) from the
+   base `h1` rule in globals.css, exactly like every other page title. It was
+   previously a hardcoded 1.4rem <h2> — SMALLER than the section headings
+   around it, which inverted the whole page's hierarchy. Don't "fix" a long
+   hospital name with a local magic number; retune the token instead.
+   `overflow-wrap: anywhere` only guards against a single unbreakable word
+   (a run-on facility name) overflowing the column at the larger size. */
+.name {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+/* --fs-micro is the one size for every badge/pill in the app. */
 .verified {
   background: var(--color-blue-light);
   color: var(--color-blue-dark);
-  font-size: 0.72rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
-  padding: 0.15rem 0.5rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 999px;
 }
 .community {
   background: var(--color-amethyst-light);
   color: var(--color-amethyst-dark);
-  font-size: 0.72rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
-  padding: 0.15rem 0.5rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 999px;
 }
 .list {
   margin: 0;
   display: grid;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 .row {
   display: grid;
@@ -34,15 +49,31 @@
   align-items: baseline;
 }
 .row dt {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-muted);
-  font-size: 0.85rem;
+  font-size: var(--fs-caption);
 }
+/* Full body size, not the old 0.9rem: address / phone / email are the
+   actionable content of this card, and they now sit under a --fs-h1 title
+   that would swamp anything smaller. */
 .row dd {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   word-break: break-word;
 }
+/* Every value here is a link (map lookup, website, tel:, mailto:) — they get
+   real hover feedback instead of behaving like static text. Amethyst leads on
+   interaction, per the site palette. */
 .row a {
   color: var(--color-blue-dark);
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(63, 109, 199, 0.4);
+  transition:
+    color 0.15s ease,
+    text-decoration-color 0.15s ease;
+}
+.row a:hover {
+  color: var(--color-amethyst-dark);
+  text-decoration-color: currentColor;
 }

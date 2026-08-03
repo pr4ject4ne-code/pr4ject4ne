@@ -1,32 +1,40 @@
+/* --fs-h3 on an <h2>: see HospitalProfile.module.css's .searchTitle for why
+   every card title on this page sizes one step below its heading level. */
 .title {
-  font-size: 1.1rem;
+  font-size: var(--fs-h3);
   margin: 0 0 0.6rem;
 }
+/* --fs-micro is the one size for every badge/pill in the app. */
 .badge {
   display: inline-block;
   background: var(--color-green);
   color: var(--color-white);
-  padding: 0.15rem 0.5rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
   margin: 0 0 0.5rem;
 }
+/* Nothing in this component is interactive — it's a read-only opening-hours
+   table, so there is deliberately no hover/press treatment here. */
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
 }
 .table th {
   text-align: left;
   font-weight: 600;
   color: var(--color-muted);
-  padding: 0.3rem 0.5rem 0.3rem 0;
+  padding: 0.35rem 0.5rem 0.35rem 0;
 }
+/* The times are the data; the day names are the labels. Weighting them apart
+   lets the column be scanned without a divider rule. */
 .table td {
-  padding: 0.3rem 0;
+  padding: 0.35rem 0;
+  font-weight: 700;
 }
 .muted {
   color: var(--color-muted);
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
 }

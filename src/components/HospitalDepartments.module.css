@@ -1,3 +1,8 @@
+/* The collapse toggle: a full-width, transparent disclosure row, so the
+   shared `.pressable` (which lifts onto a drop shadow) would look like a
+   floating ghost bar. It gets a bespoke but system-consistent treatment
+   instead — the title tints amethyst on hover, the whole row squashes on
+   press with the shared --spring curve. */
 .header {
   display: flex;
   align-items: center;
@@ -7,10 +12,25 @@
   border: none;
   cursor: pointer;
   padding: 0;
+  color: var(--color-muted);
+  transition:
+    color 0.15s ease,
+    transform 0.24s var(--spring);
 }
+.header:hover,
+.header:hover .title {
+  color: var(--color-amethyst-dark);
+}
+.header:active {
+  transform: scale(0.985);
+  transition: transform 0.22s var(--spring);
+}
+/* --fs-h3 on an <h2>: see HospitalProfile.module.css's .searchTitle for why
+   every card title on this page sizes one step below its heading level. */
 .title {
-  font-size: 1.1rem;
+  font-size: var(--fs-h3);
   margin: 0;
+  transition: color 0.15s ease;
 }
 .list {
   list-style: none;
@@ -25,8 +45,8 @@
 }
 .deptName {
   display: block;
-  font-weight: 600;
-  margin-bottom: 0.4rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
 }
 .services {
   list-style: none;
@@ -36,16 +56,27 @@
   flex-wrap: wrap;
   gap: 0.4rem;
 }
+/* Static labels, NOT controls — these <li>s aren't clickable, so they
+   deliberately do not compose `.chip`, which bakes in `cursor: pointer` plus
+   a hover/press. A pointer cursor and a lift on unclickable text is a real UX
+   lie (Card.tsx's own `interactive` doc makes the same point). The resting
+   shape/colours are matched to `.chip` by hand so the two still read as one
+   family; --fs-micro is the app's single badge/pill size. Same precedent as
+   FirstAidList's `.cardTag`. */
 .service {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
   background: var(--color-blue-light);
   color: var(--color-blue-dark);
-  font-size: 0.8rem;
-  padding: 0.25rem 0.6rem;
-  border-radius: 999px;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  line-height: 1.25;
 }
 .muted {
   color: var(--color-muted);
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
   margin: 0;
 }
 .ratingRow {
@@ -55,11 +86,25 @@
   gap: 0.6rem;
   margin-top: 0.6rem;
 }
+/* A real navigation link that previously had no hover or press at all. */
 .signInLink {
   color: var(--color-blue-dark);
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--fs-caption);
+  font-weight: 700;
   text-decoration: underline;
+  text-underline-offset: 2px;
+  display: inline-block;
+  transition:
+    color 0.15s ease,
+    transform 0.24s var(--spring);
+}
+.signInLink:hover {
+  color: var(--color-amethyst-dark);
+  transform: translateY(-1px);
+}
+.signInLink:active {
+  transform: scale(0.96);
+  transition: transform 0.22s var(--spring);
 }
 .rateWrap {
   display: inline-flex;
@@ -68,5 +113,5 @@
 }
 .ratingStatus {
   color: var(--color-muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-caption);
 }

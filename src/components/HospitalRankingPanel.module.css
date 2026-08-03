@@ -1,12 +1,17 @@
+/* Read-only panel: star average + city/national rank. Nothing here is
+   interactive (Stars renders a static display), so there is deliberately no
+   hover/press treatment. */
 .panel {
   display: grid;
   gap: 0.75rem;
   align-content: start;
   height: 100%;
 }
+/* --fs-h3 on an <h2>: see HospitalProfile.module.css's .searchTitle for why
+   every card title on this page sizes one step below its heading level. */
 .title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: var(--fs-h3);
 }
 .ranks {
   margin: 0;
@@ -18,7 +23,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
 }
 .rankRow dt {
   color: var(--color-muted);
@@ -27,9 +32,10 @@
 .rankRow dd {
   margin: 0;
   font-weight: 700;
+  white-space: nowrap;
 }
 .unrated {
   margin: 0;
   color: var(--color-muted);
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
 }

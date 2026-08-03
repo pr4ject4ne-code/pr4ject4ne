@@ -1,9 +1,10 @@
 .bar {
   border-radius: var(--radius);
-  padding: 0.6rem 0.9rem;
+  padding: 0.65rem 0.9rem;
   margin-bottom: 0.9rem;
   color: var(--color-white);
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
 }
 .bar_green {
   background: var(--color-green);
@@ -21,18 +22,32 @@
   justify-content: space-between;
   margin-bottom: 0.5rem;
 }
-.calHeader button {
-  background: var(--color-blue-light);
-  border: none;
-  border-radius: var(--radius);
+/* Month stepper — icon-only controls, so they take the shared `.iconBtn`
+   mechanic (grow on hover, hard squash on press) instead of the bare
+   `cursor: pointer` with no feedback they used to have. `composes:` must stay
+   on this bare class; the overrides live in the ancestor-scoped rule below. */
+.navBtn {
+  composes: iconBtn from '../styles/interactions.module.css';
+}
+/* Scoped under `.calHeader` (the real wrapper — see AnnouncementCalendar.tsx)
+   rather than written as a bare `.navBtn` rule: these override composed
+   `.iconBtn`'s own base declarations, which live in a different CSS chunk
+   whose load order relative to this file varies by route. A bare rule ties on
+   specificity and can silently lose — a resting-state bug on first paint. */
+.calHeader .navBtn {
   width: 32px;
   height: 32px;
-  cursor: pointer;
-  font-size: 1.1rem;
+  padding: 0;
+  border-radius: var(--radius);
+  background: var(--color-blue-light);
   color: var(--color-blue-dark);
+  font-size: var(--fs-h3);
+  line-height: 1;
 }
+/* --fs-h3 on an <h2>: see HospitalProfile.module.css's .searchTitle for why
+   every card title on this page sizes one step below its heading level. */
 .monthLabel {
-  font-size: 1.05rem;
+  font-size: var(--fs-h3);
   margin: 0;
 }
 
@@ -43,7 +58,7 @@
 }
 .weekday {
   text-align: center;
-  font-size: 0.72rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
   color: var(--color-muted);
   padding: 0.25rem 0;
@@ -62,13 +77,28 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
   position: relative;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.24s var(--spring);
 }
 .day:hover {
   background: var(--color-blue-light);
+  border-color: rgba(109, 74, 255, 0.3);
 }
-.selected {
+/* The press this cell was missing: it had a hover tint and nothing on tap, so
+   on touch (where hover doesn't exist) selecting a date acknowledged nothing
+   until the detail panel rendered. */
+.day:active {
+  transform: scale(0.92);
+  transition: transform 0.22s var(--spring);
+}
+/* Compounded with `.day` so the selected date keeps its amethyst fill through
+   hover — `.selected` alone loses to `.day:hover` on specificity. */
+.day.selected,
+.day.selected:hover {
   border-color: var(--color-amethyst);
   background: var(--color-amethyst-light);
 }
@@ -92,8 +122,9 @@
   border-top: 1px solid var(--color-border);
   padding-top: 0.75rem;
 }
+/* A real <h3>, one step below the card's <h2> title in both level and size. */
 .detailTitle {
-  font-size: 0.95rem;
+  font-size: var(--fs-h4);
   margin: 0 0 0.5rem;
 }
 .detailList {
@@ -110,16 +141,26 @@
 }
 .detailItem p {
   margin: 0.15rem 0 0;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
   color: var(--color-muted);
 }
+/* A static severity label, NOT a control — deliberately does not compose
+   `.chip`, which bakes in `cursor: pointer` plus a hover/press: this <span>
+   isn't clickable, and `.chip`'s blue-tint resting palette would also have to
+   be fully overridden by the severity modifiers below anyway. --fs-micro is
+   the app's single badge/pill size, which is what actually needed fixing. */
 .tag {
+  display: inline-flex;
+  align-items: center;
   color: var(--color-white);
-  font-size: 0.7rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
-  padding: 0.1rem 0.4rem;
+  line-height: 1.25;
+  padding: 0.15rem 0.5rem;
   border-radius: 999px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 .tag_green {
   background: var(--color-green);
@@ -132,5 +173,5 @@
 }
 .muted {
   color: var(--color-muted);
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
 }

@@ -24,13 +24,23 @@
   background: rgba(30, 51, 87, 0.85);
   color: var(--color-white);
   padding: 0.4rem 0.75rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
 }
 .thumbs {
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
+  /* Room for the hover lift + its shadow; `overflow-x: auto` forces
+     `overflow-y: auto` per spec, so without this the 2px lift would clip. */
+  padding: 3px 0 6px;
 }
+/* A bespoke thumbnail treatment rather than the shared `.pressable`: a photo
+   tile reads best when the IMAGE responds (a contained zoom + a touch of
+   brightness inside the clipped rounded frame) rather than the button box
+   sliding around. The frame still lifts and takes the amethyst card-hover
+   glow so it belongs to the same interaction family, and it squashes on
+   press like everything else in the app. Every transform uses --spring, so
+   the whole thing collapses under the global prefers-reduced-motion rule. */
 .thumb {
   border: 2px solid transparent;
   border-radius: var(--radius);
@@ -41,13 +51,43 @@
   min-width: 84px;
   height: 60px;
   background: var(--color-blue-light);
+  transition:
+    transform 0.24s var(--spring),
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+  transition:
+    transform 0.3s var(--spring),
+    filter 0.2s ease;
 }
-.active {
+.thumb:hover {
+  transform: translateY(-2px);
+  border-color: rgba(109, 74, 255, 0.35);
+  box-shadow: var(--shadow-card-hover);
+}
+.thumb:hover img {
+  transform: scale(1.08);
+  filter: brightness(1.06);
+}
+.thumb:active {
+  transform: scale(0.95);
+  transition: transform 0.22s var(--spring);
+}
+.thumb:active img {
+  transform: scale(1.02);
+}
+/* The selected thumbnail keeps its solid amethyst frame through hover — the
+   translucent hover tint on an already-selected tile reads as a deselection.
+   `.thumb.active` (and its :hover form) outrank `.thumb:hover` on
+   specificity, which is the point of writing them compounded. */
+.active,
+.thumb.active,
+.thumb.active:hover {
   border-color: var(--color-amethyst);
 }
 .emptyHero {
@@ -60,9 +100,10 @@
   background: var(--color-blue-light);
   border-radius: var(--radius);
   color: var(--color-muted);
+  /* Sizes the decorative 🏥 glyph, not text — deliberately not a type token. */
   font-size: 2rem;
 }
 .emptyHero p {
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
   margin: 0;
 }

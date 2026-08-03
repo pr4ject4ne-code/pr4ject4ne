@@ -1,3 +1,6 @@
+/* Same bespoke disclosure-row treatment as HospitalDepartments' .header — see
+   that file for why the shared `.pressable` isn't the right mechanic for a
+   full-width transparent toggle. */
 .header {
   display: flex;
   align-items: center;
@@ -7,10 +10,25 @@
   border: none;
   cursor: pointer;
   padding: 0;
+  color: var(--color-muted);
+  transition:
+    color 0.15s ease,
+    transform 0.24s var(--spring);
 }
+.header:hover,
+.header:hover .title {
+  color: var(--color-amethyst-dark);
+}
+.header:active {
+  transform: scale(0.985);
+  transition: transform 0.22s var(--spring);
+}
+/* --fs-h3 on an <h2>: see HospitalProfile.module.css's .searchTitle for why
+   every card title on this page sizes one step below its heading level. */
 .title {
-  font-size: 1.1rem;
+  font-size: var(--fs-h3);
   margin: 0;
+  transition: color 0.15s ease;
 }
 .filters {
   display: flex;
@@ -19,11 +37,32 @@
   flex-wrap: wrap;
   margin: 0.75rem 0;
 }
+/* --fs-control (16px), not the old 0.9rem: below 16px, iOS Safari zooms the
+   viewport when a control takes focus, which reads as the page jumping out
+   from under the user. This was one of the last two control-font-floor
+   violations in the app (enforced by src/styles/__tests__/design-system.test.ts).
+   `font-family: inherit` because a <select> does not inherit it by default.
+   No `cursor: pointer` here — a native select already carries the platform's
+   own cursor, and claiming otherwise would be inventing feedback the control
+   doesn't actually have. */
 .filterLabel select {
-  padding: 0.4rem 0.6rem;
+  padding: 0.45rem 0.6rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  font-size: 0.9rem;
+  background: var(--color-white);
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--fs-control);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.filterLabel select:hover {
+  border-color: var(--color-amethyst);
+}
+.filterLabel select:focus-visible {
+  border-color: var(--color-amethyst);
+  box-shadow: 0 0 0 3px var(--color-amethyst-light);
 }
 .sortToggle {
   display: inline-flex;
@@ -31,15 +70,42 @@
   border-radius: var(--radius);
   overflow: hidden;
 }
+/* Segmented sort control — previously `cursor: pointer` with no hover and no
+   press at all. */
 .sortToggle button {
   border: none;
   background: var(--color-white);
-  padding: 0.4rem 0.7rem;
-  font-size: 0.85rem;
+  padding: 0.45rem 0.75rem;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--color-muted);
   cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.24s var(--spring);
 }
-.activeSort {
-  background: var(--color-blue) !important;
+.sortToggle button:hover {
+  background: var(--color-amethyst-light);
+  color: var(--color-amethyst-dark);
+}
+.sortToggle button:active {
+  transform: scale(0.95);
+  transition: transform 0.22s var(--spring);
+}
+/* Purple leads on active/selected states site-wide (globals.css), so the
+   chosen sort is amethyst rather than the demoted blue it used to be.
+   Scoping under `.sortToggle` (the real wrapper — see DoctorRoster.tsx) puts
+   this at 2 classes, which genuinely outranks `.sortToggle button:hover`
+   instead of relying on the `!important` this rule used to carry. */
+.sortToggle .activeSort {
+  background: var(--color-amethyst);
+  color: var(--color-white);
+}
+/* The selected segment keeps its filled identity on hover — the light tint
+   would read as a deselection. */
+.sortToggle .activeSort:hover {
+  background: var(--color-amethyst-dark);
   color: var(--color-white);
 }
 .list {
@@ -52,23 +118,25 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.6rem 0;
+  padding: 0.65rem 0;
   border-top: 1px solid var(--color-border);
 }
 .name {
   display: block;
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: 700;
 }
 .meta {
   display: block;
-  font-size: 0.82rem;
+  font-size: var(--fs-caption);
   color: var(--color-muted);
 }
 .noRating {
-  font-size: 0.8rem;
+  font-size: var(--fs-caption);
   color: var(--color-muted);
+  white-space: nowrap;
 }
 .muted {
   color: var(--color-muted);
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
 }
