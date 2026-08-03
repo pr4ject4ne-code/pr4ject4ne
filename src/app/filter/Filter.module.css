@@ -3,11 +3,19 @@
   margin: 0 auto;
   padding: 1.25rem 1rem 2rem;
 }
+/* Deliberately declares no font-size: the page title takes --fs-h1 (with its
+   leading/tracking and the display face) from the base `h1` rule in
+   globals.css, like every other page title. Don't "fix" this with a local
+   magic number — retune the token instead. Only the spacing is local: the
+   title now runs up to 2.9rem, so its lede needs a touch more air than the
+   0.25rem that read fine under a UA-default heading. */
 .title {
-  margin: 0.25rem 0 0.25rem;
+  margin: 0.25rem 0 0.4rem;
 }
 .sub {
   color: var(--color-muted);
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
   margin: 0 0 1.25rem;
 }
 .grid {
@@ -20,9 +28,16 @@
   position: sticky;
   top: 1rem;
 }
+/* The results column. `min-width: 0` because a grid item defaults to
+   `min-width: auto`, which lets an unbreakable string inside a result card (a
+   long website URL) push the `1fr` track past its share and squeeze the
+   280px sidebar. */
+.results {
+  min-width: 0;
+}
 .count {
   color: var(--color-muted);
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
   margin: 0 0 0.75rem;
 }
 .more {
