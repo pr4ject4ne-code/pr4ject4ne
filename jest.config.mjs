@@ -25,6 +25,7 @@ const customJestConfig = {
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
+    '<rootDir>/.claude/worktrees/',
     '\\.integration\\.test\\.ts$',
   ],
 };
