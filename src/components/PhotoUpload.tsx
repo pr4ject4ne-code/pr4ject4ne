@@ -71,7 +71,12 @@ export default function PhotoUpload({ photos, onSave, saving }: PhotoUploadProps
             <img src={p.url} alt={p.caption ?? ''} />
             <div className={styles.itemMeta}>
               <span>{SLOTS.find((s) => s.value === p.slot)?.label ?? 'Other'}</span>
-              <button type="button" onClick={() => setConfirmRemove(i)} aria-label="Remove photo">
+              <button
+                type="button"
+                className={styles.removeBtn}
+                onClick={() => setConfirmRemove(i)}
+                aria-label="Remove photo"
+              >
                 ✕
               </button>
             </div>

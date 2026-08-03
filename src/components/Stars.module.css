@@ -2,7 +2,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
 }
 .stars {
   color: var(--color-yellow);
@@ -13,5 +13,5 @@
 }
 .meta {
   color: var(--color-muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-caption);
 }

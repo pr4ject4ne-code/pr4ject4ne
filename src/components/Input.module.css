@@ -13,22 +13,29 @@
   min-width: 0;
 }
 
+/* Label and hint are both caption-scale; weight and colour (ink 600 vs muted
+   400) do the differentiating, not two near-identical font sizes. */
 .label {
-  font-size: 0.85rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
   color: var(--color-ink);
 }
 
 .hint {
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   color: var(--color-muted);
 }
 
+/* Shared by Input.tsx's <input> AND Dropdown.tsx's <select>. Neither element
+   inherits font-family or font-size from the page by default, so both are set
+   explicitly here — otherwise the select in particular falls back to a UA font
+   at a UA size. --fs-control is the 16px iOS focus-zoom floor. */
 .input {
   padding: 0.55rem 0.7rem;
   border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
-  font-size: 0.95rem;
+  font-family: inherit;
+  font-size: var(--fs-control);
   background: var(--color-white);
   color: var(--color-ink);
   box-shadow: var(--shadow-sm);
@@ -51,22 +58,42 @@
   flex: 1;
   padding-right: 3.4rem;
 }
+/* Composing .iconBtn brings the shared hover-tint/press-squash with it, so the
+   Show/Hide toggle acknowledges touch instead of only changing colour on hover.
+   That mechanic animates `transform`, so vertical centering can no longer use
+   `top: 50%; transform: translateY(-50%)` (the hover scale would clobber it and
+   the button would jump to the top of the field). Insetting top+bottom to 0 with
+   an auto block margin and a content-sized height centers it geometrically and
+   leaves the transform channel free. */
 .peekToggle {
+  composes: iconBtn from '../styles/interactions.module.css';
   position: absolute;
   right: 0.4rem;
-  top: 50%;
-  transform: translateY(-50%);
-  border: none;
-  background: none;
-  color: var(--color-muted);
-  font-size: 0.78rem;
+  top: 0;
+  bottom: 0;
+  height: fit-content;
+  margin-block: auto;
+  font-size: var(--fs-caption);
   font-weight: 600;
-  padding: 0.3rem 0.5rem;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
 }
-.peekToggle:hover {
-  color: var(--color-amethyst-dark, var(--color-amethyst));
+/* The three declarations .iconBtn ALSO sets live here, at (0,2,0), rather than
+   in the rule above at (0,1,0). Composed classes land in a different CSS chunk
+   whose <link> order Next decides per route, so an equal-specificity override
+   is a coin flip; a descendant selector wins regardless of load order. It
+   matters most for line-height: .iconBtn zeroes it for glyph-only buttons, and
+   this toggle carries the word "Show"/"Hide", which would collapse to a
+   zero-height line box. */
+.passwordWrap .peekToggle {
+  color: var(--color-muted);
+  line-height: 1.25;
+  padding: 0.3rem 0.5rem;
+}
+/* Raising the RESTING colour to (0,2,0) above ties with .iconBtn:hover, which
+   would otherwise have supplied the hover colour — so re-assert it a step
+   higher. The resting state stays muted on purpose: the toggle sits inside the
+   field and must not compete with the password the user is typing. */
+.passwordWrap .peekToggle:hover:not(:disabled) {
+  color: var(--color-amethyst-dark);
 }
 .peekToggle:focus-visible {
   outline: 2px solid var(--color-amethyst);

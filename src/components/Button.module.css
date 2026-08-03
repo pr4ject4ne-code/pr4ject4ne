@@ -6,7 +6,10 @@
   padding: 0.55rem 1.1rem;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
-  font-size: 0.95rem;
+  /* Button labels sit at body size, not a notch below it: a CTA is the most
+     important text on most forms, and matching --fs-body (= --fs-control)
+     keeps a button optically level with the inputs it sits beside in a row. */
+  font-size: var(--fs-body);
   font-weight: 600;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
@@ -92,6 +95,16 @@
 .ghost:hover:not(:disabled) {
   background: var(--color-blue-light);
 }
+/* Ghost and danger previously had a hover treatment but no press treatment of
+   their own, so they only got the base .btn squash and no COLOUR acknowledgement
+   on activation. That reads worst on touch, where there is no hover state at all
+   and the press was the only feedback available. Same scale(0.96) as
+   .primary/.secondary, plus a deeper surface so the push is visible. */
+.ghost:active:not(:disabled) {
+  background: var(--color-amethyst-light);
+  border-color: var(--color-amethyst);
+  transform: scale(0.96) translateY(-1px);
+}
 
 .danger {
   background: var(--color-red);
@@ -99,4 +112,8 @@
 }
 .danger:hover:not(:disabled) {
   filter: brightness(0.92);
+}
+.danger:active:not(:disabled) {
+  filter: brightness(0.84);
+  transform: scale(0.96) translateY(-1px);
 }

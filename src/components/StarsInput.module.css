@@ -12,6 +12,23 @@
   font-size: 1.3rem;
   line-height: 1;
   border-radius: 4px;
+  transition:
+    transform 0.24s var(--spring),
+    color 0.15s ease;
+}
+/* Deliberately NOT composing .iconBtn: its amethyst background tint would sit
+   behind a yellow glyph and fight it, and hover feedback for a rating control
+   already exists as the fill preview StarsInput.tsx drives (pointing at star N
+   fills 1..N). What was genuinely missing was any cue for WHICH star you are
+   about to pick, and any press feedback at all — so the pointed-at star alone
+   pops, and any star squashes on activation. Same --spring as every other
+   press in the app, so it collapses under prefers-reduced-motion for free. */
+.star:hover:not(:disabled) {
+  transform: scale(1.2);
+}
+.star:active:not(:disabled) {
+  transform: scale(0.88);
+  transition: transform 0.22s var(--spring);
 }
 .star:disabled {
   cursor: not-allowed;
