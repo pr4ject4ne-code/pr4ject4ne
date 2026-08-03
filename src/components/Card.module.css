@@ -29,3 +29,13 @@
   background: var(--color-off-white);
   border: 1px solid var(--color-hairline);
 }
+
+/* Opt-in interaction layer (`<Card interactive>`), for a card that wraps
+   clickable content: pulls in the shared result-card mechanic — lift, hover
+   glow, amethyst border tint, real press — from the one source of truth
+   instead of every page hand-rolling its own hover. The variant's resting
+   border still wins (this file is emitted after interactions.module.css), so
+   only the hover/press treatment comes from the composed class. */
+.interactive {
+  composes: cardLift from '../styles/interactions.module.css';
+}
