@@ -10,19 +10,36 @@
   padding: 0.75rem 0.4rem;
   /* Round only the protruding (left) edge; the right side hugs the viewport. */
   border-radius: var(--radius) 0 0 var(--radius);
-  font-size: 0.85rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
   cursor: pointer;
   z-index: 900;
   box-shadow: var(--shadow);
+  transition:
+    transform 0.3s var(--spring),
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 }
+
+/* Deliberately NOT composing .pressable: the tab's resting state is itself a
+   transform (rotate(180deg), which sets up the vertical writing mode), and the
+   shared class's `transform: translateY(-2px)` would replace the rotation
+   outright and flip the label. Same mechanic re-expressed on top of the
+   rotation instead — note that inside the rotated frame local +x is screen
+   -x, so translateX slides the tab OUT from the right edge on hover. */
 .tab:hover {
   background: var(--color-amethyst-dark);
+  transform: rotate(180deg) translateX(3px);
+  box-shadow: var(--shadow), var(--shadow-glow-amethyst);
+}
+.tab:active {
+  transform: rotate(180deg) scale(0.96);
+  transition: transform 0.22s var(--spring);
 }
 
 .label {
   display: block;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
   font-weight: 600;
   margin-bottom: 0.25rem;
 }
@@ -42,7 +59,7 @@
 
 .returnEmailNote {
   color: var(--color-muted);
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
   margin: 0 0 0.9rem;
 }
 

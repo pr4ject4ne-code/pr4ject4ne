@@ -1,15 +1,13 @@
+/* A <button> sitting in the footer's link row: it takes the same .navLink
+   mechanic as its neighbours (Footer.module.css .link) so it reads and behaves
+   as one of them — underline wipe on hover, real squash on press — instead of
+   the plain text-decoration hover it had. */
 .helpLink {
+  composes: navLink from '../styles/interactions.module.css';
   background: none;
   border: none;
-  padding: 0;
   color: var(--color-white);
-  text-decoration: none;
-  font-size: 0.9rem;
   font-family: inherit;
-  cursor: pointer;
-}
-.helpLink:hover {
-  text-decoration: underline;
 }
 
 .searchField {
@@ -18,7 +16,7 @@
 
 .searchLabel {
   display: block;
-  font-size: 0.85rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
   margin-bottom: 0.35rem;
 }
@@ -26,12 +24,16 @@
 .searchInput {
   width: 100%;
   padding: 0.6rem 0.85rem;
-  font-size: 0.95rem;
+  /* --fs-control (16px), not 0.95rem: below the 16px floor iOS Safari zooms
+     the viewport on focus. Enforced by src/styles/__tests__/design-system.test.ts. */
+  font-size: var(--fs-control);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--color-border);
+  /* De-glassed: this input sits INSIDE Modal's glass panel, so its own
+     backdrop-filter was blurring an already-blurred surface — real compositor
+     cost, no visual payoff, and a translucent field is the worst surface to
+     read your own typing on. Glass stays where it belongs (the panel). */
+  background: var(--color-white);
   color: inherit;
 }
 .searchInput:focus {
@@ -46,9 +48,11 @@
   margin-bottom: 0;
 }
 
+/* No font-size here: the <h3>/<h4> these render as now take --fs-h3/--fs-h4
+   (plus the matching leading/tracking) from the global heading rules, instead
+   of the 1rem/0.92rem magic numbers that used to override them. */
 .sectionTitle {
   margin: 0 0 0.6rem;
-  font-size: 1rem;
   border-left: 3px solid var(--color-amethyst);
   padding-left: 0.6rem;
 }
@@ -62,18 +66,17 @@
 
 .topic {
   margin: 0 0 0.25rem;
-  font-size: 0.92rem;
   font-weight: 600;
 }
 
 .answer {
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
   color: var(--color-muted);
 }
 
 .empty {
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
   color: var(--color-muted);
 }

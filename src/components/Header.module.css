@@ -152,31 +152,41 @@
   align-items: center;
   gap: 1.5rem;
 }
-.inlineNav a {
-  text-decoration: none;
+
+/* Nav links now take the shared chrome-link mechanic (underline wipe + lift +
+   real press) and the --fs-nav token, replacing the bespoke 0.875rem +
+   translateY hover this used to carry. `color` is stated explicitly rather
+   than left to .navLink's `inherit` so the links follow the header's own
+   ink/white swap between the plain and .floating variants. */
+.navItem {
+  composes: navLink from '../styles/interactions.module.css';
   color: var(--header-fg);
-  font-weight: 700;
-  font-size: 0.875rem;
-  padding: 0.4rem 0.2rem;
-  transition: transform 0.15s ease;
-  display: inline-block;
-}
-.inlineNav a:hover {
-  transform: translateY(-2px);
 }
 
 .hamburger {
+  composes: iconBtn from '../styles/interactions.module.css';
   display: flex;
   flex-direction: column;
+  /* .iconBtn centers its child (it assumes one icon); the three bars must
+     stretch across the button's full inner width instead, or they collapse to
+     zero width. */
+  align-items: stretch;
   justify-content: center;
   gap: 4px;
   width: 40px;
   height: 40px;
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
   padding: 8px;
+}
+
+/* .iconBtn's default hover tint (--color-amethyst-light) is invisible here:
+   the resting bar is already an amethyst-tinted white and goes to exactly
+   --color-amethyst-light on hover. A deeper violet wash reads against it; the
+   floating (map) variant keeps its white-on-violet register with a white one. */
+.hamburger:hover:not(:disabled) {
+  background: rgba(109, 74, 255, 0.14);
+}
+.floating .hamburger:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
 }
 .hamburger span {
   display: block;
@@ -252,15 +262,21 @@
   }
 }
 
+/* Same links as .inlineNav, so the same --fs-nav size. They keep a background
+   tint rather than the underline wipe (they're rows in a list, not inline
+   chrome), with purple leading on interaction and a deeper tint on press. */
 .menu a {
   padding: 0.7rem 1rem;
   text-decoration: none;
   color: var(--color-ink);
-  font-size: 0.95rem;
+  font-size: var(--fs-nav);
   transition: background 0.15s ease;
 }
 .menu a:hover {
-  background: var(--color-blue-light);
+  background: var(--color-amethyst-light);
+}
+.menu a:active {
+  background: rgba(109, 74, 255, 0.16);
 }
 
 /* Wide viewports: show the three menu links inline in `.right` instead of

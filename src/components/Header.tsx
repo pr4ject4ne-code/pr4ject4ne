@@ -77,10 +77,18 @@ export default function Header({
 
       <div className={styles.right}>
         <nav className={styles.inlineNav} aria-label="Main menu">
-          <Link href={profileHref}>Profile</Link>
-          <Link href="/first-aid">First Aid</Link>
-          <Link href="/filter">Directory</Link>
-          <Link href="/string-lookup">Find by IHN</Link>
+          <Link href={profileHref} className={styles.navItem}>
+            Profile
+          </Link>
+          <Link href="/first-aid" className={styles.navItem}>
+            First Aid
+          </Link>
+          <Link href="/filter" className={styles.navItem}>
+            Directory
+          </Link>
+          <Link href="/string-lookup" className={styles.navItem}>
+            Find by IHN
+          </Link>
         </nav>
         <button
           type="button"

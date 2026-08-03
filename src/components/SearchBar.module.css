@@ -15,6 +15,18 @@
   border-radius: 999px;
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(15, 30, 70, 0.14);
+  transition: box-shadow 0.2s ease;
+}
+
+/* The amethyst glow for the submit action lives on the PILL, not on
+   .searchBtn itself: the pill clips its children (overflow: hidden, which is
+   what keeps the segments inside the capsule silhouette), and a clipped
+   box-shadow renders as nothing at all. Hovering Search therefore lights up
+   the whole search surface — the same glow language as Button's primary
+   variant and the homepage hero, just hoisted one level to where it can
+   actually be seen. */
+.searchPill:has(.searchBtn:hover:not(:disabled)) {
+  box-shadow: 0 2px 10px rgba(15, 30, 70, 0.14), var(--shadow-glow-amethyst);
 }
 
 .searchBtn:disabled {
@@ -31,10 +43,21 @@
   border: none;
   background: transparent;
   padding: 0.5rem 0.7rem;
-  font-size: 0.9rem;
+  /* Same size as the .searchInput it stands in for, so switching modes doesn't
+     resize the text inside the pill. */
+  font-size: var(--fs-control);
   color: var(--color-ink);
   text-align: left;
   cursor: pointer;
+  transition: background 0.15s ease;
+}
+/* Tint rather than lift/scale: this sits inside the pill's overflow clip, so a
+   transform would slide it under the capsule edge. */
+.symptomToggle:hover {
+  background: rgba(109, 74, 255, 0.07);
+}
+.symptomToggle:active {
+  background: var(--color-amethyst-light);
 }
 
 .symptomPanel {
@@ -64,7 +87,7 @@
 }
 
 .severityLabel {
-  font-size: 0.82rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
   color: var(--color-ink);
 }
@@ -75,14 +98,14 @@
 }
 
 .severityValue {
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
   color: var(--color-amethyst-dark, var(--color-amethyst));
 }
 
 .redFlagLabel {
   margin: 0.2rem 0 0;
-  font-size: 0.82rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
   color: var(--color-ink);
 }
@@ -95,6 +118,10 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Selection chips keep their own (danger-red / amethyst) palettes rather than
+   composing .chip, but they take the same motion: colour on hover, a squash on
+   press. Scale-only presses — the panel scrolls (overflow-y: auto), so an
+   outward lift on a chip near an edge would be clipped. */
 .redFlagChip,
 .redFlagChipOn {
   border: 1px solid #d94b4b;
@@ -102,15 +129,32 @@
   color: #b02a2a;
   border-radius: 999px;
   padding: 0.3rem 0.7rem;
-  font-size: 0.8rem;
+  font-size: var(--fs-caption);
   cursor: pointer;
   text-align: left;
+  transition:
+    transform 0.24s var(--spring),
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .redFlagChipOn {
   background: #d94b4b;
   color: var(--color-white);
   border-color: #d94b4b;
+}
+
+.redFlagChip:hover {
+  background: #fdeaea;
+}
+.redFlagChipOn:hover {
+  background: #b02a2a;
+  border-color: #b02a2a;
+}
+.redFlagChip:active,
+.redFlagChipOn:active {
+  transform: scale(0.96);
+  transition: transform 0.22s var(--spring);
 }
 
 .emergencyHint {
@@ -120,7 +164,7 @@
   background: #fdeaea;
   color: #8a1f1f;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: var(--fs-body-sm);
 }
 
 .symptomRegionGroup {
@@ -131,7 +175,7 @@
 
 .symptomRegionLabel {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--fs-micro);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -151,8 +195,13 @@
   color: var(--color-ink);
   border-radius: 999px;
   padding: 0.3rem 0.7rem;
-  font-size: 0.82rem;
+  font-size: var(--fs-caption);
   cursor: pointer;
+  transition:
+    transform 0.24s var(--spring),
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .symptomChipOn {
@@ -161,10 +210,25 @@
   border-color: var(--color-amethyst);
 }
 
+.symptomChip:hover {
+  background: var(--color-amethyst-light);
+  color: var(--color-amethyst-dark);
+  border-color: var(--color-amethyst);
+}
+.symptomChipOn:hover {
+  background: var(--color-amethyst-dark);
+  border-color: var(--color-amethyst-dark);
+}
+.symptomChip:active,
+.symptomChipOn:active {
+  transform: scale(0.96);
+  transition: transform 0.22s var(--spring);
+}
+
 .symptomHint {
   width: 100%;
   margin: 0.3rem 0 0;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   color: var(--color-muted);
 }
 
@@ -186,11 +250,12 @@
   background: transparent;
   color: var(--color-blue-dark);
   padding: 0 0.65rem;
-  font-size: 0.82rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   transition:
+    transform 0.24s var(--spring),
     background 0.15s ease,
     color 0.15s ease;
 }
@@ -198,6 +263,23 @@
 .modePillOn {
   background: var(--color-amethyst);
   color: var(--color-white);
+}
+
+/* The switcher previously had no hover and no press at all — the only feedback
+   that a pill had been touched was the mode actually changing. Hover previews
+   the amethyst the selected pill wears; the press squashes (no lift: these are
+   segments inside the pill's overflow clip). */
+.modePill:hover {
+  background: rgba(109, 74, 255, 0.12);
+  color: var(--color-amethyst-dark);
+}
+.modePillOn:hover {
+  background: var(--color-amethyst-dark);
+}
+.modePill:active,
+.modePillOn:active {
+  transform: scale(0.96);
+  transition: transform 0.22s var(--spring);
 }
 
 .searchInput {
@@ -226,16 +308,30 @@
 }
 
 .searchBtn {
+  composes: pressableGlowAmethyst from '../styles/interactions.module.css';
   border: none;
   background: var(--color-amethyst);
   color: var(--color-white);
   padding: 0 1.15rem 0 0.95rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease;
 }
-.searchBtn:hover {
+/* Two parts of the shared mechanic don't survive the pill's overflow clip and
+   are deliberately dropped here: the hover lift (a segment of a joined capsule
+   sliding up out of its socket, its top 2px shaved off by the clip) and the
+   hover glow (clipped to nothing — re-homed onto .searchPill above). The
+   press-squash from .pressableGlowAmethyst is kept as-is: it shrinks INWARD,
+   so the clip never touches it. */
+.searchBtn:hover:not(:disabled) {
+  transform: none;
   background: var(--color-amethyst-dark);
+  box-shadow: none;
+}
+/* Restated (not inherited) because :hover and :active both match during a
+   press and the rule above would otherwise be the last one standing and cancel
+   the squash. Same scale as the shared mechanic, minus its 1px lift. */
+.searchBtn:active:not(:disabled) {
+  transform: scale(0.96);
+  transition: transform 0.22s var(--spring);
 }
 
 /* Narrow phones: three non-shrinking mode pills ("By symptom" alone is a wide

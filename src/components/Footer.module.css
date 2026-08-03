@@ -14,13 +14,15 @@
   gap: 1.25rem;
   flex-wrap: wrap;
 }
-.links a {
+
+/* Footer links are chrome, same as the header nav: the shared .navLink brings
+   the --fs-nav size plus the underline wipe / lift / press, replacing the
+   plain `text-decoration: underline` hover that used to be the only feedback
+   here (and no press feedback at all). currentColor in the underline means it
+   picks up the footer's white text with no per-surface variant. */
+.link {
+  composes: navLink from '../styles/interactions.module.css';
   color: var(--color-white);
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-.links a:hover {
-  text-decoration: underline;
 }
 
 .brand {
@@ -32,8 +34,11 @@
 
 /* Mobile: stack links above the brand instead of squeezing both into one
    wrapping row (founder ask, 2026-07-28: "the footer isn't optimized for
-   mobile use") — tighter padding and a smaller link size keep the whole
-   footer to a couple of comfortable-to-tap rows instead of an uneven wrap. */
+   mobile use") — tighter padding and gaps keep the whole footer to a couple of
+   comfortable-to-tap rows instead of an uneven wrap. The link size no longer
+   shrinks to a bespoke 0.85rem here: --fs-nav is one chrome size at every
+   width (0.9rem — a 0.8px difference, not a row-count one), and .navLink's own
+   padding makes each link a bigger tap target than the old smaller text did. */
 @media (max-width: 640px) {
   .footer {
     flex-direction: column;
@@ -43,9 +48,5 @@
   }
   .links {
     gap: 0.6rem 1rem;
-    font-size: 0.85rem;
-  }
-  .links a {
-    font-size: 0.85rem;
   }
 }

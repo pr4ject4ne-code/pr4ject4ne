@@ -131,20 +131,15 @@ const PRESS_COVERAGE_ALLOWLIST: string[] = [
   'src/components/FirstAidDetail.module.css',
   'src/components/FirstAidForm.module.css',
   'src/components/FirstAidList.module.css',
-  'src/components/Header.module.css',
-  'src/components/HelpBar.module.css',
   'src/components/HospitalDepartments.module.css',
   'src/components/HospitalFilters.module.css',
   'src/components/HospitalGallery.module.css',
   'src/components/IHNCodeDisplay.module.css',
   'src/components/Input.module.css',
   'src/components/LoginForm.module.css',
-  'src/components/Modal.module.css',
   'src/components/PhotoUpload.module.css',
-  'src/components/SearchBar.module.css',
   'src/components/SharingPrefsPanel.module.css',
   'src/components/StarsInput.module.css',
-  'src/components/SuggestionTab.module.css',
   'src/components/SuggestionsBoard.module.css',
 ];
 
@@ -294,7 +289,6 @@ const GLASS_ALLOWLIST = [
 const GLASS_KNOWN_VIOLATIONS = [
   'src/components/BioDataForm.module.css',
   'src/components/FirstAidList.module.css',
-  'src/components/HelpBar.module.css',
   'src/components/IHNCodeDisplay.module.css',
   'src/components/StringLookupClient.module.css',
 ];
