@@ -4,22 +4,27 @@
   gap: 0.25rem;
   margin-bottom: 0.9rem;
 }
+/* Matches Input.module.css's .label: caption scale, weight 600. */
 .field label {
-  font-size: 0.85rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
 }
+/* --fs-control, not the 0.92rem this had: below the 16px floor iOS Safari
+   zooms the viewport on focus, which reads as the page jumping out from
+   under someone mid-sentence. Enforced by
+   src/styles/__tests__/design-system.test.ts. */
 .field textarea {
   padding: 0.55rem 0.7rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   font-family: inherit;
-  font-size: 0.92rem;
+  font-size: var(--fs-control);
   resize: vertical;
 }
 .checkbox {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
   margin-bottom: 0.9rem;
 }

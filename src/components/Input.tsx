@@ -1,4 +1,5 @@
 import { forwardRef, useId, useState } from 'react';
+import { useKeyboardSafeFocus } from '@/lib/useKeyboardSafeFocus';
 import ErrorBubble from './ErrorBubble';
 import styles from './Input.module.css';
 
@@ -12,7 +13,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 /** Labeled text input with accessible error wiring. */
 const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, hint, describedBy, id, className = '', type, ...rest },
+  { label, error, hint, describedBy, id, className = '', type, onFocus, onBlur, ...rest },
   ref,
 ) {
   const generatedId = useId();
@@ -25,6 +26,28 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   // IHN-regenerate confirm all at once.
   const isPassword = type === 'password';
   const [revealed, setRevealed] = useState(false);
+  // Mobile-keyboard safety, wired once here for the whole app: login, signup,
+  // biodata, hospital registration, IHN lookup and password reset all render
+  // their text fields through this component, so they all get "the field I am
+  // typing in stays on screen when the keyboard opens" from this one place
+  // instead of per-form wiring. Default-on rather than opt-in — no field in
+  // the app wants the opposite — and no opt-out prop, because the only case
+  // that would need one (a field inside a fixed/sticky container, e.g. the
+  // email field in SuggestionTab's Modal) is already skipped by
+  // keepFocusedElementVisible's own ancestor walk.
+  const keyboardSafe = useKeyboardSafeFocus<HTMLInputElement>();
+
+  // Composed, not clobbered: a caller's own onFocus/onBlur (validation-on-blur
+  // and the like) still runs, after the scroll wiring.
+  function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+    keyboardSafe.onFocus(e);
+    onFocus?.(e);
+  }
+
+  function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
+    keyboardSafe.onBlur();
+    onBlur?.(e);
+  }
 
   const input = (
     <input
@@ -39,6 +62,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           .join(' ') || undefined
       }
       {...rest}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
     />
   );
 

@@ -6,6 +6,7 @@ import Dropdown from './Dropdown';
 import Button from './Button';
 import ErrorBubble from './ErrorBubble';
 import { uploadFile } from '@/lib/upload-client';
+import { useKeyboardSafeFocus } from '@/lib/useKeyboardSafeFocus';
 import { safeHttpUrl } from '@/lib/sanitize';
 import { FIRST_AID_TAGS } from '@/lib/first-aid-tags';
 import { REGION_TAGS } from '@/lib/first-aid-region-tags';
@@ -84,6 +85,11 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // Raw <textarea>s, so they bypass Input.tsx's shared mobile-keyboard wiring
+  // and need it applied directly. One shared instance is enough for all of
+  // them: only one can be focused at a time, and blur of the old field fires
+  // before focus of the new one, so the watcher is always released first.
+  const keyboardSafe = useKeyboardSafeFocus<HTMLTextAreaElement>();
 
   function set<K extends keyof FirstAidFormValues>(key: K, v: FirstAidFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: v }));
@@ -246,6 +252,7 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
             value={values[key] as string}
             onChange={(e) => set(key, e.target.value as FirstAidFormValues[typeof key])}
             rows={key === 'description' ? 5 : 3}
+            {...keyboardSafe}
           />
         </div>
       ))}
@@ -278,6 +285,7 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
             value={values[key] as string}
             onChange={(e) => set(key, e.target.value as FirstAidFormValues[typeof key])}
             rows={key === 'process' ? 5 : 3}
+            {...keyboardSafe}
           />
         </div>
       ))}

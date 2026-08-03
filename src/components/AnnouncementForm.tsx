@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Input from './Input';
 import Dropdown from './Dropdown';
 import Button from './Button';
+import { useKeyboardSafeFocus } from '@/lib/useKeyboardSafeFocus';
 import type { AnnouncementColor } from '@/types';
 import styles from './AnnouncementForm.module.css';
 
@@ -28,6 +29,9 @@ export default function AnnouncementForm({ initial, onSubmit, submitting }: Anno
   const [eventDate, setEventDate] = useState(initial?.event_date ?? '');
   const [isBar, setIsBar] = useState(initial?.is_bar ?? false);
   const [error, setError] = useState<string | null>(null);
+  // Raw <textarea>, so it bypasses Input.tsx's shared mobile-keyboard wiring
+  // and needs it applied directly.
+  const keyboardSafe = useKeyboardSafeFocus<HTMLTextAreaElement>();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,7 +48,13 @@ export default function AnnouncementForm({ initial, onSubmit, submitting }: Anno
       <Input label="Title *" value={title} onChange={(e) => setTitle(e.target.value)} error={error ?? undefined} />
       <div className={styles.field}>
         <label htmlFor="ann-body">Details</label>
-        <textarea id="ann-body" value={body} onChange={(e) => setBody(e.target.value)} rows={3} />
+        <textarea
+          id="ann-body"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          rows={3}
+          {...keyboardSafe}
+        />
       </div>
       <Dropdown
         label="Color code"

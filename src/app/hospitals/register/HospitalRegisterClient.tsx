@@ -112,7 +112,14 @@ export default function HospitalRegisterClient() {
           <Input label="Website" value={website} onChange={(e) => setWebsite(e.target.value)} />
 
           <div>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
+            <span
+              style={{
+                fontSize: 'var(--fs-body-sm)',
+                fontWeight: 600,
+                display: 'block',
+                marginBottom: '0.4rem',
+              }}
+            >
               Location: click or drag the pin, or type exact coordinates if you have them
             </span>
             <LocationPicker
@@ -138,7 +145,14 @@ export default function HospitalRegisterClient() {
             </div>
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: 'var(--fs-body-sm)',
+            }}
+          >
             <input type="checkbox" checked={is24Hour} onChange={(e) => setIs24Hour(e.target.checked)} />
             Open 24 hours
           </label>
