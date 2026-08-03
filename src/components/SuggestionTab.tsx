@@ -6,6 +6,7 @@ import Button from './Button';
 import Input from './Input';
 import ErrorBubble from './ErrorBubble';
 import { useSession } from '@/lib/useSession';
+import { useKeyboardSafeFocus } from '@/lib/useKeyboardSafeFocus';
 import styles from './SuggestionTab.module.css';
 
 interface SuggestionTabProps {
@@ -24,6 +25,14 @@ export default function SuggestionTab({ hospitalId, page }: SuggestionTabProps) 
   const [content, setContent] = useState('');
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  // Raw <textarea>, so it bypasses Input.tsx's shared mobile-keyboard wiring.
+  // Wired for consistency, but it is a documented no-op HERE: this form lives
+  // inside Modal, whose backdrop is `position: fixed`, and
+  // keepFocusedElementVisible deliberately skips fixed/sticky ancestors —
+  // scrolling the document cannot move something that rides with the
+  // viewport. If the modal ever obscures its own field behind a keyboard,
+  // that is a modal-sizing fix, not a scroll-helper one.
+  const keyboardSafe = useKeyboardSafeFocus<HTMLTextAreaElement>();
 
   // Founder ask, 2026-07-29: "make a return email to be that of the profile
   // (must sign in or add a return email)" — a suggestion with no way to
@@ -86,6 +95,7 @@ export default function SuggestionTab({ hospitalId, page }: SuggestionTabProps) 
               rows={4}
               maxLength={4000}
               required
+              {...keyboardSafe}
             />
             {user ? (
               <p className={styles.returnEmailNote}>

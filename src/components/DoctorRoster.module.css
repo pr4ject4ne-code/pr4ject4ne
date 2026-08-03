@@ -19,11 +19,13 @@
   flex-wrap: wrap;
   margin: 0.75rem 0;
 }
+/* --fs-control is the 16px iOS focus-zoom floor for every form control
+   (design-system.test.ts enforces it); 0.9rem sat under it. */
 .filterLabel select {
   padding: 0.4rem 0.6rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  font-size: 0.9rem;
+  font-size: var(--fs-control);
 }
 .sortToggle {
   display: inline-flex;

@@ -11,16 +11,21 @@
   margin: 0;
 }
 
+/* Page title on the shared scale — this was a 1.6rem/-0.01em one-off, a full
+   step below every other page title in the app. Tokens, not magic numbers:
+   retune --fs-h1 if the scale itself needs to move. */
 .title {
   margin: 0 0 0.4rem;
-  font-size: 1.6rem;
-  letter-spacing: -0.01em;
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  letter-spacing: var(--ls-h1);
 }
 
 .subtitle {
   margin: 0;
   color: var(--color-muted);
-  font-size: 0.92rem;
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
 }
 
 .form {
@@ -67,12 +72,14 @@
 
 .docTitle {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
+  letter-spacing: var(--ls-h2);
 }
 
 .docSubtitle {
   margin: 0.2rem 0 0;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   color: var(--color-muted);
 }
 
@@ -91,7 +98,7 @@
 }
 
 .declaration {
-  font-size: 0.82rem;
+  font-size: var(--fs-caption);
   color: var(--color-muted);
   background: var(--color-off-white);
   border-radius: var(--radius);
@@ -125,7 +132,7 @@
 }
 
 .signatureContact {
-  font-size: 0.82rem;
+  font-size: var(--fs-caption);
   color: var(--color-muted);
 }
 
@@ -137,9 +144,14 @@
   margin-bottom: 0;
 }
 
+/* Deliberately the h4 step, not h3, even though these are <h3> elements: they
+   are dense sub-labels inside one report card, not page sections, and the
+   report's own title (.docTitle) already carries the h2 step above them. */
 .sectionTitle {
   margin: 0 0 0.5rem;
-  font-size: 0.95rem;
+  font-size: var(--fs-h4);
+  line-height: var(--lh-h3);
+  letter-spacing: var(--ls-h3);
   font-weight: 700;
   color: var(--color-amethyst-dark);
   border-left: 3px solid var(--color-amethyst);
@@ -150,7 +162,7 @@
   display: grid;
   grid-template-columns: minmax(140px, 200px) 1fr;
   gap: 0.35rem 1rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-body-sm);
 }
 
 .rowLabel {
@@ -164,7 +176,7 @@
 }
 
 .disclaimer {
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   color: var(--color-muted);
   margin-top: 1rem;
 }
