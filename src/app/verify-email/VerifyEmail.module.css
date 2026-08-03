@@ -5,14 +5,20 @@
   text-align: center;
 }
 
+/* Same page-title step as the sibling auth screens (LoginForm.module.css
+   .title) — this <h1> is the whole page's headline, not a section heading. */
 .title {
   margin: 0 0 0.5rem;
-  font-size: 1.5rem;
-  letter-spacing: -0.01em;
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  letter-spacing: var(--ls-h1);
 }
 
+/* Unlike LoginForm's .subtitle, this paragraph IS the page's content (there is
+   no form under it), so it sits at full body size rather than the small step. */
 .body {
   margin: 0 0 1.4rem;
   color: var(--color-muted);
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
 }
