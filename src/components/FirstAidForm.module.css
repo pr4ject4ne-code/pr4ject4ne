@@ -8,37 +8,65 @@
   flex-direction: column;
   gap: 0.25rem;
 }
+/* Same treatment as Input.module.css's .label — this form mixes <Input>/
+   <Dropdown> components with these hand-rolled fields, so the two must not
+   drift apart. */
 .field label {
-  font-size: 0.85rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
+  color: var(--color-ink);
 }
+/* --fs-control, not the old 0.92rem: below 16px, iOS Safari zooms the viewport
+   on focus. Border/radius/shadow match Input.module.css's .input so a textarea
+   and a text field read as the same control. */
 .field textarea {
   padding: 0.55rem 0.7rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
   font-family: inherit;
-  font-size: 0.92rem;
+  font-size: var(--fs-control);
+  line-height: var(--lh-body);
+  background: var(--color-white);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-sm);
   resize: vertical;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
-/* Topic-tag multi-select chips (authoring). */
+.field textarea:focus {
+  outline: none;
+  border-color: var(--color-amethyst);
+  box-shadow: 0 0 0 3px var(--color-amethyst-light);
+}
+
+/* Topic-tag multi-select chips (authoring) — the shared `.chip` mechanic, the
+   same pills the public catalog filter uses, so the two stay in sync. */
 .tagPicker {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
 }
 .tagChip {
-  border: 1px solid var(--color-border);
-  background: var(--color-white);
-  color: var(--color-ink);
-  border-radius: 999px;
-  padding: 0.3rem 0.7rem;
-  font-size: 0.82rem;
-  cursor: pointer;
+  composes: chip from '../styles/interactions.module.css';
 }
 .tagChipOn {
+  composes: tagChip;
+}
+/* Rescoped under `.tagPicker` (the real ancestor — see FirstAidForm.tsx)
+   rather than bare `.tagChipOn`: these override composed `.chip`'s own
+   base/hover rules, which live in a different chunk (interactions.module.css)
+   whose Next.js chunk-load order relative to this file varies by route, so an
+   equal-specificity override is a coin flip. */
+.tagPicker .tagChipOn {
   background: var(--color-amethyst);
-  color: var(--color-white);
   border-color: var(--color-amethyst);
+  color: var(--color-white);
+}
+.tagPicker .tagChipOn:hover {
+  background: var(--color-amethyst-dark);
+  border-color: var(--color-amethyst-dark);
+  color: var(--color-white);
 }
 
 /* Image picker (worklist #33) — a real upload control (file input + optional
@@ -54,7 +82,7 @@
 }
 .imageItem {
   position: relative;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-hairline);
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--color-white);
@@ -74,34 +102,56 @@
   height: 90px;
   padding: 0 0.4rem;
   text-align: center;
-  font-size: 0.75rem;
+  font-size: var(--fs-caption);
   color: var(--color-muted);
   background: var(--color-blue-light);
 }
-.imageItem button {
+/* Was a bare `.imageItem button` with cursor:pointer and no hover or press.
+   `composes:` is only legal on a bare local class, so this needed a real class
+   in the JSX; the overrides then sit under `.imageItem` for genuine ancestor
+   specificity over composed `.iconBtn`. */
+.removeImage {
+  composes: iconBtn from '../styles/interactions.module.css';
+}
+.imageItem .removeImage {
   position: absolute;
   top: 0.25rem;
   right: 0.25rem;
-  border: none;
-  background: rgba(15, 30, 70, 0.65);
-  color: var(--color-white);
-  border-radius: 999px;
+  padding: 0;
   width: 22px;
   height: 22px;
-  font-size: 0.75rem;
-  line-height: 1;
-  cursor: pointer;
+  border-radius: 999px;
+  font-size: var(--fs-micro);
+  background: rgba(15, 30, 70, 0.65);
+  color: var(--color-white);
+}
+/* Destructive action: hover goes red rather than `.iconBtn`'s amethyst tint,
+   which would also be near-invisible over a photo. */
+.imageItem .removeImage:hover:not(:disabled) {
+  background: var(--color-red);
+  color: var(--color-white);
 }
 .imageAddRow {
   display: grid;
   grid-template-columns: 1fr 1fr auto;
   gap: 0.5rem;
+  align-items: center;
 }
+/* --fs-control, not the old 0.9rem (iOS focus-zoom floor). */
 .imageAddRow input {
+  min-width: 0;
   padding: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  font-size: 0.9rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--fs-control);
+  background: var(--color-white);
+  color: var(--color-ink);
+}
+.imageAddRow input:focus {
+  outline: none;
+  border-color: var(--color-amethyst);
+  box-shadow: 0 0 0 3px var(--color-amethyst-light);
 }
 
 @media (max-width: 640px) {

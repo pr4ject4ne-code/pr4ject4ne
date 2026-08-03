@@ -3,13 +3,23 @@
   margin: 0 auto;
   padding: 1.25rem 1rem 2rem;
 }
+
+/* Composing .navLink gives the back link the shared chrome-link mechanic —
+   underline wipes in on hover, squash on press — instead of the bare
+   `text-decoration: underline` it had, which was the only feedback a touch
+   user never sees. It also supplies --fs-nav, replacing the hardcoded 0.9rem. */
 .back {
-  display: inline-block;
-  color: var(--color-blue-dark);
-  text-decoration: none;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
+  composes: navLink from '../../../styles/interactions.module.css';
+  /* .navLink's own 0.2rem side padding would otherwise indent the link past
+     the content column it sits above. */
+  margin: 0 0 1rem -0.2rem;
 }
-.back:hover {
-  text-decoration: underline;
+
+/* Rescoped under `.wrap` (the real ancestor — see FirstAidDetailClient.tsx)
+   rather than bare `.back`: this overrides composed `.navLink`'s own
+   `color: inherit`, which lives in a different chunk (interactions.module.css)
+   whose Next.js chunk-load order relative to this file varies by route. A bare
+   `.back` rule races it at equal specificity and can lose. */
+.wrap .back {
+  color: var(--color-blue-dark);
 }

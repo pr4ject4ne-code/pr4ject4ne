@@ -188,7 +188,7 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
                 key={tag}
                 type="button"
                 aria-pressed={on}
-                className={on ? `${styles.tagChip} ${styles.tagChipOn}` : styles.tagChip}
+                className={on ? styles.tagChipOn : styles.tagChip}
                 onClick={() => toggleTag(tag)}
               >
                 {tag}
@@ -208,7 +208,7 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
                 key={tag}
                 type="button"
                 aria-pressed={on}
-                className={on ? `${styles.tagChip} ${styles.tagChipOn}` : styles.tagChip}
+                className={on ? styles.tagChipOn : styles.tagChip}
                 onClick={() => toggleRegionTag(tag)}
               >
                 {tag}
@@ -228,7 +228,7 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
                 key={tag}
                 type="button"
                 aria-pressed={on}
-                className={on ? `${styles.tagChip} ${styles.tagChipOn}` : styles.tagChip}
+                className={on ? styles.tagChipOn : styles.tagChip}
                 onClick={() => toggleSystemTag(tag)}
               >
                 {tag}
@@ -260,7 +260,7 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
                 key={tag}
                 type="button"
                 aria-pressed={on}
-                className={on ? `${styles.tagChip} ${styles.tagChipOn}` : styles.tagChip}
+                className={on ? styles.tagChipOn : styles.tagChip}
                 onClick={() => toggleSignSymptom(tag)}
               >
                 {tag}
@@ -301,6 +301,7 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
                 )}
                 <button
                   type="button"
+                  className={styles.removeImage}
                   onClick={() => removeImage(i)}
                   aria-label={`Remove image ${i + 1}`}
                 >
