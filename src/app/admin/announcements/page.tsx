@@ -46,6 +46,7 @@ export default function AdminAnnouncementsPage() {
   const [editing, setEditing] = useState<AnnouncementSummary | null>(null);
   const [annLoading, setAnnLoading] = useState(false);
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     // default date range = last 365 days
     if (!allTime && !from && !to) {
@@ -55,6 +56,7 @@ export default function AdminAnnouncementsPage() {
       setTo(now.toISOString().slice(0, 10));
     }
   }, [allTime]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     async function loadLogs() {
