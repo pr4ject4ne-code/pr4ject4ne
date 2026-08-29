@@ -28,6 +28,7 @@ export interface FirstAidFormValues {
   indication: string;
   contraindications: string;
   images: string[];
+  media?: Array<{ id?: string; media_type: 'image' | 'video'; url: string; provider?: string }>;
   tags: string[];
   region_tags: string[];
   system_tags: string[];
@@ -67,6 +68,7 @@ function fromEntry(entry?: FirstAidEntry): FirstAidFormValues {
     indication: entry?.indication ?? '',
     contraindications: entry?.contraindications ?? '',
     images: entry?.images ?? [],
+    media: entry?.media ? entry.media.map((m) => ({ id: m.id, media_type: m.media_type, url: m.url, provider: m.provider })) : [],
     tags: entry?.tags ?? [],
     region_tags: entry?.region_tags ?? [],
     system_tags: entry?.system_tags ?? [],
@@ -80,9 +82,22 @@ interface FirstAidFormProps {
   error?: string | null;
 }
 
+function detectProvider(url: string): string | undefined {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (host.includes('youtube.com') || host.includes('youtu.be')) return 'youtube';
+    if (url.match(/\.mp4(\?|$)/i) || url.match(/\.webm(\?|$)/i) || url.match(/\.ogg(\?|$)/i)) return 'mp4';
+    return undefined;
+  } catch (e) {
+    return undefined;
+  }
+}
+
 export default function FirstAidForm({ entry, onSubmit, submitting, error }: FirstAidFormProps) {
   const [values, setValues] = useState<FirstAidFormValues>(() => fromEntry(entry));
   const [imageUrlInput, setImageUrlInput] = useState('');
+  const [videoUrlInput, setVideoUrlInput] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   // Raw <textarea>s, so they bypass Input.tsx's shared mobile-keyboard wiring
@@ -159,6 +174,27 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
     } finally {
       setUploading(false);
     }
+  }
+
+  function addMediaItem(item: { media_type: 'image' | 'video'; url: string; provider?: string }) {
+    setValues((prev) => ({ ...prev, media: [...(prev.media ?? []), { id: `local-${Date.now()}`, ...item }] }));
+  }
+
+  function removeMediaItem(index: number) {
+    setValues((prev) => ({ ...prev, media: (prev.media ?? []).filter((_, i) => i !== index) }));
+  }
+
+  function addVideoUrl() {
+    const url = videoUrlInput.trim();
+    if (!url) return;
+    const safe = safeHttpUrl(url);
+    if (!safe) {
+      setUploadError('Invalid or unsafe video URL');
+      return;
+    }
+    const provider = detectProvider(url);
+    addMediaItem({ media_type: 'video', url: safe, provider: provider ?? undefined });
+    setVideoUrlInput('');
   }
 
   async function submit(e: React.FormEvent) {
@@ -346,6 +382,41 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
           </div>
         )}
         <ErrorBubble variant="banner" message={uploadError} />
+      </div>
+
+      {/* New: Media (videos) */}
+      <div className={styles.field}>
+        <label>Media (videos)</label>
+        {(values.media ?? []).length > 0 && (
+          <ul className={styles.mediaList}>
+            {(values.media ?? []).map((m, i) => (
+              <li key={(m.id ?? '') + i} className={styles.mediaItem}>
+                <div className={styles.mediaRow}>
+                  <a href={m.url} target="_blank" rel="noreferrer" className={styles.mediaLink}>
+                    {m.provider ? `${m.provider} — ` : ''}
+                    {m.url}
+                  </a>
+                  <button type="button" onClick={() => removeMediaItem(i)} aria-label={`Remove media ${i + 1}`}>
+                    ✕
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className={styles.mediaAddRow}>
+          <input
+            type="url"
+            placeholder="Paste a video URL (YouTube or mp4)"
+            value={videoUrlInput}
+            onChange={(e) => setVideoUrlInput(e.target.value)}
+            aria-label="Video URL"
+          />
+          <Button type="button" variant="ghost" onClick={addVideoUrl} disabled={!videoUrlInput.trim()}>
+            Add video
+          </Button>
+        </div>
+        <p className={styles.fieldNote}>Videos must be a safe HTTP(S) URL. YouTube and direct MP4 links are supported.</p>
       </div>
 
       <ErrorBubble variant="banner" message={error} />
