@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Card from './Card';
 import { safeHttpUrl } from '@/lib/sanitize';
-import type { FirstAidEntry } from '@/types';
+import type { FirstAidEntry } from '@/types/first-aid';
 import styles from './FirstAidDetail.module.css';
 
 /**
@@ -42,7 +42,7 @@ function FieldList({ entry, fields }: { entry: FirstAidEntry; fields: Array<[key
   return (
     <dl className={styles.sections}>
       {present.map(([key, label]) => (
-        <div key={key} className={styles.section}>
+        <div key={String(key)} className={styles.section}>
           <dt>{label}</dt>
           <dd>{entry[key] as string}</dd>
         </div>
@@ -75,12 +75,42 @@ function Group({
   );
 }
 
+function extractYoutubeId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (host.includes('youtu.be')) return u.pathname.slice(1);
+    if (host.includes('youtube.com')) {
+      const v = u.searchParams.get('v');
+      if (v) return v;
+      // sometimes /embed/ID
+      const parts = u.pathname.split('/');
+      const idx = parts.indexOf('embed');
+      if (idx >= 0 && parts.length > idx + 1) return parts[idx + 1];
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
 export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
   const [active, setActive] = useState(0);
   // Defense in depth: even though URLs are scheme-validated on write, guard the
   // src sink at render so a stale bad value can never produce a javascript: URL.
-  const images = (entry.images ?? []).map((src) => safeHttpUrl(src)).filter((src): src is string => Boolean(src));
+  const imageUrls = (entry.images ?? []).map((src) => safeHttpUrl(src)).filter((src): src is string => Boolean(src));
+  const media = (entry.media ?? [])
+    .map((m) => ({ ...m, safeUrl: safeHttpUrl(m.url) }))
+    .filter((m) => m.safeUrl) as Array<{ id?: string; media_type: 'image' | 'video'; url: string; provider?: string; safeUrl: string }>;
+
+  // Combine images (legacy) and media images into a single gallery array for the
+  // classic image gallery behavior. Video items are rendered above the gallery.
+  const imagesFromMedia = media.filter((m) => m.media_type === 'image').map((m) => m.safeUrl);
+  const images = [...imageUrls, ...imagesFromMedia];
   const hasImages = images.length > 0;
+
+  const videoItems = media.filter((m) => m.media_type === 'video');
+
   const activeIndex = Math.min(active, images.length - 1);
   const signsSymptoms = entry.signs_symptoms ?? [];
 
@@ -88,6 +118,7 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
     <Card variant="plain" as="article" className={styles.detail}>
       <span className={styles.category}>{entry.category}</span>
       <h1 className={styles.title}>{entry.title}</h1>
+
       {entry.tags?.length > 0 && (
         <div className={styles.tags}>
           {entry.tags.map((t) => (
@@ -97,6 +128,7 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
           ))}
         </div>
       )}
+
       {entry.region_tags?.length > 0 && (
         <div className={styles.tags} aria-label="Region">
           {entry.region_tags.map((t) => (
@@ -106,6 +138,7 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
           ))}
         </div>
       )}
+
       {entry.system_tags?.length > 0 && (
         <div className={styles.tags} aria-label="System">
           {entry.system_tags.map((t) => (
@@ -113,6 +146,41 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
               {t}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Render videos first (if any) */}
+      {videoItems.length > 0 && (
+        <div className={styles.videoStack}>
+          {videoItems.map((v, i) => {
+            // v.safeUrl is guaranteed by filter above
+            const url = v.safeUrl;
+            const yt = extractYoutubeId(url);
+            if (yt) {
+              const embed = `https://www.youtube-nocookie.com/embed/${yt}?rel=0&modestbranding=1`;
+              return (
+                <div key={v.id ?? `video-${i}`} className={styles.videoWrap}>
+                  <iframe
+                    title={`${entry.title} — video ${i + 1}`}
+                    src={embed}
+                    loading="lazy"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    referrerPolicy="no-referrer"
+                    sandbox="allow-scripts allow-same-origin allow-presentation"
+                    className={styles.videoIframe}
+                  />
+                </div>
+              );
+            }
+
+            // Otherwise treat as a direct video file (mp4/webm/ogg)
+            return (
+              <div key={v.id ?? `video-${i}`} className={styles.videoWrap}>
+                <video controls src={url} className={styles.videoPlayer} />
+              </div>
+            );
+          })}
         </div>
       )}
 

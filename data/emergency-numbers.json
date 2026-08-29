@@ -1,0 +1,22 @@
+[
+  { "country_code": "US", "country_name": "United States", "emergency_number": "911", "notes": "General emergency (police/fire/medical)" },
+  { "country_code": "CA", "country_name": "Canada", "emergency_number": "911", "notes": "General emergency (police/fire/medical)" },
+  { "country_code": "GB", "country_name": "United Kingdom", "emergency_number": "999", "notes": "Also accepts 112 on many devices/networks" },
+  { "country_code": "DE", "country_name": "Germany", "emergency_number": "112", "notes": "General emergency; police also reachable at 110" },
+  { "country_code": "FR", "country_name": "France", "emergency_number": "112", "notes": "112 is EU-wide emergency number (also country-specific numbers exist)" },
+  { "country_code": "ES", "country_name": "Spain", "emergency_number": "112", "notes": "EU emergency number" },
+  { "country_code": "IT", "country_name": "Italy", "emergency_number": "112", "notes": "EU emergency number" },
+  { "country_code": "AU", "country_name": "Australia", "emergency_number": "000", "notes": "General emergency (police/fire/ambulance)" },
+  { "country_code": "NZ", "country_name": "New Zealand", "emergency_number": "111", "notes": "General emergency" },
+  { "country_code": "IN", "country_name": "India", "emergency_number": "112", "notes": "National emergency helpline (covers police/fire/ambulance in many regions)" },
+  { "country_code": "JP", "country_name": "Japan", "emergency_number": "119", "notes": "Fire and ambulance; police is 110" },
+  { "country_code": "CN", "country_name": "China", "emergency_number": "110", "notes": "Police (ambulance/fire have separate numbers in some areas)" },
+  { "country_code": "BR", "country_name": "Brazil", "emergency_number": "190", "notes": "Police; medical emergencies may use 192 depending on region" },
+  { "country_code": "MX", "country_name": "Mexico", "emergency_number": "911", "notes": "General emergency" },
+  { "country_code": "ZA", "country_name": "South Africa", "emergency_number": "112", "notes": "112 is supported on mobile networks; verify local services for landlines" },
+  { "country_code": "RU", "country_name": "Russia", "emergency_number": "112", "notes": "General emergency" },
+  { "country_code": "NL", "country_name": "Netherlands", "emergency_number": "112", "notes": "EU emergency number" },
+  { "country_code": "SE", "country_name": "Sweden", "emergency_number": "112", "notes": "EU emergency number" },
+  { "country_code": "TR", "country_name": "Turkey", "emergency_number": "112", "notes": "General emergency" },
+  { "country_code": "EG", "country_name": "Egypt", "emergency_number": "122", "notes": "Ambulance; other services use different numbers" }
+]

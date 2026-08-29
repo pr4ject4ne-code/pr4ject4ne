@@ -19,7 +19,8 @@
     "db:reset-admin-totp": "tsx scripts/reset-admin-totp.ts",
     "db:backfill-region-system-tags": "tsx scripts/backfill-first-aid-region-system-tags.ts",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
+    "check:env": "node scripts/check-prod-env.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
