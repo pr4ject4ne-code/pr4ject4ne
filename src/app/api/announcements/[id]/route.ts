@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAnnouncement, updateAnnouncement, deleteAnnouncement } from '@/lib/announcements';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: any) {
   try {
     const { id } = params;
     const row = await getAnnouncement(id);
@@ -12,7 +12,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: any) {
   try {
     const { id } = params;
     const body = await req.json();
@@ -37,7 +37,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: any) {
   try {
     const { id } = params;
     await deleteAnnouncement(id);
