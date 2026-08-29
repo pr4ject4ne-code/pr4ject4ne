@@ -1,11 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Logo from './Logo';
 import SearchBar from './SearchBar';
 import { useSession } from '@/lib/useSession';
 import styles from './Header.module.css';
+
+interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  start_at: string;
+  end_at: string;
+  created_at?: string;
+}
 
 interface HeaderProps {
   /** Hospital-profile header shows the hospital logo/name and scopes search. */
@@ -28,13 +37,34 @@ export default function Header({
   showSearch,
 }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  // Keeps the dropdown mounted for the brief exit animation instead of
-  // vanishing instantly on close (menuOpen alone still drives aria-expanded
-  // + the actual open/close logic; this only controls animation lifecycle).
   const [menuClosing, setMenuClosing] = useState(false);
   const { user } = useSession();
 
+  const [headlines, setHeadlines] = useState<Announcement[]>([]);
+  const [headlineError, setHeadlineError] = useState<string | null>(null);
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+
   const profileHref = user ? '/dashboard' : '/login';
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        const res = await fetch('/api/announcements/headlines');
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        const data = await res.json();
+        if (mounted && Array.isArray(data)) setHeadlines(data);
+      } catch (err) {
+        if (mounted) setHeadlineError(err instanceof Error ? err.message : String(err));
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   function toggleMenu() {
     setMenuOpen((prev) => {
@@ -47,6 +77,17 @@ export default function Header({
   function closeMenu() {
     setMenuOpen(false);
     setMenuClosing(true);
+  }
+
+  function openOverlay(idx = 0) {
+    setActiveIndex(idx);
+    setOverlayOpen(true);
+    // focus the overlay for accessibility
+    setTimeout(() => overlayRef.current?.focus(), 0);
+  }
+
+  function closeOverlay() {
+    setOverlayOpen(false);
   }
 
   return (
@@ -67,6 +108,37 @@ export default function Header({
             <span className={styles.hospitalName}>{hospitalName}</span>
           </span>
         )}
+
+        {/* Headlines — show a single inline pill or a slim tab row when multiple */}
+        {headlines.length > 0 && (
+          <div className={styles.headlines} aria-hidden={overlayOpen}>
+            {headlines.length === 1 ? (
+              <button
+                type="button"
+                className={styles.headlineSingle}
+                onClick={() => openOverlay(0)}
+                aria-label={`Announcement: ${headlines[0].title}`}
+              >
+                {headlines[0].title}
+              </button>
+            ) : (
+              <div className={styles.headlineTabs} role="tablist" aria-label="Announcements">
+                {headlines.map((h, i) => (
+                  <button
+                    key={h.id}
+                    role="tab"
+                    aria-selected={i === activeIndex}
+                    className={i === activeIndex ? styles.headlineTabActive : styles.headlineTab}
+                    onClick={() => openOverlay(i)}
+                  >
+                    {h.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {headlineError && <div className={styles.headlineError}>Announcements unavailable</div>}
       </div>
 
       {(onHospitalSearch || showSearch) && (
@@ -124,6 +196,36 @@ export default function Header({
           </nav>
         )}
       </div>
+
+      {/* Announcement overlay (chronological view) */}
+      {overlayOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className={styles.headlineOverlay}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeOverlay();
+          }}
+        >
+          <div className={styles.headlineOverlayPanel} ref={overlayRef} tabIndex={-1}>
+            <button className={styles.overlayClose} aria-label="Close announcements" onClick={closeOverlay}>
+              ✕
+            </button>
+            <h2 className={styles.overlayTitle}>Announcements</h2>
+            <div className={styles.overlayList}>
+              {headlines.map((h, i) => (
+                <article key={h.id} className={styles.overlayItem} aria-hidden={i !== activeIndex}>
+                  <h3 className={styles.overlayItemTitle}>{h.title}</h3>
+                  <time className={styles.overlayItemTime} dateTime={h.start_at}>
+                    {new Date(h.start_at).toLocaleString()}
+                  </time>
+                  <div className={styles.overlayItemBody}>{h.body}</div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
