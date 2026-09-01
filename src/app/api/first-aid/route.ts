@@ -63,6 +63,7 @@ export async function POST(req: Request) {
         system_tags,
       ]);
       const row = res.rows[0];
+      if (!row) throw new Error('Failed to insert first aid entry');
       const faId = row.id as string;
 
       for (const m of sanitizedMedia) {
