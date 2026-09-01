@@ -184,7 +184,9 @@ export default function AdminAnnouncementsPage() {
     setPage(1);
   }
 
-  if (!user || !user.isAdmin) {
+  const isPrimary = user?.account_type === 'developer' && user?.access_level === 'primary';
+
+  if (!user || !isPrimary) {
     return <div className={styles.container}>Access denied — admin only.</div>;
   }
 
