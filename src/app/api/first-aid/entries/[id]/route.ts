@@ -72,6 +72,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const imgs = body.images.map((u) => safeHttpUrl(u)).filter((u): u is string => Boolean(u)).slice(0, 10);
     push('images', JSON.stringify(imgs), '::jsonb');
   }
+  if (Array.isArray(body.media)) {
+    const items = body.media
+      .filter((m): m is Record<string, unknown> => typeof m === 'object' && m !== null)
+      .map((m) => {
+        const url = safeHttpUrl(m.url);
+        const media_type = m.media_type === 'video' ? 'video' : m.media_type === 'image' ? 'image' : null;
+        if (!url || !media_type) return null;
+        const provider = typeof m.provider === 'string' ? sanitizeText(m.provider, 50) : undefined;
+        return { id: typeof m.id === 'string' ? m.id : undefined, media_type, url, provider };
+      })
+      .filter(
+        (m): m is { id: string | undefined; media_type: 'image' | 'video'; url: string; provider: string | null | undefined } =>
+          m !== null,
+      )
+      .slice(0, 10);
+    push('media', JSON.stringify(items), '::jsonb');
+  }
   if (Array.isArray(body.tags)) {
     push('tags', normalizeTags(body.tags));
   }
