@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Card from './Card';
 import { safeHttpUrl } from '@/lib/sanitize';
-import type { FirstAidEntry } from '@/types/first-aid';
+import type { FirstAidEntry } from '@/types';
 import styles from './FirstAidDetail.module.css';
 
 /**
@@ -122,7 +122,7 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
       <span className={styles.category}>{entry.category}</span>
       <h1 className={styles.title}>{entry.title}</h1>
 
-      {entry.tags?.length > 0 && (
+      {entry.tags.length > 0 && (
         <div className={styles.tags}>
           {entry.tags.map((t) => (
             <span key={t} className={styles.tag}>
@@ -132,7 +132,7 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
         </div>
       )}
 
-      {entry.region_tags?.length > 0 && (
+      {entry.region_tags.length > 0 && (
         <div className={styles.tags} aria-label="Region">
           {entry.region_tags.map((t) => (
             <span key={t} className={styles.tag}>
@@ -142,7 +142,7 @@ export default function FirstAidDetail({ entry }: { entry: FirstAidEntry }) {
         </div>
       )}
 
-      {entry.system_tags?.length > 0 && (
+      {entry.system_tags.length > 0 && (
         <div className={styles.tags} aria-label="System">
           {entry.system_tags.map((t) => (
             <span key={t} className={styles.tag}>
