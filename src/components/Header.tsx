@@ -81,6 +81,9 @@ export default function Header({
 
   // Compute visible headlines by filtering dismissed ids
   const visibleHeadlines = headlines.filter((h) => !dismissed.has(h.id));
+  // Hoisted so the single-headline branch below doesn't need to re-index
+  // visibleHeadlines[0] (noUncheckedIndexedAccess makes that `Headline | undefined`).
+  const singleHeadline = visibleHeadlines.length === 1 ? visibleHeadlines[0] : undefined;
 
   function persistDismissed(set: Set<string>) {
     try {
@@ -168,17 +171,17 @@ export default function Header({
         {/* Headlines — show a single inline pill or a slim tab row when multiple */}
         {visibleHeadlines.length > 0 && (
           <div className={styles.headlines} aria-hidden={overlayOpen}>
-            {visibleHeadlines.length === 1 ? (
+            {singleHeadline ? (
               <div className={styles.headlineSingleWrap}>
                 <button
                   type="button"
                   className={styles.headlineSingle}
                   onClick={() => openOverlay(0)}
-                  aria-label={`Announcement: ${visibleHeadlines[0].title}`}
+                  aria-label={`Announcement: ${singleHeadline.title}`}
                 >
-                  {visibleHeadlines[0].title}
+                  {singleHeadline.title}
                 </button>
-                <button type="button" className={styles.headlineDismiss} onClick={() => dismissAnnouncement(visibleHeadlines[0].id)} aria-label="Dismiss announcement">
+                <button type="button" className={styles.headlineDismiss} onClick={() => dismissAnnouncement(singleHeadline.id)} aria-label="Dismiss announcement">
                   ×
                 </button>
               </div>
