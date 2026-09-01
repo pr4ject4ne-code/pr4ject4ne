@@ -52,6 +52,25 @@ export async function POST(req: Request) {
   const images = Array.isArray(body.images)
     ? body.images.map((u) => safeHttpUrl(u)).filter((u): u is string => Boolean(u)).slice(0, 10)
     : [];
+  // Media items (YouTube embeds / native video, plus additional images) — same
+  // shape/validation as the PATCH route. Scheme-checked for the same reason as
+  // `images` above.
+  const media = Array.isArray(body.media)
+    ? body.media
+        .filter((m): m is Record<string, unknown> => typeof m === 'object' && m !== null)
+        .map((m) => {
+          const url = safeHttpUrl(m.url);
+          const media_type = m.media_type === 'video' ? 'video' : m.media_type === 'image' ? 'image' : null;
+          if (!url || !media_type) return null;
+          const provider = typeof m.provider === 'string' ? sanitizeText(m.provider, 50) : undefined;
+          return { id: typeof m.id === 'string' ? m.id : undefined, media_type, url, provider };
+        })
+        .filter(
+          (m): m is { id: string | undefined; media_type: 'image' | 'video'; url: string; provider: string | null | undefined } =>
+            m !== null,
+        )
+        .slice(0, 10)
+    : [];
   const tags = normalizeTags(body.tags);
   // Same whitelist/normalizer as `tags` — see migration 011 for why this is a
   // distinct column rather than reusing `tags`.
@@ -65,8 +84,8 @@ export async function POST(req: Request) {
     `INSERT INTO first_aid_entries
        (category, title, definition, description, process, dos, donts,
         things_to_look_out_for, implications, indication, contraindications,
-        images, tags, signs_symptoms, region_tags, system_tags, created_by_dev_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14,$15,$16,$17)
+        images, media, tags, signs_symptoms, region_tags, system_tags, created_by_dev_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::jsonb,$14,$15,$16,$17,$18)
      RETURNING id`,
     [
       category,
@@ -81,6 +100,7 @@ export async function POST(req: Request) {
       values.indication,
       values.contraindications,
       JSON.stringify(images),
+      JSON.stringify(media),
       tags,
       signsSymptoms,
       regionTags,
