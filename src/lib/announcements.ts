@@ -59,6 +59,7 @@ export async function createAnnouncement(payload: {
     `;
     const res = await tx.query<Announcement>(insertSql, [title, body, start_at, end_at, recurrence_rule]);
     const row = res.rows[0];
+    if (!row) throw new Error('Announcement insert returned no row.');
 
     // record audit
     await tx.query(
