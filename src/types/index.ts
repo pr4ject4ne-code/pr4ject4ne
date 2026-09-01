@@ -284,6 +284,10 @@ export interface FirstAidEntry {
   indication: string | null;
   contraindications: string | null;
   images: string[];
+  /** YouTube/native-video embeds plus additional images, alongside the legacy
+   * `images` list — see migration 027. `FirstAidDetail` merges both into one
+   * gallery. */
+  media: Array<{ id?: string; media_type: 'image' | 'video'; url: string; provider?: string }>;
   tags: string[];
   /** Signs/symptoms indicating this entry applies — displayed BEFORE process
    * (worklist #34). Same closed whitelist as `tags` (first-aid-tags.ts) but a
