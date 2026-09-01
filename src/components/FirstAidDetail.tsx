@@ -86,7 +86,10 @@ function extractYoutubeId(url: string): string | null {
       // sometimes /embed/ID
       const parts = u.pathname.split('/');
       const idx = parts.indexOf('embed');
-      if (idx >= 0 && parts.length > idx + 1) return parts[idx + 1];
+      if (idx >= 0 && parts.length > idx + 1) {
+        const id = parts[idx + 1];
+        return id ?? null;
+      }
     }
     return null;
   } catch (e) {
