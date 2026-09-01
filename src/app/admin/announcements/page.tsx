@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from '@/lib/useSession';
-import AnnouncementForm from '@/components/AnnouncementForm';
+import AnnouncementForm, { AnnouncementFormValues } from '@/components/AnnouncementForm';
 import styles from './admin.module.css';
 
 interface LogRow {
@@ -45,6 +45,7 @@ export default function AdminAnnouncementsPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<AnnouncementSummary | null>(null);
   const [annLoading, setAnnLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
@@ -176,12 +177,30 @@ export default function AdminAnnouncementsPage() {
     setEditing(null);
   }
 
-  async function handleSaved(row: any) {
-    // refresh announcements and logs
-    await loadAnnouncements();
-    setEditorOpen(false);
-    setEditing(null);
-    setPage(1);
+  async function handleSubmit(values: AnnouncementFormValues) {
+    setSubmitting(true);
+    try {
+      const url = editing ? `/api/announcements/${editing.id}` : '/api/announcements';
+      const method = editing ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || `status ${res.status}`);
+      }
+      // refresh announcements and logs
+      await loadAnnouncements();
+      setEditorOpen(false);
+      setEditing(null);
+      setPage(1);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const isPrimary = user?.account_type === 'developer' && user?.access_level === 'primary';
@@ -228,9 +247,9 @@ export default function AdminAnnouncementsPage() {
         {editorOpen && (
           <div className={styles.editorPanel}>
             <AnnouncementForm
-              existing={editing ? { id: editing.id, title: editing.title, body: '', start_at: editing.start_at, end_at: editing.end_at } : undefined}
-              onSaved={handleSaved}
-              onCancel={closeEditor}
+              initial={editing ? { title: editing.title, body: '', color: 'green', event_date: '', is_bar: false } : undefined}
+              onSubmit={handleSubmit}
+              submitting={submitting}
             />
           </div>
         )}
