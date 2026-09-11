@@ -70,6 +70,41 @@ describe('GET /api/biodata/me', () => {
     expect(json.biodata_layer.clinical_conditions).toHaveLength(1);
     expect(json.sharing_prefs).toMatchObject({ blood_group: false, genotype: false });
   });
+
+  it('includes doctor_consent_statuses (item 4), keyed by clinical_condition_id, using the same per-field lookup the report generator uses', async () => {
+    mockGetPatientSession.mockResolvedValue({ user_id: USER, account_type: 'patient' });
+    const DOCTOR_ID = '22222222-2222-4222-8222-222222222222';
+    mockQueryOne.mockResolvedValue({
+      user_id: USER,
+      ihn_code: 'IHN-ABCD-EFGH-JKMN',
+      profile_layer: {},
+      biodata_layer: {
+        clinical_conditions: [
+          { id: 'cond-1', condition: 'Hypertension', doctor_id: DOCTOR_ID },
+          { id: 'cond-2', condition: 'Common cold' }, // no doctor_id -> not in the map at all
+        ],
+      },
+      sharing_prefs: {},
+      last_modified_at: '',
+    });
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: DOCTOR_ID,
+          name: 'Dr. Itest',
+          contact_phone: null,
+          contact_email: null,
+          condition_id: 'cond-1',
+          consent_status: 'approved',
+          denial_reason: null,
+        },
+      ],
+    });
+    const res = await GET(new Request('http://localhost/api/biodata/me'));
+    const json = await res.json();
+    expect(json.doctor_consent_statuses).toEqual({ 'cond-1': 'approved' });
+    expect(json.doctor_consent_statuses['cond-2']).toBeUndefined();
+  });
 });
 
 describe('PATCH /api/biodata/me', () => {

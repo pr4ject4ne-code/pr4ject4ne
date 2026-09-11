@@ -1,5 +1,7 @@
 /**
- * Tests for POST /api/hospitals/[id]/departments/[departmentId]/ratings.
+ * Tests for POST /api/hospitals/[id]/departments/[departmentId]/ratings —
+ * item 8's 3-axis (staff/service/infrastructure) in-depth rating + optional
+ * review, replacing the old single `score` body.
  */
 import { POST } from '@/app/api/hospitals/[id]/departments/[departmentId]/ratings/route';
 
@@ -31,6 +33,7 @@ jest.mock('@/lib/department-ratings', () => ({
 const HOSP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const DEPT_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const USER_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const FULL_BODY = { staff_score: 4, service_score: 5, infrastructure_score: 3 };
 
 function session(userId: string | null) {
   mockGetPatientSession.mockResolvedValue(userId ? { user_id: userId, account_type: 'patient' } : null);
@@ -58,38 +61,43 @@ beforeEach(() => {
 
 describe('POST /api/hospitals/[id]/departments/[departmentId]/ratings', () => {
   it('400 for a malformed hospital or department id, before touching a session', async () => {
-    const res = await call({ score: 4 }, 'not-a-uuid', DEPT_ID);
+    const res = await call(FULL_BODY, 'not-a-uuid', DEPT_ID);
     expect(res.status).toBe(400);
     expect(mockGetPatientSession).not.toHaveBeenCalled();
   });
 
   it('401 without a session', async () => {
     session(null);
-    const res = await call({ score: 4 });
+    const res = await call(FULL_BODY);
     expect(res.status).toBe(401);
   });
 
-  it('400 for a non-integer score', async () => {
+  it.each(['staff_score', 'service_score', 'infrastructure_score'])(
+    '400 when %s is a non-integer',
+    async (field) => {
+      session(USER_ID);
+      const res = await call({ ...FULL_BODY, [field]: 4.5 });
+      expect(res.status).toBe(400);
+    },
+  );
+
+  it.each(['staff_score', 'service_score', 'infrastructure_score'])('400 when %s is below 1', async (field) => {
     session(USER_ID);
-    const res = await call({ score: 4.5 });
+    const res = await call({ ...FULL_BODY, [field]: 0 });
     expect(res.status).toBe(400);
   });
 
-  it('400 for a score below 1', async () => {
+  it.each(['staff_score', 'service_score', 'infrastructure_score'])('400 when %s is above 5', async (field) => {
     session(USER_ID);
-    const res = await call({ score: 0 });
+    const res = await call({ ...FULL_BODY, [field]: 6 });
     expect(res.status).toBe(400);
   });
 
-  it('400 for a score above 5', async () => {
+  it.each(['staff_score', 'service_score', 'infrastructure_score'])('400 when %s is missing', async (field) => {
     session(USER_ID);
-    const res = await call({ score: 6 });
-    expect(res.status).toBe(400);
-  });
-
-  it('400 for a missing score', async () => {
-    session(USER_ID);
-    const res = await call({});
+    const body = { ...FULL_BODY };
+    delete (body as Record<string, unknown>)[field];
+    const res = await call(body);
     expect(res.status).toBe(400);
   });
 
@@ -97,7 +105,7 @@ describe('POST /api/hospitals/[id]/departments/[departmentId]/ratings', () => {
     session(USER_ID);
     mockCheckUserRateLimit.mockResolvedValue(false);
     mockCheckHospitalRateLimit.mockResolvedValue(true);
-    const res = await call({ score: 4 });
+    const res = await call(FULL_BODY);
     expect(res.status).toBe(429);
     expect(mockLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'rate_limited', resourceType: 'department' }),
@@ -109,7 +117,7 @@ describe('POST /api/hospitals/[id]/departments/[departmentId]/ratings', () => {
     session(USER_ID);
     mockCheckUserRateLimit.mockResolvedValue(true);
     mockCheckHospitalRateLimit.mockResolvedValue(false);
-    const res = await call({ score: 4 });
+    const res = await call(FULL_BODY);
     expect(res.status).toBe(429);
     expect(mockSubmitDepartmentRating).not.toHaveBeenCalled();
   });
@@ -117,14 +125,14 @@ describe('POST /api/hospitals/[id]/departments/[departmentId]/ratings', () => {
   it('404 when the department does not belong to the hospital (or the hospital is not approved)', async () => {
     session(USER_ID);
     mockSubmitDepartmentRating.mockResolvedValue(null);
-    const res = await call({ score: 4 });
+    const res = await call(FULL_BODY);
     expect(res.status).toBe(404);
     expect(mockLogAudit).not.toHaveBeenCalledWith(
       expect.objectContaining({ action: 'department_rating_submitted' }),
     );
   });
 
-  it('200 happy path — submits the rating and returns the aggregate shape', async () => {
+  it('200 happy path — submits all three axes + review and returns the aggregate shape', async () => {
     session(USER_ID);
     mockSubmitDepartmentRating.mockResolvedValue({
       department_avg: 4.5,
@@ -133,7 +141,7 @@ describe('POST /api/hospitals/[id]/departments/[departmentId]/ratings', () => {
       hospital_rating_count: 10,
     });
 
-    const res = await call({ score: 5 });
+    const res = await call({ ...FULL_BODY, review: 'Great department' });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toEqual({
@@ -142,16 +150,21 @@ describe('POST /api/hospitals/[id]/departments/[departmentId]/ratings', () => {
       department_count: 2,
       hospital_rating_avg: 4.2,
       hospital_rating_count: 10,
-      your_score: 5,
+      your_scores: { staff_score: 4, service_score: 5, infrastructure_score: 3 },
     });
-    expect(mockSubmitDepartmentRating).toHaveBeenCalledWith(HOSP_ID, DEPT_ID, USER_ID, 5);
+    expect(mockSubmitDepartmentRating).toHaveBeenCalledWith(HOSP_ID, DEPT_ID, USER_ID, {
+      staffScore: 4,
+      serviceScore: 5,
+      infrastructureScore: 3,
+      review: 'Great department',
+    });
     expect(mockLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: USER_ID,
         action: 'department_rating_submitted',
         resourceType: 'department',
         resourceId: DEPT_ID,
-        details: { hospital_id: HOSP_ID, score: 5 },
+        details: { hospital_id: HOSP_ID, staff_score: 4, service_score: 5, infrastructure_score: 3 },
       }),
     );
   });
@@ -165,7 +178,7 @@ describe('POST /api/hospitals/[id]/departments/[departmentId]/ratings', () => {
       hospital_rating_count: 1,
     });
 
-    const first = await call({ score: 4 });
+    const first = await call(FULL_BODY);
     expect(first.status).toBe(200);
 
     mockSubmitDepartmentRating.mockResolvedValue({
@@ -174,13 +187,10 @@ describe('POST /api/hospitals/[id]/departments/[departmentId]/ratings', () => {
       hospital_rating_avg: 2,
       hospital_rating_count: 1,
     });
-    const second = await call({ score: 2 });
+    const second = await call({ staff_score: 2, service_score: 2, infrastructure_score: 2 });
     expect(second.status).toBe(200);
     const secondJson = await second.json();
     expect(secondJson.department_count).toBe(1); // updated, not duplicated
-    expect(secondJson.your_score).toBe(2);
-
-    expect(mockSubmitDepartmentRating).toHaveBeenNthCalledWith(1, HOSP_ID, DEPT_ID, USER_ID, 4);
-    expect(mockSubmitDepartmentRating).toHaveBeenNthCalledWith(2, HOSP_ID, DEPT_ID, USER_ID, 2);
+    expect(secondJson.your_scores).toEqual({ staff_score: 2, service_score: 2, infrastructure_score: 2 });
   });
 });

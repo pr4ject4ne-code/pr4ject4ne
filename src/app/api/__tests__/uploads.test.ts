@@ -16,9 +16,12 @@ jest.mock('@/lib/hospital-auth', () => ({
 jest.mock('@/lib/auth', () => ({ checkRateLimit: (...a: unknown[]) => mockCheckRateLimit(...a) }));
 jest.mock('@/lib/storage', () => ({
   isStorageConfigured: (...a: unknown[]) => mockIsConfigured(...a),
-  uploadImage: (...a: unknown[]) => mockUploadImage(...a),
-  extensionForType: (t: string) => (t === 'image/gif' ? null : t === 'image/png' ? 'png' : null),
-  MAX_UPLOAD_BYTES: 5 * 1024 * 1024,
+  uploadMedia: (...a: unknown[]) => mockUploadImage(...a),
+  extensionForType: (ct: string) =>
+    ({ 'image/png': 'png', 'video/mp4': 'mp4' }[ct] ?? null),
+  isVideoType: (ct: string) => ct.startsWith('video/'),
+  MAX_IMAGE_UPLOAD_BYTES: 5 * 1024 * 1024,
+  MAX_VIDEO_UPLOAD_BYTES: 100 * 1024 * 1024,
 }));
 jest.mock('@/lib/audit', () => ({
   logAudit: jest.fn().mockResolvedValue(undefined),
@@ -66,10 +69,25 @@ it('415 for an unsupported type', async () => {
   expect(res.status).toBe(415);
 });
 
-it('413 for a file over the size cap', async () => {
+it('413 for an image over the image size cap', async () => {
   mockGetDevUser.mockResolvedValue({ id: 'dev1' });
   const big = png(5 * 1024 * 1024 + 1);
   const res = await POST(fileReq(big));
+  expect(res.status).toBe(413);
+});
+
+it('accepts a video within the (larger) video size cap', async () => {
+  mockGetDevUser.mockResolvedValue({ id: 'dev1' });
+  const video = new File([new Uint8Array(6 * 1024 * 1024)], 'v.mp4', { type: 'video/mp4' });
+  mockUploadImage.mockResolvedValue({ url: 'https://x.supabase.co/storage/v1/object/public/media/first-aid/a.mp4' });
+  const res = await POST(fileReq(video));
+  expect(res.status).toBe(201);
+});
+
+it('413 for a video over the video size cap', async () => {
+  mockGetDevUser.mockResolvedValue({ id: 'dev1' });
+  const bigVideo = new File([new Uint8Array(100 * 1024 * 1024 + 1)], 'v.mp4', { type: 'video/mp4' });
+  const res = await POST(fileReq(bigVideo));
   expect(res.status).toBe(413);
 });
 

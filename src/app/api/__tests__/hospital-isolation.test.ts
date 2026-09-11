@@ -12,7 +12,7 @@ import { logAudit } from '@/lib/audit';
 
 const mockGetSession = jest.fn();
 const mockFindUserById = jest.fn();
-const mockQuery = jest.fn().mockResolvedValue({ rows: [{ id: 'x' }], rowCount: 1 });
+const mockQuery = jest.fn().mockResolvedValue({ rows: [{ id: 'x', status: 'approved' }], rowCount: 1 });
 const mockQueryOne = jest.fn().mockResolvedValue({ id: 'x' });
 
 jest.mock('next/headers', () => ({
@@ -95,11 +95,20 @@ describe('hospital data isolation', () => {
     expect(mockQuery).toHaveBeenCalled();
   });
 
+  it('item 7: blocks a SUSPENDED hospital\'s own staff from writing, not just hiding it from the public', async () => {
+    setStaff({ userId: 'staffA', hospitalId: HOSP_A });
+    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'suspended' }] });
+    const res = await patchInfo(infoReq({ name: 'New Name' }, HOSP_A), { params: Promise.resolve({ id: HOSP_A }) });
+    expect(res.status).toBe(403);
+  });
+
   it('lets a hospital toggle its own show_doctors flag', async () => {
     setStaff({ userId: 'staffA', hospitalId: HOSP_A });
     const res = await patchInfo(infoReq({ show_doctors: false }, HOSP_A), { params: Promise.resolve({ id: HOSP_A }) });
     expect(res.status).toBe(200);
-    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    // calls[0] is now requireHospitalOwnership's own status check (item 7);
+    // the route's actual UPDATE is calls[1].
+    const [sql, values] = mockQuery.mock.calls[1] as [string, unknown[]];
     expect(sql).toContain('show_doctors');
     expect(values).toContain(false);
   });
@@ -149,7 +158,8 @@ describe('hospital data isolation', () => {
       params: Promise.resolve({ id: HOSP_A }),
     });
     expect(res.status).toBe(200);
-    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    // calls[0] is requireHospitalOwnership's status check (item 7).
+    const [sql, values] = mockQuery.mock.calls[1] as [string, unknown[]];
     expect(sql).toContain('latitude');
     expect(sql).toContain('longitude');
     expect(values).toContain(6.45);
@@ -162,7 +172,8 @@ describe('hospital data isolation', () => {
       params: Promise.resolve({ id: HOSP_A }),
     });
     expect(res.status).toBe(200);
-    const [, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    // calls[0] is requireHospitalOwnership's status check (item 7).
+    const [, values] = mockQuery.mock.calls[1] as [string, unknown[]];
     expect(values).toContain(null);
     expect(values).not.toContain(999);
     expect(values).not.toContain(-999);
@@ -173,6 +184,8 @@ describe('hospital data isolation', () => {
     const removedId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
     const keptId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
+    // requireHospitalOwnership's status check (item 7) is the first query now.
+    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'approved' }] });
     // The FOR-UPDATE diff read: the hospital currently has two departments.
     mockQuery.mockResolvedValueOnce({
       rows: [
@@ -204,15 +217,21 @@ describe('hospital data isolation', () => {
     expect(deleteCall[1][1]).not.toContain(keptId);
 
     // The hospital aggregate recompute (distinct from the departments-column
-    // UPDATE) also ran, in the same transaction.
-    expect(sqls.filter((s) => s.includes('rating_avg = COALESCE'))).toHaveLength(1);
+    // UPDATE) also ran, in the same transaction — now via the shared
+    // recomputeHospitalRatingAggregate (item 8), which SELECTs both rating
+    // types' averages in JS and writes rating_avg/rating_count directly
+    // (the COALESCE-in-SQL approach was replaced by combinedHospitalScore's
+    // null-handling in rating-scoring.ts).
+    expect(sqls.some((s) => s.includes('FROM general_ratings'))).toBe(true);
+    expect(sqls.some((s) => s.includes('FROM department_ratings') && s.includes('AVG'))).toBe(true);
     const updateCallCount = sqls.filter((s) => s.startsWith('UPDATE hospitals SET')).length;
-    expect(updateCallCount).toBe(1); // the departments-column write itself
+    expect(updateCallCount).toBe(2); // the departments-column write, plus the aggregate recompute's own UPDATE
   });
 
   it('does not touch department_ratings when no department was removed', async () => {
     setStaff({ userId: 'staffA', hospitalId: HOSP_A });
     const keptId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'approved' }] }); // ownership check (item 7)
     mockQuery.mockResolvedValueOnce({
       rows: [{ departments: [{ id: keptId, name: 'Kept Dept', services: [] }] }],
       rowCount: 1,
@@ -235,6 +254,7 @@ describe('hospital data isolation', () => {
     setStaff({ userId: 'staffA', hospitalId: HOSP_A });
     const oldId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 
+    mockQuery.mockResolvedValueOnce({ rows: [{ status: 'approved' }] }); // ownership check (item 7)
     // The hospital currently has one department, already rated (simulated by
     // the FOR-UPDATE diff read returning it) — the exploit's premise is that
     // this department has a bad rating history the owner wants to erase.
@@ -281,14 +301,16 @@ describe('hospital data isolation', () => {
     const removedId = 'a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1';
 
     mockQuery
-      // [0] FOR-UPDATE diff read: hospital currently has one department.
+      // [0] requireHospitalOwnership's status check (item 7).
+      .mockResolvedValueOnce({ rows: [{ status: 'approved' }] })
+      // [1] FOR-UPDATE diff read: hospital currently has one department.
       .mockResolvedValueOnce({
         rows: [{ departments: [{ id: removedId, name: 'Cardiology', services: [] }] }],
         rowCount: 1,
       })
-      // [1] the departments-column UPDATE itself.
+      // [2] the departments-column UPDATE itself.
       .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-      // [2] the pre-cascade-delete rating-count snapshot for the audit log.
+      // [3] the pre-cascade-delete rating-count snapshot for the audit log.
       .mockResolvedValueOnce({ rows: [{ department_id: removedId, count: '3' }], rowCount: 1 });
 
     const res = await patchInfo(

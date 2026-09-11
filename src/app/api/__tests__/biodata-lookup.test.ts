@@ -50,6 +50,7 @@ describe('GET /api/biodata/lookup', () => {
   it('200 with no session at all — anonymous callers go through the full report-generation path when sharing prefs allow it', async () => {
     mockGetPatientSession.mockResolvedValue(null);
     const DOCTOR_ID = '22222222-2222-4222-8222-222222222222';
+    const CONDITION_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
     mockQueryOne
       .mockResolvedValueOnce({ user_id: TARGET_ID })
       .mockResolvedValueOnce({
@@ -58,7 +59,7 @@ describe('GET /api/biodata/lookup', () => {
         profile_layer: { full_name: 'Ada' },
         biodata_layer: {
           blood_group: 'O+',
-          clinical_conditions: [{ condition: 'Hypertension', doctor_id: DOCTOR_ID }],
+          clinical_conditions: [{ id: CONDITION_ID, condition: 'Hypertension', doctor_id: DOCTOR_ID }],
         },
         sharing_prefs: { blood_group: true, clinical_conditions: true },
       });
@@ -69,6 +70,7 @@ describe('GET /api/biodata/lookup', () => {
           name: 'Ada Obi',
           contact_phone: '0800-000-0000',
           contact_email: null,
+          condition_id: CONDITION_ID,
           consent_status: 'approved',
           denial_reason: null,
         },
@@ -169,6 +171,7 @@ describe('GET /api/biodata/lookup', () => {
   it('attaches a report; a credited doctor only gets a signature when their consent is approved', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: REQUESTER_ID, account_type: 'patient' });
     const DOCTOR_ID = '22222222-2222-4222-8222-222222222222';
+    const CONDITION_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
     mockQueryOne
       .mockResolvedValueOnce({ user_id: TARGET_ID })
       .mockResolvedValueOnce({
@@ -176,7 +179,7 @@ describe('GET /api/biodata/lookup', () => {
         ihn_code: IHN,
         profile_layer: {},
         biodata_layer: {
-          clinical_conditions: [{ condition: 'Hypertension', doctor_id: DOCTOR_ID }],
+          clinical_conditions: [{ id: CONDITION_ID, condition: 'Hypertension', doctor_id: DOCTOR_ID }],
         },
         sharing_prefs: { clinical_conditions: true },
       });
@@ -187,6 +190,7 @@ describe('GET /api/biodata/lookup', () => {
           name: 'Ada Obi',
           contact_phone: '0800-000-0000',
           contact_email: null,
+          condition_id: CONDITION_ID,
           consent_status: 'approved',
           denial_reason: null,
         },
@@ -202,6 +206,7 @@ describe('GET /api/biodata/lookup', () => {
   it('resolves consent SCOPED TO THE TARGET PATIENT (row.user_id), never doctor-only (migration 016 regression)', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: REQUESTER_ID, account_type: 'patient' });
     const DOCTOR_ID = '22222222-2222-4222-8222-222222222222';
+    const CONDITION_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
     mockQueryOne
       .mockResolvedValueOnce({ user_id: TARGET_ID })
       .mockResolvedValueOnce({
@@ -209,21 +214,22 @@ describe('GET /api/biodata/lookup', () => {
         ihn_code: IHN,
         profile_layer: {},
         biodata_layer: {
-          clinical_conditions: [{ condition: 'Hypertension', doctor_id: DOCTOR_ID }],
+          clinical_conditions: [{ id: CONDITION_ID, condition: 'Hypertension', doctor_id: DOCTOR_ID }],
         },
         sharing_prefs: { clinical_conditions: true },
       });
     mockQuery.mockResolvedValueOnce({ rows: [] });
     await GET(req(IHN));
     const consentLookupParams = mockQuery.mock.calls[0]![1] as unknown[];
-    // fetchDoctorAttributionLookup(doctorIds, patientUserId) — the patient is
+    // fetchDoctorAttributionLookup(pairs, patientUserId) — the patient is
     // the biodata OWNER (TARGET_ID), never anything from request input.
-    expect(consentLookupParams[1]).toBe(TARGET_ID);
+    expect(consentLookupParams[2]).toBe(TARGET_ID);
   });
 
   it('strips doctor_id from the raw biodata_layer clinical_conditions in the response (HIGH finding) — even though the report field still attributes correctly', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: REQUESTER_ID, account_type: 'patient' });
     const DOCTOR_ID = '22222222-2222-4222-8222-222222222222';
+    const CONDITION_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
     mockQueryOne
       .mockResolvedValueOnce({ user_id: TARGET_ID })
       .mockResolvedValueOnce({
@@ -231,7 +237,7 @@ describe('GET /api/biodata/lookup', () => {
         ihn_code: IHN,
         profile_layer: {},
         biodata_layer: {
-          clinical_conditions: [{ condition: 'Hypertension', doctor_id: DOCTOR_ID }],
+          clinical_conditions: [{ id: CONDITION_ID, condition: 'Hypertension', doctor_id: DOCTOR_ID }],
         },
         sharing_prefs: { clinical_conditions: true },
       });
@@ -242,6 +248,7 @@ describe('GET /api/biodata/lookup', () => {
           name: 'Ada Obi',
           contact_phone: '0800-000-0000',
           contact_email: null,
+          condition_id: CONDITION_ID,
           consent_status: 'approved',
           denial_reason: null,
         },
@@ -258,6 +265,7 @@ describe('GET /api/biodata/lookup', () => {
   it('never shows a doctor name when there is no consent record for the credited doctor', async () => {
     mockGetPatientSession.mockResolvedValue({ user_id: REQUESTER_ID, account_type: 'patient' });
     const DOCTOR_ID = '22222222-2222-4222-8222-222222222222';
+    const CONDITION_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
     mockQueryOne
       .mockResolvedValueOnce({ user_id: TARGET_ID })
       .mockResolvedValueOnce({
@@ -265,13 +273,13 @@ describe('GET /api/biodata/lookup', () => {
         ihn_code: IHN,
         profile_layer: {},
         biodata_layer: {
-          clinical_conditions: [{ condition: 'Hypertension', doctor_id: DOCTOR_ID }],
+          clinical_conditions: [{ id: CONDITION_ID, condition: 'Hypertension', doctor_id: DOCTOR_ID }],
         },
         sharing_prefs: { clinical_conditions: true },
       });
     mockQuery.mockResolvedValueOnce({
       rows: [
-        { id: DOCTOR_ID, name: 'Ada Obi', contact_phone: null, contact_email: null, consent_status: null, denial_reason: null },
+        { id: DOCTOR_ID, name: 'Ada Obi', contact_phone: null, contact_email: null, condition_id: CONDITION_ID, consent_status: null, denial_reason: null },
       ],
     });
     const res = await GET(req(IHN));

@@ -25,6 +25,7 @@ describe('GET /api/hospitals/[id]/ranking', () => {
     mockQueryOne.mockResolvedValue({
       rating_avg: '4.20',
       rating_count: '10',
+      association_score: null,
       region_rank: '2',
       region_total: '6',
       national_rank: '3',
@@ -37,6 +38,7 @@ describe('GET /api/hospitals/[id]/ranking', () => {
     expect(body).toEqual({
       rating_avg: 4.2,
       rating_count: 10,
+      association_score: null,
       region: { rank: 2, total: 6 },
       national: { rank: 3, total: 20 },
     });
@@ -48,10 +50,28 @@ describe('GET /api/hospitals/[id]/ranking', () => {
     expect(params).toEqual([HOSP_ID]);
   });
 
+  it('surfaces a non-null association_score when an official ranking has been issued (item 8)', async () => {
+    mockQueryOne.mockResolvedValue({
+      rating_avg: '3.10',
+      rating_count: '40',
+      association_score: '4.50',
+      region_rank: '1',
+      region_total: '6',
+      national_rank: '1',
+      national_total: '20',
+    });
+
+    const res = await GET(req(HOSP_ID), { params: Promise.resolve({ id: HOSP_ID }) });
+    const body = await res.json();
+    expect(body.rating_avg).toBe(3.1); // still shown, not replaced
+    expect(body.association_score).toBe(4.5);
+  });
+
   it('returns null ranking tiers for a hospital that is not approved', async () => {
     mockQueryOne.mockResolvedValue({
       rating_avg: '0',
       rating_count: '0',
+      association_score: null,
       region_rank: null,
       region_total: null,
       national_rank: null,
