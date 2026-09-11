@@ -3,6 +3,7 @@ import { queryOne, query } from '@/lib/db';
 import { apiError, apiOk } from '@/lib/api';
 import { getPatientSession } from '@/lib/auth';
 import { fetchDepartmentAggregates, fetchPatientDepartmentRatings } from '@/lib/department-ratings';
+import { fetchGeneralRatingSummary, fetchPatientGeneralRating } from '@/lib/general-ratings';
 import type { Hospital, Doctor, Announcement } from '@/types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -28,7 +29,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const hospital = await queryOne<Hospital>(
     `SELECT id, name, service_type, address, city, latitude, longitude, website,
             contact_phone, contact_email, logo_url, photos, hours, specialties, departments,
-            rating_avg, rating_count, is_24_hour, show_doctors, is_private, verified, account_id,
+            rating_avg, rating_count, association_score, is_24_hour, show_doctors, is_private, verified, account_id,
             status, created_at, updated_at
      FROM hospitals WHERE id = $1 AND status = 'approved'`,
     [id],
@@ -38,32 +39,38 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const store = await cookies();
   const session = await getPatientSession((n) => store.get(n)?.value);
 
-  // Roster, announcements, and department rating aggregates are all
-  // independent — fetch them in parallel. The caller's own per-department
-  // ratings are fetched alongside only when a session is present.
-  const [doctors, announcements, departmentRatings, yourRatings] = await Promise.all([
-    query<Doctor>(
-      `SELECT id, hospital_id, name, specialty, level, rating_avg, rating_count,
+  // Roster, announcements, and rating aggregates (both kinds, item 8) are all
+  // independent — fetch them in parallel. The caller's own ratings are
+  // fetched alongside only when a session is present.
+  const [doctors, announcements, departmentRatings, yourDepartmentRatings, generalRating, yourGeneralRating] =
+    await Promise.all([
+      query<Doctor>(
+        `SELECT id, hospital_id, name, specialty, level, rating_avg, rating_count,
               created_at, updated_at
        FROM doctors WHERE hospital_id = $1 ORDER BY name ASC`,
-      [id],
-    ),
-    query<Announcement>(
-      `SELECT id, hospital_id, title, body, color, event_date, is_bar,
+        [id],
+      ),
+      query<Announcement>(
+        `SELECT id, hospital_id, title, body, color, event_date::text, is_bar,
+              recurrence_freq, recurrence_interval, recurrence_end_date::text,
               created_at, updated_at
-       FROM announcements WHERE hospital_id = $1
-       ORDER BY event_date DESC NULLS LAST, created_at DESC`,
-      [id],
-    ),
-    fetchDepartmentAggregates(id),
-    session?.user_id ? fetchPatientDepartmentRatings(id, session.user_id) : Promise.resolve(undefined),
-  ]);
+       FROM hospital_announcements WHERE hospital_id = $1
+       ORDER BY event_date ASC`,
+        [id],
+      ),
+      fetchDepartmentAggregates(id),
+      session?.user_id ? fetchPatientDepartmentRatings(id, session.user_id) : Promise.resolve(undefined),
+      fetchGeneralRatingSummary(id),
+      session?.user_id ? fetchPatientGeneralRating(id, session.user_id) : Promise.resolve(undefined),
+    ]);
 
   return apiOk({
     hospital,
     doctors: doctors.rows,
     announcements: announcements.rows,
     department_ratings: departmentRatings,
-    your_ratings: yourRatings,
+    your_ratings: yourDepartmentRatings,
+    general_rating: generalRating,
+    your_general_rating: yourGeneralRating,
   });
 }
