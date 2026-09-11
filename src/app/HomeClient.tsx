@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import SearchBar from '@/components/SearchBar';
@@ -298,11 +299,11 @@ export default function HomeClient() {
           <div className={styles.emergencyBanner} role="alert">
             <p className={styles.emergencyBannerText}>
               This may be an emergency, go to the nearest hospital or emergency department now,
-              or call 112.
+              or call your local emergency number.
             </p>
-            <a className={styles.emergencyCallBtn} href="tel:112">
-              Call 112
-            </a>
+            <Link className={styles.emergencyCallBtn} href="/emergency-numbers">
+              Find your emergency number
+            </Link>
           </div>
         )}
         {geoError && (
@@ -329,7 +330,8 @@ export default function HomeClient() {
             People with symptoms like this usually see:{' '}
             {specialtyLabelsForSymptomIds(symptomTags).join(', ')}. This is based on which
             services hospitals list, not an assessment of your condition. If you think this is an
-            emergency, call 112 or go to the nearest hospital now.
+            emergency, go to the nearest hospital now or{' '}
+            <Link href="/emergency-numbers">find your local emergency number</Link>.
           </p>
         )}
         <div className={styles.headingRow}>
