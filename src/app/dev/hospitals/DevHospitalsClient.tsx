@@ -9,6 +9,7 @@ import Input from '@/components/Input';
 import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
 import LocationPicker from '@/components/LocationPicker';
+import AddressLocator from '@/components/AddressLocator';
 import ErrorBubble from '@/components/ErrorBubble';
 import { authFetch } from '@/lib/authFetch';
 import type { Coords } from '@/lib/geolocation';
@@ -40,6 +41,12 @@ export default function DevHospitalsClient() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
+  // Item 7 — manage already-approved/suspended hospitals (separate from the
+  // pending-review queue above, which only ever holds still-unreviewed ones).
+  const [manageQuery, setManageQuery] = useState('');
+  const [manageResults, setManageResults] = useState<Hospital[]>([]);
+  const [manageSearching, setManageSearching] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const loadPending = useCallback(async () => {
     const res = await authFetch('/api/dev/hospitals?status=pending&limit=200', undefined, {
@@ -78,6 +85,57 @@ export default function DevHospitalsClient() {
     flash(action === 'approve' ? 'Hospital approved.' : 'Hospital rejected.');
     if (action === 'approve') setLastCreatedId(id);
     loadPending();
+  }
+
+  async function searchManage(query: string) {
+    setManageSearching(true);
+    setError(null);
+    const res = await authFetch(
+      `/api/dev/hospitals?limit=100${query.trim() ? `&q=${encodeURIComponent(query.trim())}` : ''}`,
+      undefined,
+      { onUnauthenticated: setError },
+    );
+    setManageSearching(false);
+    if (res.status === 401) return;
+    if (res.ok) {
+      const hospitals: Hospital[] = (await res.json()).hospitals ?? [];
+      setManageResults(hospitals.filter((h) => h.status === 'approved' || h.status === 'suspended'));
+    }
+  }
+
+  async function lifecycleAction(id: string, action: 'suspend' | 'resume') {
+    setError(null);
+    const res = await authFetch(
+      '/api/dev/hospitals',
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      },
+      { onUnauthenticated: setError },
+    );
+    if (res.status === 401) return;
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? 'Could not update hospital.');
+      return;
+    }
+    flash(action === 'suspend' ? 'Hospital suspended.' : 'Hospital resumed.');
+    searchManage(manageQuery);
+  }
+
+  async function deleteHospital(id: string) {
+    setError(null);
+    setConfirmDeleteId(null);
+    const res = await authFetch(`/api/dev/hospitals?id=${id}&confirm=true`, { method: 'DELETE' }, { onUnauthenticated: setError });
+    if (res.status === 401) return;
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? 'Could not delete hospital.');
+      return;
+    }
+    flash('Hospital permanently deleted.');
+    searchManage(manageQuery);
   }
 
   if (loading) {
@@ -132,6 +190,71 @@ export default function DevHospitalsClient() {
             Approved. <Link href="/dev/institutions">Create its tertiary account →</Link>
           </p>
         )}
+      </section>
+
+      <section className={styles.section}>
+        <h2>Manage live hospitals</h2>
+        <p style={{ color: 'var(--color-muted)', marginTop: 0 }}>
+          Suspend an approved hospital to immediately hide it from the public and lock out its own
+          staff. A suspended hospital can be resumed, or permanently deleted (deletion also removes
+          its doctors, announcements, and ratings — irreversible).
+        </p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            searchManage(manageQuery);
+          }}
+          style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}
+        >
+          <Input
+            label=""
+            placeholder="Search hospital by name…"
+            value={manageQuery}
+            onChange={(e) => setManageQuery(e.target.value)}
+          />
+          <Button type="submit" disabled={manageSearching}>
+            {manageSearching ? 'Searching…' : 'Search'}
+          </Button>
+        </form>
+        <ul className={styles.accountList}>
+          {manageResults.map((h) => (
+            <li key={h.id} className={styles.account}>
+              <div>
+                <strong>{h.name}</strong>
+                <span className={styles.badge}>{h.status}</span>
+              </div>
+              <div className={styles.accountActions}>
+                {h.status === 'approved' && (
+                  <button type="button" onClick={() => lifecycleAction(h.id, 'suspend')}>
+                    Suspend
+                  </button>
+                )}
+                {h.status === 'suspended' && (
+                  <>
+                    <button type="button" onClick={() => lifecycleAction(h.id, 'resume')}>
+                      Resume
+                    </button>
+                    {confirmDeleteId === h.id ? (
+                      <>
+                        <button type="button" onClick={() => deleteHospital(h.id)}>
+                          Confirm delete
+                        </button>
+                        <button type="button" onClick={() => setConfirmDeleteId(null)}>
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => setConfirmDeleteId(h.id)}>
+                        Delete permanently
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </li>
+          ))}
+          {manageResults.length === 0 && <li className={styles.account}>Search to find a hospital to manage.</li>}
+        </ul>
       </section>
 
       <section className={styles.section}>
@@ -232,8 +355,9 @@ function CreateHospitalForm({ onCreated }: { onCreated: (id: string) => void }) 
 
         <div>
           <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
-            Location: click or drag the pin, or type exact coordinates
+            Location: paste a Google Maps link or address, click/drag the pin, or type exact coordinates
           </span>
+          <AddressLocator onResolved={handlePin} />
           <LocationPicker
             lat={Number.isFinite(parsedLat) ? (parsedLat as number) : null}
             lng={Number.isFinite(parsedLng) ? (parsedLng as number) : null}
