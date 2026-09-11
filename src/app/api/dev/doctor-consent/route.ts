@@ -1,6 +1,6 @@
 import { query, queryOne } from '@/lib/db';
 import { apiError, apiOk, readJson, parseLimit, parseOffset } from '@/lib/api';
-import { getDevUser, isPrimary } from '@/lib/dev-auth';
+import { getDevUser } from '@/lib/dev-auth';
 import { sanitizeText, escapeLikePattern } from '@/lib/sanitize';
 import { isValidEmail } from '@/lib/validation';
 import { logAudit, clientIpFrom } from '@/lib/audit';
@@ -18,10 +18,14 @@ import type { ConsentStatus } from '@/types';
  * consents, period". A patient must be identified the same way a doctor is
  * (search + select) before a consent outcome can be recorded.
  *
- * PRIMARY-ONLY (security finding, was "any developer"): recording a doctor's
- * consent has real-world liability for a named third party — the same bar
- * `/api/dev/accounts` uses for its higher-stakes actions (mirrors
- * `isPrimary` gate exactly).
+ * ANY DEVELOPER, PRIMARY OR SECONDARY (item 6 — corrected from an earlier,
+ * self-imposed PRIMARY-ONLY restriction added in the same pass migration 029
+ * shipped in): a patient's medical record is squarely "a user", and item 6's
+ * policy is that secondary devs have the SAME authority as primary over
+ * hospital admins and users — the primary/secondary split is reserved for
+ * actions on OTHER DEVELOPER accounts (/api/dev/accounts stays primary-only;
+ * this route was never actually that, it just borrowed that bar without the
+ * user having asked for it here).
  *
  * APPEND-ONLY (security finding, was mutable via PATCH): there is no PATCH
  * here anymore. A correction is a NEW row (a fresh contact attempt/status
@@ -38,28 +42,61 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const STATUSES: ConsentStatus[] = ['pending', 'approved', 'denied'];
 
 /**
- * GET — two resources, selected via `?resource=`:
+ * GET — THREE resources, selected via `?resource=`:
+ *  - `requests` (item 4) — the dev's queue: every (doctor, patient, field)
+ *    triple whose MOST RECENT row is still 'pending', with the actual
+ *    condition text resolved from that patient's biodata so a dev knows
+ *    what they're being asked to confirm without a second lookup. A triple
+ *    that has since moved to approved/denied (a later row exists) never
+ *    appears here — DISTINCT ON (doctor_id, patient_user_id,
+ *    clinical_condition_id) ORDER BY created_at DESC picks each triple's
+ *    latest row, then the outer query keeps only the ones still pending.
  *  - `doctors` (default) — search doctors by name/hospital name (ILIKE, same
- *    pattern as before). When a valid `patient_user_id` is also supplied, each
- *    doctor's MOST RECENT consent record is folded in SCOPED TO THAT PATIENT
- *    (or null fields if no row exists for this exact pair). Without a
- *    `patient_user_id`, consent columns are always null — a per-doctor status
- *    is no longer a meaningful thing to show.
+ *    pattern as before). When `patient_user_id` AND `clinical_condition_id`
+ *    are both supplied, each doctor's MOST RECENT consent record for THAT
+ *    EXACT field is folded in (migration 029 — a patient_user_id alone is no
+ *    longer enough to resolve a meaningful status, since one doctor+patient
+ *    pair can now have different statuses per field).
  *  - `patients` — search patient accounts by email (ILIKE, same
  *    escapeLikePattern pattern as the doctor search) so a developer can
  *    identify the target patient before selecting a doctor. Only
  *    `account_type = 'patient'` rows are ever returned.
- * Primary only.
+ * Any developer, primary or secondary (item 6).
  */
 export async function GET(req: Request) {
   const dev = await getDevUser();
-  if (!dev || !isPrimary(dev)) return apiError('Forbidden.', 'FORBIDDEN', 403);
+  if (!dev) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const url = new URL(req.url);
-  const resource = url.searchParams.get('resource') === 'patients' ? 'patients' : 'doctors';
+  const resourceParam = url.searchParams.get('resource');
+  const resource = resourceParam === 'patients' ? 'patients' : resourceParam === 'requests' ? 'requests' : 'doctors';
   const q = (url.searchParams.get('q') ?? '').trim();
   const limit = parseLimit(url.searchParams.get('limit'), 25, 100);
   const offset = parseOffset(url.searchParams.get('offset'));
+
+  if (resource === 'requests') {
+    const { rows } = await query(
+      `SELECT * FROM (
+         SELECT DISTINCT ON (r.doctor_id, r.patient_user_id, r.clinical_condition_id)
+                r.id, r.doctor_id, d.name AS doctor_name, r.patient_user_id, u.email AS patient_email,
+                r.clinical_condition_id, r.consent_status, r.created_at,
+                (SELECT elem ->> 'condition'
+                   FROM jsonb_array_elements(coalesce(b.biodata_layer -> 'clinical_conditions', '[]'::jsonb)) elem
+                  WHERE elem ->> 'id' = r.clinical_condition_id
+                  LIMIT 1) AS condition_text
+         FROM doctor_consent_records r
+         JOIN doctors d ON d.id = r.doctor_id
+         JOIN users u ON u.id = r.patient_user_id
+         LEFT JOIN biodata b ON b.user_id = r.patient_user_id
+         ORDER BY r.doctor_id, r.patient_user_id, r.clinical_condition_id, r.created_at DESC, r.id DESC
+       ) latest
+       WHERE latest.consent_status = 'pending'
+       ORDER BY latest.created_at ASC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset],
+    );
+    return apiOk({ requests: rows, limit, offset });
+  }
 
   if (resource === 'patients') {
     const params: unknown[] = [];
@@ -83,6 +120,8 @@ export async function GET(req: Request) {
 
   const patientParam = url.searchParams.get('patient_user_id');
   const patientUserId = patientParam && UUID_RE.test(patientParam) ? patientParam : null;
+  const conditionParam = url.searchParams.get('clinical_condition_id');
+  const conditionId = patientUserId && conditionParam && conditionParam.trim() ? conditionParam.trim() : null;
 
   const params: unknown[] = [];
   let where = '';
@@ -102,15 +141,16 @@ export async function GET(req: Request) {
     'NULL::text AS denial_reason, NULL::timestamptz AS decided_at, NULL::timestamptz AS consent_recorded_at, ' +
     'NULL::text AS doctor_email, NULL::text AS doctor_signature';
   let consentJoin = '';
-  if (patientUserId) {
-    params.push(patientUserId);
-    const patientIdx = params.length;
+  if (patientUserId && conditionId) {
+    params.push(patientUserId, conditionId);
+    const patientIdx = params.length - 1;
+    const conditionIdx = params.length;
     consentSelect =
       'c.id AS consent_id, c.consent_status, c.contacted_via, c.denial_reason, c.decided_at, ' +
       'c.created_at AS consent_recorded_at, c.doctor_email, c.doctor_signature';
     consentJoin = `LEFT JOIN LATERAL (
        SELECT * FROM doctor_consent_records r
-       WHERE r.doctor_id = d.id AND r.patient_user_id = $${patientIdx}
+       WHERE r.doctor_id = d.id AND r.patient_user_id = $${patientIdx} AND r.clinical_condition_id = $${conditionIdx}
        ORDER BY r.created_at DESC, r.id DESC
        LIMIT 1
      ) c ON true`;
@@ -130,12 +170,13 @@ export async function GET(req: Request) {
     params,
   );
 
-  return apiOk({ doctors: rows, total, limit, offset, patient_user_id: patientUserId });
+  return apiOk({ doctors: rows, total, limit, offset, patient_user_id: patientUserId, clinical_condition_id: conditionId });
 }
 
 interface CreateBody {
   doctor_id?: string;
   patient_user_id?: string;
+  clinical_condition_id?: string;
   consent_status?: string;
   contacted_via?: string;
   denial_reason?: string;
@@ -151,11 +192,11 @@ interface CreateBody {
 /**
  * POST — record the outcome of a NEW contact attempt with a doctor, scoped to
  * one specific patient's record (a fresh row, never an in-place mutation of
- * history — see migration 014's "most recent row wins" design). Primary only.
+ * history — see migration 014's "most recent row wins" design). Any developer, primary or secondary (item 6).
  */
 export async function POST(req: Request) {
   const dev = await getDevUser();
-  if (!dev || !isPrimary(dev)) return apiError('Forbidden.', 'FORBIDDEN', 403);
+  if (!dev) return apiError('Forbidden.', 'FORBIDDEN', 403);
 
   const body = await readJson<CreateBody>(req);
   if (!body || !body.doctor_id || !UUID_RE.test(body.doctor_id)) {
@@ -177,6 +218,20 @@ export async function POST(req: Request) {
   );
   if (!patient) return apiError('Patient not found.', 'NOT_FOUND', 404);
 
+  if (!body.clinical_condition_id || !body.clinical_condition_id.trim()) {
+    return apiError('A clinical_condition_id is required — consent is scoped to one field, not the whole record.', 'BAD_REQUEST', 400);
+  }
+  const conditionId = body.clinical_condition_id.trim();
+  const biodataRow = await queryOne<{ clinical_conditions: Array<{ id: string }> }>(
+    `SELECT coalesce(biodata_layer -> 'clinical_conditions', '[]'::jsonb) AS clinical_conditions
+     FROM biodata WHERE user_id = $1`,
+    [body.patient_user_id],
+  );
+  const conditionExists = (biodataRow?.clinical_conditions ?? []).some((c) => c.id === conditionId);
+  if (!conditionExists) {
+    return apiError('That clinical_condition_id does not belong to this patient.', 'BAD_REQUEST', 400);
+  }
+
   const consentStatus = body.consent_status as ConsentStatus;
   const contactedVia = sanitizeText(body.contacted_via, 200);
   const denialReason = consentStatus === 'denied' ? sanitizeText(body.denial_reason, 2000) : null;
@@ -189,11 +244,11 @@ export async function POST(req: Request) {
 
   const { rows } = await query<{ id: string }>(
     `INSERT INTO doctor_consent_records
-       (doctor_id, patient_user_id, consent_status, contacted_via, denial_reason, recorded_by_dev_id,
+       (doctor_id, patient_user_id, clinical_condition_id, consent_status, contacted_via, denial_reason, recorded_by_dev_id,
         decided_at, doctor_email, doctor_signature)
-     VALUES ($1, $2, $3, $4, $5, $6, ${decided ? 'now()' : 'NULL'}, $7, $8)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, ${decided ? 'now()' : 'NULL'}, $8, $9)
      RETURNING id`,
-    [body.doctor_id, body.patient_user_id, consentStatus, contactedVia, denialReason, dev.id, doctorEmail, doctorSignature],
+    [body.doctor_id, body.patient_user_id, conditionId, consentStatus, contactedVia, denialReason, dev.id, doctorEmail, doctorSignature],
   );
   const id = rows[0]!.id;
 
@@ -202,7 +257,7 @@ export async function POST(req: Request) {
     action: 'doctor_consent_recorded',
     resourceType: 'doctor',
     resourceId: body.doctor_id,
-    details: { record_id: id, consent_status: consentStatus, patient_user_id: body.patient_user_id },
+    details: { record_id: id, consent_status: consentStatus, patient_user_id: body.patient_user_id, clinical_condition_id: conditionId },
     ip: clientIpFrom(req.headers),
   });
 
