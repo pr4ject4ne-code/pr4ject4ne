@@ -123,14 +123,19 @@
    its own; the only thing you can act on inside it is .removeBtn below. */
 .conditionItem {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.5rem;
   padding: 0.55rem 0.8rem;
   background: var(--color-amethyst-light);
   border-radius: var(--radius-sm);
   font-size: var(--fs-body-sm);
   line-height: var(--lh-body);
+}
+.conditionItemRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 .conditionCause {
   color: var(--color-ink);
@@ -165,6 +170,79 @@
   background: var(--color-red-light);
   color: var(--color-red);
   box-shadow: none;
+}
+
+/* Item 4 — per-condition doctor-consent badge and request UI. */
+.consentBadge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.consentBadge_approved {
+  background: rgba(46, 125, 79, 0.12);
+  color: var(--color-green);
+}
+.consentBadge_pending {
+  background: rgba(184, 134, 11, 0.12);
+  color: var(--color-yellow);
+}
+.consentBadge_denied {
+  background: var(--color-red-light);
+  color: var(--color-red);
+}
+.requestConfirmBtn {
+  composes: pressable from '../styles/interactions.module.css';
+  margin-left: 0.5rem;
+  border: none;
+  background: var(--color-white);
+  color: var(--color-amethyst-dark);
+  font-weight: 600;
+  font-size: var(--fs-caption);
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+}
+.doctorPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  background: var(--color-white);
+  border-radius: var(--radius-sm);
+}
+.doctorPickerRow {
+  display: flex;
+  gap: 0.5rem;
+}
+.doctorPickerRow input {
+  flex: 1;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.6rem;
+  font-size: var(--fs-control);
+}
+.doctorResults {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.doctorResults button {
+  composes: pressable from '../styles/interactions.module.css';
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--color-border);
+  background: var(--color-off-white);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.6rem;
+  font-size: var(--fs-body-sm);
+}
+.requestNote {
+  color: var(--color-muted);
+  font-size: var(--fs-caption);
+  margin: 0;
 }
 .conditionAdd {
   display: grid;

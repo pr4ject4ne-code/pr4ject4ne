@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { SYMPTOM_REGIONS, SYMPTOM_ITEMS } from '@/lib/symptom-specialty-map';
 import { RED_FLAG_SYMPTOMS, evaluateRedFlagGate, MAX_SEVERITY } from '@/lib/symptom-red-flags';
 import { keepFocusedElementVisible } from '@/lib/keyboardSafeScroll';
@@ -192,8 +193,9 @@ export default function SearchBar({ onHospitalSearch }: SearchBarProps) {
           </div>
           {redFlagGate.isEmergency ? (
             <p className={styles.emergencyHint} role="alert">
-              This may be an emergency. Press Search for urgent guidance, or call 112 / go to the
-              nearest hospital now.
+              This may be an emergency. Press Search for urgent guidance, or go to the nearest
+              hospital now. Don&apos;t know your local emergency number?{' '}
+              <Link href="/emergency-numbers">Find it here</Link>.
             </p>
           ) : (
             <>
@@ -220,8 +222,8 @@ export default function SearchBar({ onHospitalSearch }: SearchBarProps) {
               ))}
               <p className={styles.symptomHint} aria-live="polite">
                 This is based on which services hospitals list, not an assessment of your
-                condition, never a diagnosis. If you think this is an emergency, call 112 or go to
-                the nearest hospital now.
+                condition, never a diagnosis. If you think this is an emergency, go to the nearest
+                hospital now or <Link href="/emergency-numbers">find your local emergency number</Link>.
               </p>
             </>
           )}

@@ -176,6 +176,22 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
     }
   }
 
+  async function onPickVideo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const url = await uploadFile(file);
+      addMediaItem({ media_type: 'video', url });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
   function addMediaItem(item: { media_type: 'image' | 'video'; url: string; provider?: string }) {
     setValues((prev) => ({ ...prev, media: [...(prev.media ?? []), { id: `local-${Date.now()}`, ...item }] }));
   }
@@ -406,17 +422,27 @@ export default function FirstAidForm({ entry, onSubmit, submitting, error }: Fir
         )}
         <div className={styles.mediaAddRow}>
           <input
+            type="file"
+            accept="video/mp4,video/webm"
+            onChange={onPickVideo}
+            disabled={uploading}
+            aria-label="Upload video file"
+          />
+          <input
             type="url"
-            placeholder="Paste a video URL (YouTube or mp4)"
+            placeholder={uploading ? 'Uploading…' : 'or paste a video URL (YouTube or mp4)'}
             value={videoUrlInput}
             onChange={(e) => setVideoUrlInput(e.target.value)}
             aria-label="Video URL"
           />
-          <Button type="button" variant="ghost" onClick={addVideoUrl} disabled={!videoUrlInput.trim()}>
+          <Button type="button" variant="ghost" onClick={addVideoUrl} disabled={uploading || !videoUrlInput.trim()}>
             Add video
           </Button>
         </div>
-        <p className={styles.fieldNote}>Videos must be a safe HTTP(S) URL. YouTube and direct MP4 links are supported.</p>
+        <p className={styles.fieldNote}>
+          Upload an MP4/WebM file (max 100MB), or paste a safe HTTP(S) video URL — YouTube and direct MP4 links are
+          supported.
+        </p>
       </div>
 
       <ErrorBubble variant="banner" message={error} />

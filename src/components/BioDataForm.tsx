@@ -8,12 +8,23 @@ import Card from './Card';
 import ErrorBubble from './ErrorBubble';
 import { uploadFile } from '@/lib/upload-client';
 import { scrollToFirstInvalidField } from '@/lib/scrollToError';
-import type { ProfileLayer, BiodataLayer } from '@/types';
+import type { ProfileLayer, BiodataLayer, ClinicalCondition } from '@/types';
 import styles from './BioDataForm.module.css';
+
+interface DoctorOption {
+  id: string;
+  name: string;
+  specialty: string | null;
+  hospital_id: string;
+  hospital_name: string;
+}
 
 interface BioDataFormProps {
   initialProfile: ProfileLayer;
   initialBiodata: BiodataLayer;
+  /** Item 4 — per clinical_condition_id, that field's current doctor-consent
+   * status (undefined = no doctor requested yet). */
+  doctorConsentStatuses?: Record<string, 'pending' | 'approved' | 'denied' | null>;
   onSave: (profile: ProfileLayer, biodata: BiodataLayer) => Promise<void>;
   saving?: boolean;
   saveError?: string | null;
@@ -66,6 +77,7 @@ function num(v: string): number | undefined {
 export default function BioDataForm({
   initialProfile,
   initialBiodata,
+  doctorConsentStatuses,
   onSave,
   saving,
   saveError,
@@ -85,6 +97,17 @@ export default function BioDataForm({
   const [ccProgression, setCcProgression] = useState('');
   const [ccComplication, setCcComplication] = useState('');
   const [ccCare, setCcCare] = useState('');
+  // Item 4 — "Request doctor confirmation" per condition: which condition's
+  // picker is open, the doctor search box, and an optimistic status overlay
+  // (so the badge updates immediately on request-sent, without waiting for
+  // the next full dashboard reload).
+  const [requestOpenFor, setRequestOpenFor] = useState<string | null>(null);
+  const [doctorQuery, setDoctorQuery] = useState('');
+  const [doctorResults, setDoctorResults] = useState<DoctorOption[]>([]);
+  const [doctorSearching, setDoctorSearching] = useState(false);
+  const [requestSending, setRequestSending] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const [statusOverlay, setStatusOverlay] = useState<Record<string, 'pending'>>({});
 
   const conditions = biodata.clinical_conditions ?? [];
   const ccName = (ccCondition === 'Other' ? ccOther : ccCondition).trim();
@@ -116,6 +139,7 @@ export default function BioDataForm({
   function addCondition() {
     if (!ccName) return;
     const entry = {
+      id: crypto.randomUUID(),
       condition: ccName,
       ...(ccCause.trim() ? { cause: ccCause.trim() } : {}),
       ...(ccDuration.trim() ? { duration: ccDuration.trim() } : {}),
@@ -139,6 +163,72 @@ export default function BioDataForm({
       'clinical_conditions',
       conditions.filter((_, i) => i !== index),
     );
+  }
+
+  function openRequestFor(conditionId: string) {
+    setRequestOpenFor((cur) => (cur === conditionId ? null : conditionId));
+    setDoctorQuery('');
+    setDoctorResults([]);
+    setRequestError(null);
+  }
+
+  async function searchDoctorsFor(q: string) {
+    setDoctorSearching(true);
+    setRequestError(null);
+    try {
+      const res = await fetch(`/api/biodata/doctor-consent-request?q=${encodeURIComponent(q)}`, { credentials: 'include' });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? 'Search failed.');
+      setDoctorResults(data as DoctorOption[]);
+    } catch (err) {
+      setRequestError(err instanceof Error ? err.message : 'Search failed.');
+      setDoctorResults([]);
+    } finally {
+      setDoctorSearching(false);
+    }
+  }
+
+  async function requestConfirmation(condition: ClinicalCondition, doctor: DoctorOption) {
+    // Legacy entries saved before this field existed have no id yet — assign
+    // and persist one now (a normal save) before the request can reference it.
+    let conditionId = condition.id;
+    if (!conditionId) {
+      conditionId = crypto.randomUUID();
+      const next = conditions.map((c) => (c === condition ? { ...c, id: conditionId! } : c));
+      setB('clinical_conditions', next);
+      await onSave(profile, { ...biodata, clinical_conditions: next });
+    }
+
+    setRequestSending(true);
+    setRequestError(null);
+    try {
+      const res = await fetch('/api/biodata/doctor-consent-request', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ clinical_condition_id: conditionId, doctor_id: doctor.id }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? 'Could not send the request.');
+      // Reflect the new doctor_id locally so the badge/UI is consistent
+      // without waiting for a full reload, and mark it pending optimistically.
+      setB(
+        'clinical_conditions',
+        conditions.map((c) => (c.id === conditionId ? { ...c, doctor_id: doctor.id } : c)),
+      );
+      setStatusOverlay((s) => ({ ...s, [conditionId!]: 'pending' }));
+      setRequestOpenFor(null);
+    } catch (err) {
+      setRequestError(err instanceof Error ? err.message : 'Could not send the request.');
+    } finally {
+      setRequestSending(false);
+    }
+  }
+
+  function consentStatusFor(conditionId: string | undefined): 'pending' | 'approved' | 'denied' | null | undefined {
+    if (!conditionId) return undefined;
+    if (statusOverlay[conditionId]) return statusOverlay[conditionId];
+    return doctorConsentStatuses?.[conditionId];
   }
 
   const bmi = useMemo(() => {
@@ -455,35 +545,101 @@ export default function BioDataForm({
         </p>
         {conditions.length > 0 && (
           <ul className={styles.conditionList}>
-            {conditions.map((c, i) => (
-              <li key={`${c.condition}-${c.timestamp ?? i}`} className={styles.conditionItem}>
-                <div>
-                  <strong>{c.condition}</strong>
-                  {c.cause ? <span className={styles.conditionCause}> cause: {c.cause}</span> : null}
-                  {c.duration ? <span className={styles.conditionCause}> duration: {c.duration}</span> : null}
-                  {c.progression ? (
-                    <span className={styles.conditionCause}> progression: {c.progression}</span>
-                  ) : null}
-                  {c.complication ? (
-                    <span className={styles.conditionCause}> complication: {c.complication}</span>
-                  ) : null}
-                  {c.care ? <span className={styles.conditionCause}> care: {c.care}</span> : null}
-                  {c.timestamp ? (
-                    <span className={styles.conditionTime}>
-                      {new Date(c.timestamp).toLocaleDateString()}
-                    </span>
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  className={styles.removeBtn}
-                  onClick={() => removeCondition(i)}
-                  aria-label={`Remove ${c.condition}`}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
+            {conditions.map((c, i) => {
+              const status = consentStatusFor(c.id);
+              return (
+                <li key={`${c.condition}-${c.timestamp ?? i}`} className={styles.conditionItem}>
+                  <div className={styles.conditionItemRow}>
+                    <div>
+                      <strong>{c.condition}</strong>
+                      {c.cause ? <span className={styles.conditionCause}> cause: {c.cause}</span> : null}
+                      {c.duration ? <span className={styles.conditionCause}> duration: {c.duration}</span> : null}
+                      {c.progression ? (
+                        <span className={styles.conditionCause}> progression: {c.progression}</span>
+                      ) : null}
+                      {c.complication ? (
+                        <span className={styles.conditionCause}> complication: {c.complication}</span>
+                      ) : null}
+                      {c.care ? <span className={styles.conditionCause}> care: {c.care}</span> : null}
+                      {c.timestamp ? (
+                        <span className={styles.conditionTime}>
+                          {new Date(c.timestamp).toLocaleDateString()}
+                        </span>
+                      ) : null}
+                      {c.doctor_id ? (
+                        <span
+                          className={`${styles.consentBadge} ${styles[`consentBadge_${status ?? 'pending'}`]}`}
+                        >
+                          {status === 'approved'
+                            ? 'Doctor confirmed ✓'
+                            : status === 'denied'
+                              ? 'Doctor declined to confirm'
+                              : 'Awaiting doctor confirmation'}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.requestConfirmBtn}
+                          onClick={() => openRequestFor(c.id)}
+                        >
+                          Request doctor confirmation
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.removeBtn}
+                      onClick={() => removeCondition(i)}
+                      aria-label={`Remove ${c.condition}`}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  {requestOpenFor === c.id && (
+                    <div className={styles.doctorPicker}>
+                      <div className={styles.doctorPickerRow}>
+                        <input
+                          type="text"
+                          placeholder="Search doctor or hospital name…"
+                          value={doctorQuery}
+                          onChange={(e) => setDoctorQuery(e.target.value)}
+                          aria-label="Search for a doctor"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => searchDoctorsFor(doctorQuery)}
+                          disabled={doctorSearching || !doctorQuery.trim()}
+                        >
+                          {doctorSearching ? 'Searching…' : 'Search'}
+                        </Button>
+                      </div>
+                      {requestError && <ErrorBubble message={requestError} />}
+                      {doctorResults.length > 0 && (
+                        <ul className={styles.doctorResults}>
+                          {doctorResults.map((d) => (
+                            <li key={d.id}>
+                              <button
+                                type="button"
+                                disabled={requestSending}
+                                onClick={() => requestConfirmation(c, d)}
+                              >
+                                {d.name}
+                                {d.specialty ? ` — ${d.specialty}` : ''} ({d.hospital_name})
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <p className={styles.requestNote}>
+                        We&apos;ll email this doctor asking them to confirm this specific entry. Nothing is shown as
+                        doctor-confirmed until they reply and we record their decision.
+                      </p>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
         <div className={styles.conditionAdd}>

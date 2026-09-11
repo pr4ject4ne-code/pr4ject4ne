@@ -106,12 +106,46 @@
   transform: scale(0.96);
   transition: transform 0.22s var(--spring);
 }
-.rateWrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
 .ratingStatus {
   color: var(--color-muted);
   font-size: var(--fs-caption);
+}
+.ratingSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.axisBreakdown {
+  color: var(--color-muted);
+  font-size: var(--fs-caption);
+}
+.rateForm {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--color-blue-tint);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.axisRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: var(--fs-body-sm);
+  font-weight: 600;
+}
+.reviewInput {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.6rem;
+  font-size: var(--fs-control);
+  font-family: inherit;
+}
+.rateFormActions {
+  display: flex;
+  gap: 0.5rem;
 }

@@ -1,0 +1,35 @@
+.heading {
+  font-size: var(--fs-h2);
+  margin: 0 0 0.25rem;
+}
+
+.intro {
+  color: var(--color-muted);
+  font-size: var(--fs-body-sm);
+  margin: 0 0 0.75rem;
+}
+
+.result {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius);
+  background: var(--color-blue-tint);
+}
+
+.number {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+}
+
+.note {
+  color: var(--color-muted);
+  font-size: var(--fs-body-sm);
+  margin: 0;
+}
+
+.disclaimer {
+  color: var(--color-muted);
+  font-size: var(--fs-caption);
+  margin: 1rem 0 0;
+}

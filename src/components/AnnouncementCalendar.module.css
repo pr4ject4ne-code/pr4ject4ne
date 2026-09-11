@@ -1,166 +1,66 @@
-.bar {
-  border-radius: var(--radius);
-  padding: 0.65rem 0.9rem;
-  margin-bottom: 0.9rem;
+/* Horizontal slim tab strip, chronological, tap-to-expand overlay (see Modal
+   usage in AnnouncementCalendar.tsx for the expand behavior). */
+
+.tabStrip {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.tab {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: none;
   color: var(--color-white);
   font-size: var(--fs-body-sm);
   line-height: var(--lh-body);
-}
-.bar_green {
-  background: var(--color-green);
-}
-.bar_yellow {
-  background: var(--color-yellow);
-}
-.bar_red {
-  background: var(--color-red);
-}
-
-.calHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-/* Month stepper — icon-only controls, so they take the shared `.iconBtn`
-   mechanic (grow on hover, hard squash on press) instead of the bare
-   `cursor: pointer` with no feedback they used to have. `composes:` must stay
-   on this bare class; the overrides live in the ancestor-scoped rule below. */
-.navBtn {
-  composes: iconBtn from '../styles/interactions.module.css';
-}
-/* Scoped under `.calHeader` (the real wrapper — see AnnouncementCalendar.tsx)
-   rather than written as a bare `.navBtn` rule: these override composed
-   `.iconBtn`'s own base declarations, which live in a different CSS chunk
-   whose load order relative to this file varies by route. A bare rule ties on
-   specificity and can silently lose — a resting-state bug on first paint. */
-.calHeader .navBtn {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: var(--radius);
-  background: var(--color-blue-light);
-  color: var(--color-blue-dark);
-  font-size: var(--fs-h3);
-  line-height: 1;
-}
-/* --fs-h3 on an <h2>: see HospitalProfile.module.css's .searchTitle for why
-   every card title on this page sizes one step below its heading level. */
-.monthLabel {
-  font-size: var(--fs-h3);
-  margin: 0;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-}
-.weekday {
-  text-align: center;
-  font-size: var(--fs-micro);
-  font-weight: 700;
-  color: var(--color-muted);
-  padding: 0.25rem 0;
-}
-.empty {
-  aspect-ratio: 1;
-}
-.day {
-  aspect-ratio: 1;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-white);
+  max-width: 220px;
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  font-size: var(--fs-body-sm);
-  position: relative;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.24s var(--spring);
+  transition: transform 0.3s var(--spring), opacity 0.15s ease;
 }
-.day:hover {
-  background: var(--color-blue-light);
-  border-color: rgba(109, 74, 255, 0.3);
+.tab:hover {
+  transform: translateY(-2px);
 }
-/* The press this cell was missing: it had a hover tint and nothing on tap, so
-   on touch (where hover doesn't exist) selecting a date acknowledged nothing
-   until the detail panel rendered. */
-.day:active {
-  transform: scale(0.92);
-  transition: transform 0.22s var(--spring);
+.tab:active {
+  transform: scale(0.97);
+  opacity: 0.9;
 }
-/* Compounded with `.day` so the selected date keeps its amethyst fill through
-   hover — `.selected` alone loses to `.day:hover` on specificity. */
-.day.selected,
-.day.selected:hover {
-  border-color: var(--color-amethyst);
-  background: var(--color-amethyst-light);
-}
-.dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-.dot_green {
+.tab_green {
   background: var(--color-green);
 }
-.dot_yellow {
+.tab_yellow {
   background: var(--color-yellow);
 }
-.dot_red {
+.tab_red {
   background: var(--color-red);
+}
+
+.tabTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .detail {
-  margin-top: 0.9rem;
-  border-top: 1px solid var(--color-border);
-  padding-top: 0.75rem;
-}
-/* A real <h3>, one step below the card's <h2> title in both level and size. */
-.detailTitle {
-  font-size: var(--fs-h4);
-  margin: 0 0 0.5rem;
-}
-.detailList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.5rem;
-}
-.detailItem {
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
-  align-items: flex-start;
 }
-.detailItem p {
-  margin: 0.15rem 0 0;
-  font-size: var(--fs-body-sm);
-  line-height: var(--lh-body);
-  color: var(--color-muted);
-}
-/* A static severity label, NOT a control — deliberately does not compose
-   `.chip`, which bakes in `cursor: pointer` plus a hover/press: this <span>
-   isn't clickable, and `.chip`'s blue-tint resting palette would also have to
-   be fully overridden by the severity modifiers below anyway. --fs-micro is
-   the app's single badge/pill size, which is what actually needed fixing. */
+
 .tag {
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-white);
-  font-size: var(--fs-micro);
-  font-weight: 700;
-  line-height: 1.25;
-  padding: 0.15rem 0.5rem;
+  align-self: flex-start;
+  padding: 0.15rem 0.6rem;
   border-radius: 999px;
-  text-transform: uppercase;
-  white-space: nowrap;
+  color: var(--color-white);
+  font-size: var(--fs-body-sm);
+  text-transform: capitalize;
 }
 .tag_green {
   background: var(--color-green);
@@ -171,6 +71,11 @@
 .tag_red {
   background: var(--color-red);
 }
+
+.detailDate {
+  font-weight: 600;
+}
+
 .muted {
   color: var(--color-muted);
   font-size: var(--fs-body-sm);

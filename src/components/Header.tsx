@@ -229,6 +229,9 @@ export default function Header({
           <Link href="/string-lookup" className={styles.navItem}>
             Find by IHN
           </Link>
+          <Link href="/emergency-numbers" className={styles.navItem}>
+            Emergency Numbers
+          </Link>
         </nav>
         <button
           type="button"
@@ -260,6 +263,9 @@ export default function Header({
             </Link>
             <Link href="/string-lookup" onClick={closeMenu}>
               Find by IHN
+            </Link>
+            <Link href="/emergency-numbers" onClick={closeMenu}>
+              Emergency Numbers
             </Link>
           </nav>
         )}

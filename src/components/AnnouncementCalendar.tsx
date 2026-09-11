@@ -2,143 +2,135 @@
 
 import { useMemo, useState } from 'react';
 import Card from './Card';
-import type { Announcement } from '@/types';
+import Modal from './Modal';
+import type { Announcement, AnnouncementRecurrenceFreq } from '@/types';
 import styles from './AnnouncementCalendar.module.css';
 
-const COLOR_RANK: Record<string, number> = { red: 3, yellow: 2, green: 1 };
+/**
+ * Renamed in spirit (still `AnnouncementCalendar.tsx`/.module.css on disk to
+ * avoid touching every importer) from a month calendar to a horizontal
+ * chronological tab strip with a tap-to-expand overlay, per the announcement
+ * rules rework: only "headlined" (within its window) announcements show at
+ * all, and the whole thing renders nothing when there are none.
+ */
 
-function ymd(date: Date): string {
-  return date.toISOString().slice(0, 10);
+/**
+ * Client-safe mirror of lib/hospital-announcements.ts's eligibility rules.
+ * Duplicated intentionally: the server lib imports `pg` via lib/db, which
+ * cannot ship to the browser. Keep these two in sync if the window changes.
+ */
+function atMidnight(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function parseDateOnly(v: string): Date {
+  const [y, m, d] = v.split('-').map(Number);
+  return new Date(y!, (m ?? 1) - 1, d ?? 1);
+}
+function addDays(d: Date, days: number): Date {
+  const r = new Date(d);
+  r.setDate(r.getDate() + days);
+  return r;
+}
+function stepOccurrence(d: Date, freq: AnnouncementRecurrenceFreq, interval: number): Date {
+  const r = new Date(d);
+  switch (freq) {
+    case 'daily':
+      r.setDate(r.getDate() + interval);
+      break;
+    case 'weekly':
+      r.setDate(r.getDate() + interval * 7);
+      break;
+    case 'monthly':
+      r.setMonth(r.getMonth() + interval);
+      break;
+    case 'yearly':
+      r.setFullYear(r.getFullYear() + interval);
+      break;
+  }
+  return r;
+}
+function currentOccurrenceDate(a: Announcement, now: Date): Date | null {
+  const anchor = parseDateOnly(a.event_date);
+  if (!a.recurrence_freq) return anchor;
+  const today = atMidnight(now);
+  const endDate = a.recurrence_end_date ? parseDateOnly(a.recurrence_end_date) : null;
+  const floor = addDays(today, -7);
+  let occurrence = anchor;
+  let iterations = 0;
+  while (occurrence < floor && iterations < 10_000) {
+    occurrence = stepOccurrence(occurrence, a.recurrence_freq, a.recurrence_interval);
+    iterations += 1;
+    if (endDate && occurrence > endDate) return null;
+  }
+  if (endDate && occurrence > endDate) return null;
+  return occurrence;
+}
+function isHeadlineEligible(a: Announcement, now: Date): { eligible: boolean; occurrence: Date | null } {
+  const occurrence = currentOccurrenceDate(a, now);
+  if (!occurrence) return { eligible: false, occurrence: null };
+  const today = atMidnight(now);
+  const start = addDays(occurrence, -14);
+  const end = addDays(occurrence, 7);
+  return { eligible: today >= start && today <= end, occurrence };
+}
+
+function recurrenceLabel(a: Announcement): string | null {
+  if (!a.recurrence_freq) return null;
+  const n = a.recurrence_interval;
+  const unit = { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' }[a.recurrence_freq];
+  const every = n > 1 ? `Repeats every ${n} ${unit}s` : `Repeats every ${unit}`;
+  return a.recurrence_end_date ? `${every}, through ${a.recurrence_end_date}` : every;
 }
 
 export default function AnnouncementCalendar({ announcements }: { announcements: Announcement[] }) {
-  const [cursor, setCursor] = useState(() => new Date());
-  const [selected, setSelected] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Group announcements by date and compute the top-priority color per day.
-  const byDate = useMemo(() => {
-    const map = new Map<string, Announcement[]>();
-    for (const a of announcements) {
-      if (!a.event_date) continue;
-      const key = a.event_date.slice(0, 10);
-      const arr = map.get(key) ?? [];
-      arr.push(a);
-      map.set(key, arr);
-    }
-    return map;
+  const headlined = useMemo(() => {
+    const now = new Date();
+    return announcements
+      .map((a) => ({ a, ...isHeadlineEligible(a, now) }))
+      .filter((x) => x.eligible && x.occurrence)
+      .sort((x, y) => {
+        if (x.a.is_bar !== y.a.is_bar) return x.a.is_bar ? -1 : 1;
+        return x.occurrence!.getTime() - y.occurrence!.getTime();
+      });
   }, [announcements]);
 
-  // The announcement bar: explicit is_bar, else highest priority / most recent.
-  const barAnnouncement = useMemo(() => {
-    const flagged = announcements.find((a) => a.is_bar);
-    if (flagged) return flagged;
-    return [...announcements].sort((a, b) => {
-      const c = (COLOR_RANK[b.color] ?? 0) - (COLOR_RANK[a.color] ?? 0);
-      if (c !== 0) return c;
-      return (b.event_date ?? b.created_at).localeCompare(a.event_date ?? a.created_at);
-    })[0];
-  }, [announcements]);
+  // Nothing to headline right now → show nothing at all, per spec.
+  if (headlined.length === 0) return null;
 
-  const year = cursor.getFullYear();
-  const month = cursor.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const startWeekday = firstDay.getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = cursor.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-
-  const cells: Array<{ day: number; date: string } | null> = [];
-  for (let i = 0; i < startWeekday; i += 1) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d += 1) {
-    cells.push({ day: d, date: ymd(new Date(year, month, d)) });
-  }
-
-  const selectedItems = selected ? (byDate.get(selected) ?? []) : [];
+  const expanded = headlined.find((x) => x.a.id === expandedId)?.a ?? null;
 
   return (
     <Card variant="plain" as="section">
-      {barAnnouncement && (
-        <div className={`${styles.bar} ${styles[`bar_${barAnnouncement.color}`]}`} role="status">
-          <strong>{barAnnouncement.title}</strong>
-          {barAnnouncement.body ? `: ${barAnnouncement.body}` : ''}
-        </div>
-      )}
-
-      <div className={styles.calHeader}>
-        {/* These carry an explicit class (rather than being styled via a
-            `.calHeader button` descendant rule) because CSS Modules only
-            allows `composes:` on a bare class selector — that's how they pull
-            in the shared `.iconBtn` hover/press mechanic. */}
-        <button
-          type="button"
-          className={styles.navBtn}
-          onClick={() => setCursor(new Date(year, month - 1, 1))}
-          aria-label="Previous month"
-        >
-          ‹
-        </button>
-        <h2 className={styles.monthLabel}>{monthLabel}</h2>
-        <button
-          type="button"
-          className={styles.navBtn}
-          onClick={() => setCursor(new Date(year, month + 1, 1))}
-          aria-label="Next month"
-        >
-          ›
-        </button>
-      </div>
-
-      <div className={styles.grid} role="grid" aria-label={`Announcements for ${monthLabel}`}>
-        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
-          <div key={d} className={styles.weekday} role="columnheader">
-            {d}
-          </div>
+      <div className={styles.tabStrip} role="list" aria-label="Announcements">
+        {headlined.map(({ a }) => (
+          <button
+            key={a.id}
+            type="button"
+            role="listitem"
+            className={`${styles.tab} ${styles[`tab_${a.color}`]}`}
+            onClick={() => setExpandedId(a.id)}
+          >
+            <span className={styles.tabTitle}>{a.title}</span>
+          </button>
         ))}
-        {cells.map((cell, i) => {
-          if (!cell) return <div key={`e${i}`} className={styles.empty} />;
-          const items = byDate.get(cell.date);
-          const topColor = items
-            ? items.reduce(
-                (best, a) =>
-                  (COLOR_RANK[a.color] ?? 0) > (COLOR_RANK[best] ?? 0) ? a.color : best,
-                'green',
-              )
-            : null;
-          return (
-            <button
-              key={cell.date}
-              type="button"
-              role="gridcell"
-              className={`${styles.day} ${selected === cell.date ? styles.selected : ''}`}
-              onClick={() => setSelected(cell.date)}
-              aria-label={items ? `${cell.day}, ${items.length} announcement(s)` : String(cell.day)}
-            >
-              <span>{cell.day}</span>
-              {topColor && <span className={`${styles.dot} ${styles[`dot_${topColor}`]}`} />}
-            </button>
-          );
-        })}
       </div>
 
-      {selected && (
-        <div className={styles.detail}>
-          <h3 className={styles.detailTitle}>{selected}</h3>
-          {selectedItems.length === 0 ? (
-            <p className={styles.muted}>No announcements on this date.</p>
-          ) : (
-            <ul className={styles.detailList}>
-              {selectedItems.map((a) => (
-                <li key={a.id} className={styles.detailItem}>
-                  <span className={`${styles.tag} ${styles[`tag_${a.color}`]}`}>{a.color}</span>
-                  <div>
-                    <strong>{a.title}</strong>
-                    {a.body && <p>{a.body}</p>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      <Modal
+        open={expanded !== null}
+        onClose={() => setExpandedId(null)}
+        title={expanded?.title ?? ''}
+      >
+        {expanded && (
+          <div className={styles.detail}>
+            <span className={`${styles.tag} ${styles[`tag_${expanded.color}`]}`}>{expanded.color}</span>
+            <p className={styles.detailDate}>{expanded.event_date}</p>
+            {expanded.body && <p>{expanded.body}</p>}
+            {recurrenceLabel(expanded) && <p className={styles.muted}>{recurrenceLabel(expanded)}</p>}
+          </div>
+        )}
+      </Modal>
     </Card>
   );
 }
