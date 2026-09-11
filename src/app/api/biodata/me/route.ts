@@ -5,7 +5,8 @@ import { getPatientSession } from '@/lib/auth';
 import { sanitizeLayer, sanitizeClinicalConditions, safeHttpUrl } from '@/lib/sanitize';
 import { logAudit, clientIpFrom } from '@/lib/audit';
 import { normalizeSharingPrefs } from '@/lib/sharing-prefs';
-import type { Biodata, BiodataLayer, ProfileLayer, SharingPrefs } from '@/types';
+import { fetchDoctorAttributionLookup } from '@/lib/doctor-consent-db';
+import type { Biodata, BiodataLayer, ProfileLayer, SharingPrefs, ConsentStatus } from '@/types';
 
 /**
  * Owner-only biodata access for the dashboard. The authenticated patient session
@@ -36,6 +37,18 @@ export async function GET(req: Request) {
   );
   if (!record) return apiError('Biodata not found.', 'NOT_FOUND', 404);
 
+  // Item 4's UI indication: the owner's own view of "has a doctor confirmed
+  // this field yet". Reuses the same per-field lookup the report generator
+  // uses (src/lib/doctor-consent-db.ts) — never a separate/looser query path.
+  const pairs = (record.biodata_layer.clinical_conditions ?? [])
+    .filter((c): c is typeof c & { doctor_id: string; id: string } => typeof c.doctor_id === 'string' && typeof c.id === 'string')
+    .map((c) => ({ doctorId: c.doctor_id, conditionId: c.id }));
+  const doctorLookup = await fetchDoctorAttributionLookup(pairs, userId);
+  const doctorConsentStatuses: Record<string, ConsentStatus | null> = {};
+  for (const { doctorId, conditionId } of pairs) {
+    doctorConsentStatuses[conditionId] = doctorLookup[`${doctorId}:${conditionId}`]?.consentStatus ?? null;
+  }
+
   await logAudit({
     userId,
     action: 'biodata_read',
@@ -57,6 +70,7 @@ export async function GET(req: Request) {
     sharing_prefs: normalizeSharingPrefs(record.sharing_prefs),
     last_modified_at: record.last_modified_at,
     email_verified: record.email_verified,
+    doctor_consent_statuses: doctorConsentStatuses,
   });
 }
 
