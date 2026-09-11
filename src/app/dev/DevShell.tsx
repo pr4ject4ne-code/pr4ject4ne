@@ -52,6 +52,7 @@ export default function DevShell({
             <Link href="/dev/institutions">Institutions</Link>
             <Link href="/dev/hospitals">Hospitals</Link>
             <Link href="/dev/doctor-consent">Doctor consent</Link>
+            <Link href="/dev/patients">Patients</Link>
             <Link href="/dev/primary">Admin</Link>
             <button type="button" onClick={logout}>
               Log out
