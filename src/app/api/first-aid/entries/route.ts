@@ -87,7 +87,7 @@ export async function GET(req: Request) {
     query<FirstAidEntry>(
       `SELECT id, category, title, definition, description, process, dos, donts,
               things_to_look_out_for, implications, indication, contraindications,
-              images, tags, signs_symptoms, region_tags, system_tags,
+              images, media, tags, signs_symptoms, region_tags, system_tags,
               created_by_dev_id, created_at, updated_at
        FROM first_aid_entries ${where}
        ORDER BY title ASC
