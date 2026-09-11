@@ -28,6 +28,7 @@ const BASE_HOSPITAL: Hospital = {
   departments: [],
   rating_avg: 0,
   rating_count: 0,
+  association_score: null,
   is_24_hour: false,
   show_doctors: true,
   is_private: false,
@@ -162,6 +163,7 @@ describe('HospitalProfileClient — ratings/ranking panel (worklist #2)', () => 
           json: async () => ({
             rating_avg: 4.5,
             rating_count: 12,
+            association_score: null,
             region: { rank: 2, total: 6 },
             national: { rank: 5, total: 20 },
           }),
@@ -189,6 +191,7 @@ describe('HospitalProfileClient — ratings/ranking panel (worklist #2)', () => 
           json: async () => ({
             rating_avg: 0,
             rating_count: 0,
+            association_score: null,
             region: { rank: 1, total: 1 },
             national: { rank: 1, total: 1 },
           }),
@@ -211,6 +214,7 @@ describe('HospitalProfileClient — department ratings (Racoon Eye v1 Phase 2)',
     ...BASE_HOSPITAL,
     rating_avg: 3.5,
     rating_count: 2,
+    association_score: null,
     departments: [{ id: 'dept-1', name: 'Surgery', services: [] }],
   };
 
@@ -229,7 +233,7 @@ describe('HospitalProfileClient — department ratings (Racoon Eye v1 Phase 2)',
             department_count: 3,
             hospital_rating_avg: 4.5,
             hospital_rating_count: 3,
-            your_score: 5,
+            your_scores: { staff_score: 5, service_score: 4, infrastructure_score: 5 },
           }),
         } as Response);
       }
@@ -240,8 +244,9 @@ describe('HospitalProfileClient — department ratings (Racoon Eye v1 Phase 2)',
           hospital: HOSPITAL_WITH_DEPT,
           doctors: [],
           announcements: [],
-          department_ratings: { 'dept-1': { avg: 3.5, count: 2 } },
+          department_ratings: { 'dept-1': { avg: 3.5, count: 2, staff_avg: 3.5, service_avg: 3.5, infrastructure_avg: 3.5 } },
           your_ratings: {},
+          general_rating: { avg: 0, count: 0 },
         }),
       } as Response);
     }) as unknown as typeof fetch;
@@ -253,7 +258,11 @@ describe('HospitalProfileClient — department ratings (Racoon Eye v1 Phase 2)',
     // Pre-rating state: department shows the initial aggregate.
     expect(screen.getByLabelText('Rated 3.5 out of 5')).toBeInTheDocument();
 
-    await user.click(screen.getByLabelText('Rate 5 stars'));
+    await user.click(screen.getByText('Leave an in-depth rating'));
+    await user.click(screen.getAllByLabelText('Rate 5 stars')[0]!); // staff
+    await user.click(screen.getAllByLabelText('Rate 4 stars')[1]!); // service
+    await user.click(screen.getAllByLabelText('Rate 5 stars')[2]!); // infrastructure
+    await user.click(screen.getByText('Submit rating'));
 
     // Patched from the POST response — new department avg/count.
     await waitFor(() => expect(screen.getByLabelText('Rated 4.5 out of 5')).toBeInTheDocument());
@@ -261,7 +270,12 @@ describe('HospitalProfileClient — department ratings (Racoon Eye v1 Phase 2)',
 
     expect(postCalls).toHaveLength(1);
     expect(postCalls[0]!.url).toBe('/api/hospitals/h1/departments/dept-1/ratings');
-    expect(postCalls[0]!.body).toEqual({ score: 5 });
+    expect(postCalls[0]!.body).toEqual({
+      staff_score: 5,
+      service_score: 4,
+      infrastructure_score: 5,
+      review: null,
+    });
 
     // Only the initial GET (+ ranking) happened — no second GET to
     // /api/hospitals/h1 fired as part of rating (no full refetch).
@@ -272,7 +286,7 @@ describe('HospitalProfileClient — department ratings (Racoon Eye v1 Phase 2)',
     expect(getRefetches).toHaveLength(1);
   });
 
-  it('shows a sign-in prompt (no StarsInput) when your_ratings is absent (signed out)', async () => {
+  it('shows a sign-in prompt (no rating form) when your_ratings is absent (signed out)', async () => {
     global.fetch = jest.fn((url: string) => {
       if (url.includes('/ranking')) return Promise.resolve({ ok: false } as Response);
       return Promise.resolve({
@@ -290,6 +304,6 @@ describe('HospitalProfileClient — department ratings (Racoon Eye v1 Phase 2)',
     render(<HospitalProfileClient id="h1" />);
     await waitFor(() => expect(screen.getByText(/Departments \(1\)/)).toBeInTheDocument());
     expect(screen.getByRole('link', { name: 'Sign in to rate this department' })).toBeInTheDocument();
-    expect(screen.queryByLabelText('Rate 5 stars')).not.toBeInTheDocument();
+    expect(screen.queryByText('Leave an in-depth rating')).not.toBeInTheDocument();
   });
 });
