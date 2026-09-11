@@ -98,7 +98,10 @@ export function buildHospitalFilters(p: HospitalFilterParams): BuiltHospitalFilt
     // become no-op or nonsensical filters.
     const clamped = Math.min(5, Math.max(0, Number(p.minRating)));
     params.push(clamped);
-    conditions.push(`rating_avg >= $${params.length}`);
+    // Item 8: an association ranking overrides the community score for
+    // filtering too, same as it does for the default sort below and for
+    // hospital-ranking.ts's region/national position.
+    conditions.push(`COALESCE(association_score, rating_avg) >= $${params.length}`);
   }
 
   if (p.open24 === 'true') {
@@ -182,7 +185,7 @@ export function buildHospitalFilters(p: HospitalFilterParams): BuiltHospitalFilt
       const matchExpr =
         `(SELECT count(*) FROM unnest(specialties) AS sp WHERE sp ILIKE ANY ($${kwIdx}::text[]))`;
       conditions.push(`${matchExpr} > 0`);
-      orderBy = `${matchExpr} DESC${distanceExpr ? `, ${distanceExpr} ASC` : ''}, rating_avg DESC, name ASC`;
+      orderBy = `${matchExpr} DESC${distanceExpr ? `, ${distanceExpr} ASC` : ''}, COALESCE(association_score, rating_avg) DESC, name ASC`;
     }
   }
 

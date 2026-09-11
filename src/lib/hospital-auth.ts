@@ -5,6 +5,7 @@ import {
   findUserById,
   HOSPITAL_SESSION_COOKIE,
 } from '@/lib/auth';
+import { query } from '@/lib/db';
 import type { User } from '@/types';
 
 /**
@@ -58,5 +59,12 @@ export async function requireHospitalOwnership(
 ): Promise<HospitalStaff | null> {
   const staff = await getHospitalStaff();
   if (!staff || staff.hospitalId !== hospitalId) return null;
+
+  // Item 7: a suspended hospital's staff shouldn't still be able to edit
+  // their listing — "suspend" would otherwise only hide the hospital from
+  // the public while leaving the dashboard fully functional behind it.
+  const { rows } = await query<{ status: string }>(`SELECT status FROM hospitals WHERE id = $1`, [hospitalId]);
+  if (rows[0]?.status !== 'approved') return null;
+
   return staff;
 }
