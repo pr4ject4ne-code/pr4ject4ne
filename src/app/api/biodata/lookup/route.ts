@@ -116,10 +116,10 @@ export async function GET(req: Request) {
   // never anything derived from request input) — see migration 016 and
   // src/lib/doctor-consent-db.ts: a doctor approved for a DIFFERENT patient
   // must never be credited here.
-  const doctorIds = (result.biodata_layer.clinical_conditions ?? [])
-    .map((c) => c.doctor_id)
-    .filter((id): id is string => typeof id === 'string');
-  const doctorLookup = await fetchDoctorAttributionLookup(doctorIds, row.user_id);
+  const pairs = (result.biodata_layer.clinical_conditions ?? [])
+    .filter((c): c is typeof c & { doctor_id: string; id: string } => typeof c.doctor_id === 'string' && typeof c.id === 'string')
+    .map((c) => ({ doctorId: c.doctor_id, conditionId: c.id }));
+  const doctorLookup = await fetchDoctorAttributionLookup(pairs, row.user_id);
   const report = buildDoctorReport(result.profile_layer, result.biodata_layer, doctorLookup);
 
   // Strip doctor_id from the RAW biodata_layer before it's returned — the
