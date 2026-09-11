@@ -7,7 +7,12 @@ import HospitalInfo from '@/components/HospitalInfo';
 import HospitalHours from '@/components/HospitalHours';
 import AnnouncementCalendar from '@/components/AnnouncementCalendar';
 import DoctorRoster from '@/components/DoctorRoster';
-import HospitalDepartments from '@/components/HospitalDepartments';
+import HospitalDepartments, {
+  type DepartmentAggregate,
+  type YourDepartmentRating,
+  type DepartmentRatingSubmission,
+} from '@/components/HospitalDepartments';
+import GeneralRating, { type GeneralRatingSummary, type YourGeneralRating } from '@/components/GeneralRating';
 import HospitalRankingPanel from '@/components/HospitalRankingPanel';
 import Card from '@/components/Card';
 import { authFetch } from '@/lib/authFetch';
@@ -15,11 +20,6 @@ import { searchWithinHospital, type HospitalSearchMatch } from '@/lib/hospital-s
 import type { HospitalRanking } from '@/lib/hospital-ranking';
 import type { Hospital, Doctor, Announcement } from '@/types';
 import styles from './HospitalProfile.module.css';
-
-interface DepartmentAggregate {
-  avg: number;
-  count: number;
-}
 
 interface Data {
   hospital: Hospital;
@@ -30,13 +30,26 @@ interface Data {
   department_ratings?: Record<string, DepartmentAggregate>;
   /** Only present when the request carried a valid patient session cookie —
    * absent (not just empty) for a signed-out visitor. */
-  your_ratings?: Record<string, number>;
+  your_ratings?: Record<string, YourDepartmentRating>;
+  /** Item 8's "general" (per-hospital) rating summary — always present. */
+  general_rating?: GeneralRatingSummary;
+  /** Same signed-in-only presence rule as your_ratings. */
+  your_general_rating?: YourGeneralRating | null;
 }
 
 interface RateResponse {
   success: boolean;
   department_avg: number;
   department_count: number;
+  hospital_rating_avg: number;
+  hospital_rating_count: number;
+  your_scores: { staff_score: number; service_score: number; infrastructure_score: number };
+}
+
+interface GeneralRateResponse {
+  success: boolean;
+  general_avg: number;
+  general_count: number;
   hospital_rating_avg: number;
   hospital_rating_count: number;
   your_score: number;
@@ -85,18 +98,23 @@ export default function HospitalProfileClient({ id }: { id: string }) {
   /**
    * POSTs a department rating and patches local state straight from the
    * response body (department_avg/count, hospital_rating_avg/count,
-   * your_score) — no full refetch. Waits for the real response before
+   * your_scores) — no full refetch. Waits for the real response before
    * touching any displayed number (not optimistic-before-confirmation), so a
    * failed submit never flashes a number that didn't actually save. Rejects
    * on any non-2xx so HospitalDepartments' own per-department error/pending
    * UI reflects the failure; a 401 mid-session still gets authFetch's normal
    * redirect-to-login handling on top of that rejection.
    */
-  async function handleRate(departmentId: string, score: number) {
+  async function handleRate(departmentId: string, submission: DepartmentRatingSubmission) {
     const res = await authFetch(`/api/hospitals/${id}/departments/${departmentId}/ratings`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ score }),
+      body: JSON.stringify({
+        staff_score: submission.staffScore,
+        service_score: submission.serviceScore,
+        infrastructure_score: submission.infrastructureScore,
+        review: submission.review,
+      }),
     });
     if (!res.ok) throw new Error('rate_failed');
     const body: RateResponse = await res.json();
@@ -111,12 +129,47 @@ export default function HospitalProfileClient({ id }: { id: string }) {
         },
         department_ratings: {
           ...(prev.department_ratings ?? {}),
-          [departmentId]: { avg: body.department_avg, count: body.department_count },
+          [departmentId]: {
+            avg: body.department_avg,
+            count: body.department_count,
+            staff_avg: body.your_scores.staff_score,
+            service_avg: body.your_scores.service_score,
+            infrastructure_avg: body.your_scores.infrastructure_score,
+          },
         },
         your_ratings: {
           ...(prev.your_ratings ?? {}),
-          [departmentId]: body.your_score,
+          [departmentId]: {
+            staff_score: body.your_scores.staff_score,
+            service_score: body.your_scores.service_score,
+            infrastructure_score: body.your_scores.infrastructure_score,
+            review: submission.review,
+          },
         },
+      };
+    });
+  }
+
+  /** Same pattern as handleRate — item 8's general (per-hospital) rating. */
+  async function handleGeneralRate(score: number, review: string | null) {
+    const res = await authFetch(`/api/hospitals/${id}/general-rating`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ score, review }),
+    });
+    if (!res.ok) throw new Error('rate_failed');
+    const body: GeneralRateResponse = await res.json();
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        hospital: {
+          ...prev.hospital,
+          rating_avg: body.hospital_rating_avg,
+          rating_count: body.hospital_rating_count,
+        },
+        general_rating: { avg: body.general_avg, count: body.general_count },
+        your_general_rating: { score: body.your_score, review },
       };
     });
   }
@@ -181,6 +234,11 @@ export default function HospitalProfileClient({ id }: { id: string }) {
         <div className={styles.grid}>
           <div className={styles.col}>
             <HospitalInfo hospital={hospital} />
+            <GeneralRating
+              summary={data.general_rating ?? { avg: 0, count: 0 }}
+              yourRating={data.your_general_rating}
+              onSubmit={handleGeneralRate}
+            />
             <HospitalHours hours={hospital.hours} is24Hour={hospital.is_24_hour} />
             <HospitalDepartments
               departments={hospital.departments}
