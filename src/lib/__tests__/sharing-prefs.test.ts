@@ -46,7 +46,7 @@ describe('filterBiodataBySharingPrefs — field-level isolation (default-deny)',
     marital_status: 'Single',
     height_cm: 180,
     weight_kg: 70,
-    clinical_conditions: [{ condition: 'Hypertension', timestamp: '2026-01-01T00:00:00Z' }],
+    clinical_conditions: [{ id: 'c1', condition: 'Hypertension', timestamp: '2026-01-01T00:00:00Z' }],
   };
 
   it('returns nothing when every pref is false (true default-deny baseline)', () => {

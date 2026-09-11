@@ -68,11 +68,13 @@ d('session lifecycle', () => {
   });
 });
 
-d('doctor consent is scoped to a (doctor, patient) pair — real regression test for the fabricated-attribution vulnerability (migration 016)', () => {
+d('doctor consent is scoped to a (doctor, patient, clinical_condition) triple — real regression test for the fabricated-attribution vulnerability (migration 016) AND the field-cascade gap it left (migration 029, item 4)', () => {
   let hospitalId = '';
   let doctorId = '';
   let patientAId = '';
   let patientBId = '';
+  const conditionIdX = randomUUID();
+  const conditionIdY = randomUUID();
 
   beforeAll(async () => {
     hospitalId = randomUUID();
@@ -96,11 +98,12 @@ d('doctor consent is scoped to a (doctor, patient) pair — real regression test
     );
     patientBId = b.rows[0]!.id;
 
-    // The doctor is APPROVED for patient A's record only.
+    // The doctor is APPROVED for patient A's condition X only — never asked
+    // about condition Y, never asked about patient B at all.
     await query(
-      `INSERT INTO doctor_consent_records (doctor_id, patient_user_id, consent_status, decided_at)
-       VALUES ($1, $2, 'approved', now())`,
-      [doctorId, patientAId],
+      `INSERT INTO doctor_consent_records (doctor_id, patient_user_id, clinical_condition_id, consent_status, decided_at)
+       VALUES ($1, $2, $3, 'approved', now())`,
+      [doctorId, patientAId, conditionIdX],
     );
   });
 
@@ -110,17 +113,25 @@ d('doctor consent is scoped to a (doctor, patient) pair — real regression test
     await query('DELETE FROM users WHERE id = ANY($1)', [[patientAId, patientBId]]); // cascades consent rows
   });
 
-  it("THE EXPLOIT: fabricating this same real doctor_id onto patient B's clinical_conditions must NOT be attributed", async () => {
+  it("THE ORIGINAL EXPLOIT: fabricating this same real doctor_id onto patient B's clinical_conditions must NOT be attributed", async () => {
     // This is exactly the attack: a patient copies a doctor_id from the public
     // roster (GET /api/hospitals/[id]) and PATCHes it onto their own record.
-    const lookupForPatientB = await fetchDoctorAttributionLookup([doctorId], patientBId);
-    expect(lookupForPatientB[doctorId]?.consentStatus).toBeNull();
+    const lookupForPatientB = await fetchDoctorAttributionLookup([{ doctorId, conditionId: conditionIdX }], patientBId);
+    expect(lookupForPatientB[`${doctorId}:${conditionIdX}`]?.consentStatus).toBeNull();
   });
 
-  it('the SAME doctor_id IS correctly attributed for the patient it was actually approved for', async () => {
-    const lookupForPatientA = await fetchDoctorAttributionLookup([doctorId], patientAId);
-    expect(lookupForPatientA[doctorId]?.consentStatus).toBe('approved');
-    expect(lookupForPatientA[doctorId]?.doctor.name).toBe('Dr. Itest');
+  it('THE FIELD-CASCADE GAP (item 4): the same doctor+patient, but a DIFFERENT clinical_condition never reviewed, must NOT be attributed', async () => {
+    // Before migration 029 this incorrectly returned 'approved' — consent was
+    // only scoped to (doctor, patient), so approving condition X silently
+    // covered condition Y too, even though the doctor never saw it.
+    const lookupForConditionY = await fetchDoctorAttributionLookup([{ doctorId, conditionId: conditionIdY }], patientAId);
+    expect(lookupForConditionY[`${doctorId}:${conditionIdY}`]?.consentStatus).toBeNull();
+  });
+
+  it('the SAME doctor_id IS correctly attributed for the exact patient+field it was actually approved for', async () => {
+    const lookupForPatientA = await fetchDoctorAttributionLookup([{ doctorId, conditionId: conditionIdX }], patientAId);
+    expect(lookupForPatientA[`${doctorId}:${conditionIdX}`]?.consentStatus).toBe('approved');
+    expect(lookupForPatientA[`${doctorId}:${conditionIdX}`]?.doctor.name).toBe('Dr. Itest');
   });
 });
 

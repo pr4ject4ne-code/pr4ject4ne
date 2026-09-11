@@ -64,7 +64,7 @@ describe('buildBiodataDocument', () => {
       {},
       {
         clinical_conditions: [
-          { condition: 'Hypertension', cause: 'Family history', timestamp: '2026-01-01T00:00:00Z' },
+          { id: 'c1', condition: 'Hypertension', cause: 'Family history', timestamp: '2026-01-01T00:00:00Z' },
         ],
       },
     );
@@ -78,7 +78,7 @@ describe('buildBiodataDocument', () => {
     const sections = buildBiodataDocument(
       {},
       {
-        clinical_conditions: [{ condition: 'Asthma' }, { condition: 'Hypertension' }],
+        clinical_conditions: [{ id: 'c1', condition: 'Asthma' }, { id: 'c2', condition: 'Hypertension' }],
       },
     );
     const cc = sections.find((s) => s.key === 'clinical_conditions');

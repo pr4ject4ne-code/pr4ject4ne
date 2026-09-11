@@ -1,18 +1,21 @@
 import { resolveDoctorAttribution, buildDoctorReport, type DoctorAttributionLookup } from '@/lib/doctor-report';
 
 /**
- * THE HARD TEST GATE (worklist #29/#30) — a report must never attribute a
- * field to a doctor's name/contact unless there is a `doctor_consent_records`
- * row with consent_status === 'approved' for that EXACT doctor+field. This is
- * the single most important test file in the doctor-report feature; every
- * other polish is secondary to these guarantees.
+ * THE HARD TEST GATE (worklist #29/#30, reworked for item 4 / migration 029)
+ * — a report must never attribute a field to a doctor's name/contact unless
+ * there is a `doctor_consent_records` row with consent_status === 'approved'
+ * for that EXACT doctor+patient+clinical_condition. This is the single most
+ * important test file in the doctor-report feature; every other polish is
+ * secondary to these guarantees.
  */
 describe('resolveDoctorAttribution (the hard gate, pure-function level)', () => {
   const DOCTOR_ID = 'doc-1';
+  const CONDITION_ID = 'cond-1';
+  const KEY = `${DOCTOR_ID}:${CONDITION_ID}`;
 
   it('(a) no consent record exists at all -> no attribution shown', () => {
     const lookup: DoctorAttributionLookup = {};
-    const result = resolveDoctorAttribution(DOCTOR_ID, lookup);
+    const result = resolveDoctorAttribution(DOCTOR_ID, CONDITION_ID, lookup);
     expect(result.attributed).toBe(false);
     expect(result.doctorName).toBeUndefined();
     expect(result.doctorContact).toBeUndefined();
@@ -23,13 +26,13 @@ describe('resolveDoctorAttribution (the hard gate, pure-function level)', () => 
 
   it('(b) consent record exists with status "denied" -> no attribution shown, denial surfaced (not silently dropped)', () => {
     const lookup: DoctorAttributionLookup = {
-      [DOCTOR_ID]: {
+      [KEY]: {
         doctor: { id: DOCTOR_ID, name: 'Dr. Should Not Appear', contact_phone: '000', contact_email: null },
         consentStatus: 'denied',
         denialReason: 'Prefers not to be named in patient-facing reports.',
       },
     };
-    const result = resolveDoctorAttribution(DOCTOR_ID, lookup);
+    const result = resolveDoctorAttribution(DOCTOR_ID, CONDITION_ID, lookup);
     expect(result.attributed).toBe(false);
     expect(result.doctorName).toBeUndefined();
     expect(result.doctorContact).toBeUndefined();
@@ -38,26 +41,26 @@ describe('resolveDoctorAttribution (the hard gate, pure-function level)', () => 
 
   it('(b-continued) consent record exists with status "pending" -> no attribution shown', () => {
     const lookup: DoctorAttributionLookup = {
-      [DOCTOR_ID]: {
+      [KEY]: {
         doctor: { id: DOCTOR_ID, name: 'Dr. Should Not Appear', contact_phone: '000', contact_email: null },
         consentStatus: 'pending',
         denialReason: null,
       },
     };
-    const result = resolveDoctorAttribution(DOCTOR_ID, lookup);
+    const result = resolveDoctorAttribution(DOCTOR_ID, CONDITION_ID, lookup);
     expect(result.attributed).toBe(false);
     expect(result.doctorName).toBeUndefined();
   });
 
   it('(c) consent record exists with status "approved" -> attribution correctly shown with name/contact', () => {
     const lookup: DoctorAttributionLookup = {
-      [DOCTOR_ID]: {
+      [KEY]: {
         doctor: { id: DOCTOR_ID, name: 'Ada Obi', contact_phone: '0800-000-0000', contact_email: 'ada@example.com' },
         consentStatus: 'approved',
         denialReason: null,
       },
     };
-    const result = resolveDoctorAttribution(DOCTOR_ID, lookup);
+    const result = resolveDoctorAttribution(DOCTOR_ID, CONDITION_ID, lookup);
     expect(result.attributed).toBe(true);
     expect(result.doctorName).toBe('Ada Obi');
     expect(result.doctorContact).toContain('0800-000-0000');
@@ -65,21 +68,40 @@ describe('resolveDoctorAttribution (the hard gate, pure-function level)', () => 
   });
 
   it('no doctor_id at all -> not attributed, no note (nothing was ever credited)', () => {
-    const result = resolveDoctorAttribution(undefined, {});
+    const result = resolveDoctorAttribution(undefined, CONDITION_ID, {});
     expect(result.attributed).toBe(false);
     expect(result.note).toBeUndefined();
+  });
+
+  it('no condition id -> not attributed (can\'t resolve a field-scoped consent without knowing which field)', () => {
+    const result = resolveDoctorAttribution(DOCTOR_ID, undefined, {});
+    expect(result.attributed).toBe(false);
   });
 
   it('a DIFFERENT doctor being approved does not attribute an uncredited doctor (exact doctor+field match)', () => {
     const OTHER_DOCTOR = 'doc-2';
     const lookup: DoctorAttributionLookup = {
-      [OTHER_DOCTOR]: {
+      [`${OTHER_DOCTOR}:${CONDITION_ID}`]: {
         doctor: { id: OTHER_DOCTOR, name: 'Someone Else', contact_phone: null, contact_email: null },
         consentStatus: 'approved',
         denialReason: null,
       },
     };
-    const result = resolveDoctorAttribution(DOCTOR_ID, lookup);
+    const result = resolveDoctorAttribution(DOCTOR_ID, CONDITION_ID, lookup);
+    expect(result.attributed).toBe(false);
+    expect(result.doctorName).toBeUndefined();
+  });
+
+  it('the SAME doctor approved for a DIFFERENT field does not attribute this field (the exact bug item 4 was reported for)', () => {
+    const OTHER_CONDITION = 'cond-2';
+    const lookup: DoctorAttributionLookup = {
+      [`${DOCTOR_ID}:${OTHER_CONDITION}`]: {
+        doctor: { id: DOCTOR_ID, name: 'Ada Obi', contact_phone: null, contact_email: null },
+        consentStatus: 'approved',
+        denialReason: null,
+      },
+    };
+    const result = resolveDoctorAttribution(DOCTOR_ID, CONDITION_ID, lookup);
     expect(result.attributed).toBe(false);
     expect(result.doctorName).toBeUndefined();
   });
@@ -101,7 +123,7 @@ describe('buildDoctorReport (end-to-end report assembly)', () => {
   it('(a) clinical condition with a doctor_id but NO consent record -> annotated as unconfirmed, no signature', () => {
     const report = buildDoctorReport(
       {},
-      { clinical_conditions: [{ condition: 'Hypertension', doctor_id: 'doc-1' }] },
+      { clinical_conditions: [{ id: 'cond-1', condition: 'Hypertension', doctor_id: 'doc-1' }] },
       {},
     );
     expect(report.signatures).toEqual([]);
@@ -112,7 +134,7 @@ describe('buildDoctorReport (end-to-end report assembly)', () => {
 
   it('(b) clinical condition credited to a doctor whose consent is DENIED -> no name anywhere in the report, denial surfaced', () => {
     const lookup: DoctorAttributionLookup = {
-      'doc-1': {
+      'doc-1:cond-1': {
         doctor: { id: 'doc-1', name: 'Dr. Secret', contact_phone: '000', contact_email: null },
         consentStatus: 'denied',
         denialReason: 'declined',
@@ -120,7 +142,7 @@ describe('buildDoctorReport (end-to-end report assembly)', () => {
     };
     const report = buildDoctorReport(
       {},
-      { clinical_conditions: [{ condition: 'Hypertension', doctor_id: 'doc-1' }] },
+      { clinical_conditions: [{ id: 'cond-1', condition: 'Hypertension', doctor_id: 'doc-1' }] },
       lookup,
     );
     expect(report.signatures).toEqual([]);
@@ -130,7 +152,7 @@ describe('buildDoctorReport (end-to-end report assembly)', () => {
 
   it('(c) clinical condition credited to a doctor whose consent is APPROVED -> name/contact shown in the row AND the signature block', () => {
     const lookup: DoctorAttributionLookup = {
-      'doc-1': {
+      'doc-1:cond-1': {
         doctor: { id: 'doc-1', name: 'Ada Obi', contact_phone: '0800-000-0000', contact_email: null },
         consentStatus: 'approved',
         denialReason: null,
@@ -138,7 +160,7 @@ describe('buildDoctorReport (end-to-end report assembly)', () => {
     };
     const report = buildDoctorReport(
       {},
-      { clinical_conditions: [{ condition: 'Hypertension', doctor_id: 'doc-1' }] },
+      { clinical_conditions: [{ id: 'cond-1', condition: 'Hypertension', doctor_id: 'doc-1' }] },
       lookup,
     );
     expect(report.signatures).toEqual([{ doctorId: 'doc-1', name: 'Ada Obi', contact: '0800-000-0000' }]);
@@ -146,14 +168,39 @@ describe('buildDoctorReport (end-to-end report assembly)', () => {
     expect(cc?.rows[0]!.value).toContain('Ada Obi');
   });
 
+  it('the SAME doctor, approved on one field but not another for the SAME patient, is only attributed on the approved field (item 4\'s core fix)', () => {
+    const lookup: DoctorAttributionLookup = {
+      'doc-1:cond-1': {
+        doctor: { id: 'doc-1', name: 'Ada Obi', contact_phone: '0800', contact_email: null },
+        consentStatus: 'approved',
+        denialReason: null,
+      },
+      // No entry at all for doc-1:cond-2 — never reviewed, must stay unnamed.
+    };
+    const report = buildDoctorReport(
+      {},
+      {
+        clinical_conditions: [
+          { id: 'cond-1', condition: 'Asthma', doctor_id: 'doc-1' },
+          { id: 'cond-2', condition: 'Hypertension', doctor_id: 'doc-1' },
+        ],
+      },
+      lookup,
+    );
+    const cc = report.sections.find((s) => s.key === 'clinical_conditions')!;
+    expect(cc.rows[0]!.value).toContain('Ada Obi');
+    expect(cc.rows[1]!.value).not.toContain('Ada Obi');
+    expect(cc.rows[1]!.value).toMatch(/not yet confirmed/i);
+  });
+
   it('mixed conditions: only the approved doctor is attributed/signed, the others stay unnamed', () => {
     const lookup: DoctorAttributionLookup = {
-      'doc-approved': {
+      'doc-approved:cond-a': {
         doctor: { id: 'doc-approved', name: 'Approved Doc', contact_phone: '111', contact_email: null },
         consentStatus: 'approved',
         denialReason: null,
       },
-      'doc-denied': {
+      'doc-denied:cond-b': {
         doctor: { id: 'doc-denied', name: 'Denied Doc', contact_phone: '222', contact_email: null },
         consentStatus: 'denied',
         denialReason: null,
@@ -163,9 +210,9 @@ describe('buildDoctorReport (end-to-end report assembly)', () => {
       {},
       {
         clinical_conditions: [
-          { condition: 'Asthma', doctor_id: 'doc-approved' },
-          { condition: 'Migraine', doctor_id: 'doc-denied' },
-          { condition: 'Allergy', doctor_id: 'doc-unknown' },
+          { id: 'cond-a', condition: 'Asthma', doctor_id: 'doc-approved' },
+          { id: 'cond-b', condition: 'Migraine', doctor_id: 'doc-denied' },
+          { id: 'cond-c', condition: 'Allergy', doctor_id: 'doc-unknown' },
         ],
       },
       lookup,
@@ -177,9 +224,14 @@ describe('buildDoctorReport (end-to-end report assembly)', () => {
     expect(cc.rows[2]!.value).not.toContain('doc-unknown');
   });
 
-  it('a doctor credited on multiple conditions only appears once in the signature block', () => {
+  it('a doctor credited AND approved on multiple conditions only appears once in the signature block', () => {
     const lookup: DoctorAttributionLookup = {
-      'doc-1': {
+      'doc-1:cond-a': {
+        doctor: { id: 'doc-1', name: 'Ada Obi', contact_phone: '0800', contact_email: null },
+        consentStatus: 'approved',
+        denialReason: null,
+      },
+      'doc-1:cond-b': {
         doctor: { id: 'doc-1', name: 'Ada Obi', contact_phone: '0800', contact_email: null },
         consentStatus: 'approved',
         denialReason: null,
@@ -189,8 +241,8 @@ describe('buildDoctorReport (end-to-end report assembly)', () => {
       {},
       {
         clinical_conditions: [
-          { condition: 'Asthma', doctor_id: 'doc-1' },
-          { condition: 'Hypertension', doctor_id: 'doc-1' },
+          { id: 'cond-a', condition: 'Asthma', doctor_id: 'doc-1' },
+          { id: 'cond-b', condition: 'Hypertension', doctor_id: 'doc-1' },
         ],
       },
       lookup,
@@ -199,7 +251,7 @@ describe('buildDoctorReport (end-to-end report assembly)', () => {
   });
 
   it('conditions with no doctor_id at all are left completely unmodified (plain patient-reported entries)', () => {
-    const report = buildDoctorReport({}, { clinical_conditions: [{ condition: 'Common cold' }] }, {});
+    const report = buildDoctorReport({}, { clinical_conditions: [{ id: 'cond-1', condition: 'Common cold' }] }, {});
     const cc = report.sections.find((s) => s.key === 'clinical_conditions');
     expect(cc?.rows[0]!.value).toBe('Common cold');
   });
