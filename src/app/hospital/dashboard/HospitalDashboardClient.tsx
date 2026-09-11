@@ -12,6 +12,7 @@ import PhotoUpload from '@/components/PhotoUpload';
 import DoctorForm, { type DoctorFormValues } from '@/components/DoctorForm';
 import AnnouncementForm, { type AnnouncementFormValues } from '@/components/AnnouncementForm';
 import LocationPicker from '@/components/LocationPicker';
+import AddressLocator from '@/components/AddressLocator';
 import ErrorBubble from '@/components/ErrorBubble';
 import { authFetch } from '@/lib/authFetch';
 import type { Coords } from '@/lib/geolocation';
@@ -335,8 +336,9 @@ function InfoTab({
         <Input label="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <div>
           <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
-            Location: click or drag the pin, or type exact coordinates
+            Location: paste a Google Maps link or address, click/drag the pin, or type exact coordinates
           </span>
+          <AddressLocator onResolved={handlePin} />
           <LocationPicker
             lat={Number.isFinite(parsedLat) ? (parsedLat as number) : null}
             lng={Number.isFinite(parsedLng) ? (parsedLng as number) : null}
@@ -574,8 +576,24 @@ function AnnouncementsTab({
     );
     setConfirmDelete(null);
     if (res.status === 401) return;
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      flash(body?.error ?? 'Could not delete announcement.');
+      return;
+    }
     flash('Announcement deleted.');
     onChanged();
+  }
+
+  /** Mirrors lib/hospital-announcements.ts's canDelete — duplicated because
+   *  that module pulls in `pg` via lib/db and can't ship to the client. */
+  function canDelete(a: Announcement): boolean {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [y, m, d] = a.event_date.split('-').map(Number);
+    const eventDate = new Date(y!, (m ?? 1) - 1, d ?? 1);
+    const diffDays = Math.round((today.getTime() - eventDate.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.abs(diffDays) > 3;
   }
 
   return (
@@ -593,8 +611,13 @@ function AnnouncementsTab({
               {a.is_bar && <span className={styles.barBadge}>Bar</span>}
               {a.event_date && <span className={styles.date}>{a.event_date.slice(0, 10)}</span>}
             </div>
-            <Button variant="danger" onClick={() => setConfirmDelete(a)}>
-              Delete
+            <Button
+              variant="danger"
+              disabled={!canDelete(a)}
+              title={!canDelete(a) ? "Locked — can't delete within 3 days of the announcement's date" : undefined}
+              onClick={() => setConfirmDelete(a)}
+            >
+              {canDelete(a) ? 'Delete' : 'Locked'}
             </Button>
           </li>
         ))}
