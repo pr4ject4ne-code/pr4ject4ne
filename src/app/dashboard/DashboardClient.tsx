@@ -30,6 +30,10 @@ interface BiodataResponse {
   /** Worklist #18: non-blocking nudge only — an unverified account can still
    * use the full dashboard/biodata farm. */
   email_verified?: boolean;
+  /** Item 4 — per clinical_condition_id, the current doctor-consent status
+   * for the field that condition's doctor_id points at (null if contacted
+   * but no decision yet; absent entirely if no doctor_id is set). */
+  doctor_consent_statuses?: Record<string, 'pending' | 'approved' | 'denied' | null>;
 }
 
 export default function DashboardClient() {
@@ -298,6 +302,7 @@ export default function DashboardClient() {
           <BioDataForm
             initialProfile={data.profile_layer}
             initialBiodata={data.biodata_layer}
+            doctorConsentStatuses={data.doctor_consent_statuses ?? {}}
             onSave={handleSave}
             saving={saving}
             saveError={saveError}
