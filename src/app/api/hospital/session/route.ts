@@ -25,8 +25,8 @@ export async function GET() {
       [staffUser.hospital_id],
     ),
     queryOne<{ list: Announcement[] }>(
-      `SELECT coalesce(json_agg(a ORDER BY a.created_at DESC), '[]') AS list
-       FROM announcements a WHERE a.hospital_id = $1`,
+      `SELECT coalesce(json_agg(a ORDER BY a.event_date ASC), '[]') AS list
+       FROM hospital_announcements a WHERE a.hospital_id = $1`,
       [staffUser.hospital_id],
     ),
   ]);
