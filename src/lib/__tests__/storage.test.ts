@@ -1,4 +1,4 @@
-import { extensionForType, isStorageConfigured, uploadImage } from '@/lib/storage';
+import { extensionForType, isStorageConfigured, uploadMedia, isVideoType } from '@/lib/storage';
 
 const ENV_KEYS = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_STORAGE_BUCKET'] as const;
 const saved: Record<string, string | undefined> = {};
@@ -33,6 +33,17 @@ describe('extensionForType', () => {
     expect(extensionForType('image/gif')).toBeNull();
     expect(extensionForType('application/pdf')).toBeNull();
   });
+  it('maps allowed video types', () => {
+    expect(extensionForType('video/mp4')).toBe('mp4');
+    expect(extensionForType('video/webm')).toBe('webm');
+  });
+});
+
+describe('isVideoType', () => {
+  it('identifies video content types', () => {
+    expect(isVideoType('video/mp4')).toBe(true);
+    expect(isVideoType('image/png')).toBe(false);
+  });
 });
 
 describe('isStorageConfigured', () => {
@@ -46,7 +57,7 @@ describe('isStorageConfigured', () => {
   });
 });
 
-describe('uploadImage', () => {
+describe('uploadMedia', () => {
   beforeEach(() => {
     setEnv({
       SUPABASE_URL: 'https://x.supabase.co',
@@ -57,7 +68,7 @@ describe('uploadImage', () => {
 
   it('POSTs the bytes and returns a public URL', async () => {
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true } as Response);
-    const { url } = await uploadImage({
+    const { url } = await uploadMedia({
       bytes: Buffer.from('x'),
       contentType: 'image/png',
       prefix: 'first-aid',
@@ -73,20 +84,20 @@ describe('uploadImage', () => {
   it('throws when the upstream returns an error', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue({ ok: false, status: 500 } as Response);
     await expect(
-      uploadImage({ bytes: Buffer.from('x'), contentType: 'image/png', prefix: 'p' }),
+      uploadMedia({ bytes: Buffer.from('x'), contentType: 'image/png', prefix: 'p' }),
     ).rejects.toThrow('upload_failed_500');
   });
 
   it('throws when storage is not configured', async () => {
     setEnv({ SUPABASE_URL: undefined });
     await expect(
-      uploadImage({ bytes: Buffer.from('x'), contentType: 'image/png', prefix: 'p' }),
+      uploadMedia({ bytes: Buffer.from('x'), contentType: 'image/png', prefix: 'p' }),
     ).rejects.toThrow('storage_not_configured');
   });
 
   it('rejects unsupported content types', async () => {
     await expect(
-      uploadImage({ bytes: Buffer.from('x'), contentType: 'image/gif', prefix: 'p' }),
+      uploadMedia({ bytes: Buffer.from('x'), contentType: 'image/gif', prefix: 'p' }),
     ).rejects.toThrow('unsupported_type');
   });
 });
