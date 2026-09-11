@@ -85,12 +85,12 @@ describe('HomeClient emergency outcome (Stage 1 short-circuit)', () => {
     );
   });
 
-  it('shows the emergency banner with a persistent call-112 affordance', async () => {
+  it('shows the emergency banner with a link to find the local emergency number', async () => {
     render(<HomeClient />);
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(screen.getByRole('alert')).toHaveTextContent(/this may be an emergency/i);
-    const callLink = screen.getByRole('link', { name: /call 112/i });
-    expect(callLink).toHaveAttribute('href', 'tel:112');
+    const callLink = screen.getByRole('link', { name: /find your emergency number/i });
+    expect(callLink).toHaveAttribute('href', '/emergency-numbers');
   });
 
   it('never sends a symptom param to the API when emergency=1, even if one were present', async () => {
