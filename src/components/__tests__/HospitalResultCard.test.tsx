@@ -24,6 +24,7 @@ function makeHospital(overrides: Partial<Hospital> = {}): Hospital {
     departments: [],
     rating_avg: 4.3,
     rating_count: 212,
+    association_score: null,
     is_24_hour: false,
     show_doctors: true,
     is_private: false,

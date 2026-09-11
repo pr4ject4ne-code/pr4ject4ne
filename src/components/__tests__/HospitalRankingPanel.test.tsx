@@ -14,7 +14,7 @@ describe('HospitalRankingPanel', () => {
   it('shows stars, region rank, and national rank for a rated hospital', () => {
     const ranking: HospitalRanking = {
       rating_avg: 4.5,
-      rating_count: 12,
+      rating_count: 12, association_score: null,
       region: { rank: 2, total: 6 },
       national: { rank: 5, total: 20 },
     };
@@ -30,7 +30,7 @@ describe('HospitalRankingPanel', () => {
   it('falls back to "In your area" when the hospital has no city on file', () => {
     const ranking: HospitalRanking = {
       rating_avg: 3.2,
-      rating_count: 4,
+      rating_count: 4, association_score: null,
       region: { rank: 1, total: 3 },
       national: { rank: 8, total: 40 },
     };
@@ -41,7 +41,7 @@ describe('HospitalRankingPanel', () => {
   it('shows "Not yet rated" instead of a nonsensical rank for a zero-review hospital', () => {
     const ranking: HospitalRanking = {
       rating_avg: 0,
-      rating_count: 0,
+      rating_count: 0, association_score: null,
       region: { rank: 1, total: 1 },
       national: { rank: 1, total: 1 },
     };
@@ -53,7 +53,7 @@ describe('HospitalRankingPanel', () => {
   it('omits the region row when the hospital is not eligible for ranking (e.g. not approved)', () => {
     const ranking: HospitalRanking = {
       rating_avg: 4.0,
-      rating_count: 3,
+      rating_count: 3, association_score: null,
       region: null,
       national: null,
     };

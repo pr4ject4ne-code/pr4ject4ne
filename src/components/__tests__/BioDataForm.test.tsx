@@ -232,3 +232,130 @@ describe('BioDataForm', () => {
     expect(screen.getByText(/haemoglobin genes/)).toBeVisible();
   });
 });
+
+describe('BioDataForm — doctor consent (item 4)', () => {
+  const DOCTOR_ID = 'doc-1';
+  const CONDITION_ID = 'cond-1';
+
+  afterEach(() => {
+    // @ts-expect-error - test cleanup of a global we stub per-test
+    delete global.fetch;
+  });
+
+  it('a condition with no doctor_id shows a "Request doctor confirmation" button, not a badge', () => {
+    render(
+      <BioDataForm
+        initialProfile={{}}
+        initialBiodata={{ clinical_conditions: [{ id: CONDITION_ID, condition: 'Asthma' }] }}
+        onSave={jest.fn()}
+      />,
+    );
+    expect(screen.getByText('Request doctor confirmation')).toBeInTheDocument();
+    expect(screen.queryByText(/Doctor confirmed|Awaiting doctor|declined to confirm/)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['approved', 'Doctor confirmed ✓'],
+    ['pending', 'Awaiting doctor confirmation'],
+    ['denied', 'Doctor declined to confirm'],
+  ] as const)('a condition with a doctor_id and status=%s shows "%s"', (status, label) => {
+    render(
+      <BioDataForm
+        initialProfile={{}}
+        initialBiodata={{ clinical_conditions: [{ id: CONDITION_ID, condition: 'Asthma', doctor_id: DOCTOR_ID }] }}
+        doctorConsentStatuses={{ [CONDITION_ID]: status }}
+        onSave={jest.fn()}
+      />,
+    );
+    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.queryByText('Request doctor confirmation')).not.toBeInTheDocument();
+  });
+
+  it('a doctor_id set but no record yet (null status) still reads as "awaiting", not silently blank', () => {
+    render(
+      <BioDataForm
+        initialProfile={{}}
+        initialBiodata={{ clinical_conditions: [{ id: CONDITION_ID, condition: 'Asthma', doctor_id: DOCTOR_ID }] }}
+        doctorConsentStatuses={{ [CONDITION_ID]: null }}
+        onSave={jest.fn()}
+      />,
+    );
+    expect(screen.getByText('Awaiting doctor confirmation')).toBeInTheDocument();
+  });
+
+  it('clicking "Request doctor confirmation" opens a doctor search box', () => {
+    render(
+      <BioDataForm
+        initialProfile={{}}
+        initialBiodata={{ clinical_conditions: [{ id: CONDITION_ID, condition: 'Asthma' }] }}
+        onSave={jest.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText('Request doctor confirmation'));
+    expect(screen.getByLabelText('Search for a doctor')).toBeInTheDocument();
+  });
+
+  it('searching, picking a doctor, and sending a request POSTs the right field id and doctor id, then shows "Awaiting doctor confirmation"', async () => {
+    const fetchMock = jest
+      .fn()
+      // GET search
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: DOCTOR_ID, name: 'Dr. Ada', specialty: 'Cardiology', hospital_id: 'h1', hospital_name: 'GH' }],
+      })
+      // POST request
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'pending', email_sent: true }) });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <BioDataForm
+        initialProfile={{}}
+        initialBiodata={{ clinical_conditions: [{ id: CONDITION_ID, condition: 'Asthma' }] }}
+        onSave={jest.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText('Request doctor confirmation'));
+    fireEvent.change(screen.getByLabelText('Search for a doctor'), { target: { value: 'Ada' } });
+    fireEvent.click(screen.getByText('Search'));
+    await waitFor(() => expect(screen.getByText(/Dr\. Ada/)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText(/Dr\. Ada/));
+    await waitFor(() => expect(screen.getByText('Awaiting doctor confirmation')).toBeInTheDocument());
+
+    const searchCall = fetchMock.mock.calls[0]!;
+    expect(String(searchCall[0])).toContain('/api/biodata/doctor-consent-request?q=Ada');
+
+    const postCall = fetchMock.mock.calls[1]!;
+    expect(postCall[0]).toBe('/api/biodata/doctor-consent-request');
+    const body = JSON.parse((postCall[1] as RequestInit).body as string);
+    expect(body).toEqual({ clinical_condition_id: CONDITION_ID, doctor_id: DOCTOR_ID });
+  });
+
+  it('shows an error and does not mark the field pending when the request fails', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: DOCTOR_ID, name: 'Dr. Ada', specialty: null, hospital_id: 'h1', hospital_name: 'GH' }],
+      })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'This doctor has no contact email on file.' }) });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <BioDataForm
+        initialProfile={{}}
+        initialBiodata={{ clinical_conditions: [{ id: CONDITION_ID, condition: 'Asthma' }] }}
+        onSave={jest.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText('Request doctor confirmation'));
+    fireEvent.change(screen.getByLabelText('Search for a doctor'), { target: { value: 'Ada' } });
+    fireEvent.click(screen.getByText('Search'));
+    await waitFor(() => expect(screen.getByText(/Dr\. Ada/)).toBeInTheDocument());
+    fireEvent.click(screen.getByText(/Dr\. Ada/));
+
+    await waitFor(() => expect(screen.getByText('This doctor has no contact email on file.')).toBeInTheDocument());
+    expect(screen.queryByText('Awaiting doctor confirmation')).not.toBeInTheDocument();
+    expect(screen.getByText('Request doctor confirmation')).toBeInTheDocument();
+  });
+});
