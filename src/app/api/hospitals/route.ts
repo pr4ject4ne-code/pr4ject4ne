@@ -62,7 +62,7 @@ export async function GET(req: Request) {
   // rating) instead of the default verified-first ordering — scoped to
   // specialty+distance+rating for v1 (no price/booking-availability data
   // exists in the schema; see WORKLIST.md #8).
-  const orderClause = orderBy ?? 'verified DESC, rating_avg DESC, name ASC';
+  const orderClause = orderBy ?? 'verified DESC, COALESCE(association_score, rating_avg) DESC, name ASC';
 
   // Count, page fetch, and the homepage trust stats are independent — run
   // them in parallel. The count is bounded by COUNT_CAP (see above) via a
@@ -78,7 +78,7 @@ export async function GET(req: Request) {
     query<Hospital>(
       `SELECT id, name, service_type, address, city, latitude, longitude, website,
               contact_phone, contact_email, logo_url, photos, hours, specialties, departments,
-              rating_avg, rating_count, is_24_hour, show_doctors, is_private, verified, account_id,
+              rating_avg, rating_count, association_score, is_24_hour, show_doctors, is_private, verified, account_id,
               status, created_at, updated_at
        FROM hospitals ${where}
        ORDER BY ${orderClause}
