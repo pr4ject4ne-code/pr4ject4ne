@@ -112,13 +112,16 @@ export interface Hospital {
   departments: HospitalDepartment[];
   rating_avg: number;
   rating_count: number;
+  /** An admin-issued official ranking (item 8) — overrides rating_avg for
+   *  ranking/filtering/display when present; null means no override exists. */
+  association_score: number | null;
   is_24_hour: boolean;
   show_doctors: boolean;
   /** Private vs. public/government ownership (worklist #13). Default false = public. */
   is_private: boolean;
   verified: boolean;
   account_id: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'suspended';
   created_at: string;
   updated_at: string;
   /** Client-computed straight-line distance from the user's current/entered
@@ -128,14 +131,21 @@ export interface Hospital {
   distanceKm?: number;
 }
 
+/** 'daily' | 'weekly' | 'monthly' | 'yearly' — null means a one-off announcement. */
+export type AnnouncementRecurrenceFreq = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
 export interface Announcement {
   id: string;
   hospital_id: string;
   title: string;
   body: string | null;
   color: AnnouncementColor;
-  event_date: string | null;
+  /** Now required — the whole headline/edit/delete rule set is date-anchored. */
+  event_date: string;
   is_bar: boolean;
+  recurrence_freq: AnnouncementRecurrenceFreq | null;
+  recurrence_interval: number;
+  recurrence_end_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -196,6 +206,10 @@ export interface ProfileLayer {
 }
 
 export interface ClinicalCondition {
+  /** Stable id assigned when the condition is first added (crypto.randomUUID
+   * client-side). Lets doctor_consent_records scope consent to THIS exact
+   * field — array index would break on reorder/removal. */
+  id: string;
   condition: string;
   cause?: string;
   duration?: string;
@@ -209,7 +223,7 @@ export interface ClinicalCondition {
    * recommendation could never actually be attributed). This alone does NOT
    * mean the doctor's name may be shown in a report — that additionally
    * requires an `approved` row in `doctor_consent_records` for this exact
-   * doctor_id (src/lib/doctor-report.ts). */
+   * doctor_id AND this exact clinical_condition id (src/lib/doctor-report.ts). */
   doctor_id?: string;
 }
 
